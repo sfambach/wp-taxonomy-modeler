@@ -2,6 +2,8 @@
 
 namespace Taxmod\Core\Renderer;
 
+use Taxmod\Core\Description\CompactView;
+use Taxmod\Core\Description\Hint;
 use Taxmod\Core\Model\Node;
 use Taxmod\Core\Model\SimpleType;
 
@@ -139,7 +141,7 @@ final class CompactRenderer extends RendererNode
         $vertical  = $this->isVertical($context);
         $withLabel = $this->withLabel($context);
 
-        $inner     = '';
+        $teile     = [];
         $usedRelations = [];
         // ⚠️ *Waagerecht wandern die Hilfen hierher und werden am Ende **ein** Zeichen
         // ([D-662](../../../docs/NewConcept/90-decision-log.md)); senkrecht bleibt jede bei ihrem Feld.*
@@ -159,32 +161,22 @@ final class CompactRenderer extends RendererNode
             }
 
             $usedRelations = [...$usedRelations, ...$part->result->usedRelations];
-            $inner    .= $this->createHtmlPart($part, $withLabel, $vertical);
+            $teile[]   = ['name' => $part->relation->name, 'field' => $part->result->piece(), 'hint' => $vertical ? $part->hint : ''];
         }
 
         // ⚠️ **Angezeigt und ganz leer: ein leerer Wert statt eines leeren Gerüsts** ([D-869](../../../docs/NewConcept/90-decision-log.md)).
         // *Gemessen am 2026-09-19 an «CPUs»: ein leerer Einheitenwert zeichnete drei leere Teile in einem Flex-Rahmen, 534 Byte je Zelle —
         // bei 40 Spalten und 20 Zeilen der grösste Posten der Satztabelle. Zu sehen war nichts davon.*
-        if ($context->purpose === Purpose::Display && $inner !== '' && ! $withLabel) {
-            $sichtbar = false;
-
-            foreach ($context->surroundings->parts as $part) {
-                $markup   = $part->isHidden() ? '' : $part->result->markup;
-                $sichtbar = $sichtbar || trim(strip_tags($markup)) !== '' || str_contains($markup, '<img') || str_contains($markup, '<input');
-            }
-
-            if (! $sichtbar) {
-                return new RenderResult('<span class="taxmod-value"></span>', array_values(array_unique($usedRelations)));
-            }
-        }
-
-        if ($inner !== '' && $gesammelt !== []) {
-            $inner .= RenderResult::draw(\Taxmod\Core\Description\Hint::combined($gesammelt));
-        }
-
-        return new RenderResult(
-            $inner === '' ? '' : $this->createHtmlContainer($inner, $vertical),
-            array_values(array_unique($usedRelations))
+        // Ob ein Feld etwas zeigt, beantwortet der Zeichner.
+        return RenderResult::described(
+            new CompactView(
+                $teile,
+                $vertical,
+                $withLabel,
+                $context->purpose === Purpose::Display && ! $withLabel,
+                $gesammelt === [] ? null : Hint::combined($gesammelt)
+            ),
+            ...array_values(array_unique($usedRelations))
         );
     }
 
@@ -215,61 +207,9 @@ final class CompactRenderer extends RendererNode
         return $switch->asBool();
     }
 
-    /**
-     * ⚠️ **The class is the hook and the inline axis is the behaviour.** *A class alone would make
-     * the switch a name that only a stylesheet honours — and there is no rule for `taxmod-compact`
-     * in `assets/admin.css`, so the two orientations would have rendered identically. The class
-     * stays so a stylesheet can still take over.*
-     */
-    private function createHtmlContainer(string $inner, bool $vertical): string
-    {
-        // ⚠️ *The cross-axis alignment is not the same fact as the axis.* Along a row the parts share
-        // a **text baseline**, which is what makes a compact line read as one line; down a column
-        // baseline alignment would align them sideways instead, so the column starts them flush.
-        // ⚠️ **Waagerecht heisst waagerecht — kein Umbruch.** *Sein Befund am 2026-09-06: die Achse
-        // stand richtig auf `row`, und in der schmalen Vorschauspalte brachen zwei Eingabefelder
-        // trotzdem untereinander. **Es sah aus wie der falsche Renderer und war der Umbruch.** Sein
-        // Wort: «und nicht umbrechen». Senkrecht darf weiter umbrechen — dort ist es die Achse selbst.*
-        $axis = $vertical
-            ? 'flex-direction:column;align-items:flex-start;flex-wrap:wrap'
-            : 'flex-direction:row;align-items:baseline;flex-wrap:nowrap';
-
-        return RenderResult::htmlTag('div', [
-            'class' => 'taxmod-compact taxmod-compact-' . ($vertical ? self::VERTICAL : self::HORIZONTAL),
-            // ⚠️ **Ein Leerzeichen, nicht ein Abstand.** *Sein Wort: «für Admin und in der Ausgabe
-            // trennt sie im Prinzip nur ein Space.» `.25em` ist die Breite eines Leerzeichens in
-            // dieser Schrift; `.5em` sah nach Spalten aus, und genau das ist `compact` nicht.*
-            'style' => 'display:flex;gap:.25em;' . $axis,
-        ]) . $inner . '</div>';
-    }
-
-    /**
-     * ⚠️ **The label is the attribute's own name, and that is the same gap
-     * {@see FormRenderer::row()} names rather than fills.** A field should read its label in the
-     * **`form` role** ([D-196](../../../docs/NewConcept/90-decision-log.md) seeds one by that
-     * name), which means the label has to arrive in the context the way a reference's does. *Until
-     * it does, this shows the relation's internal name — the same honesty the chain itself ends on: a
-     * node's own name, never nothing ([D-020](../../../docs/NewConcept/90-decision-log.md)).*
-     */
-    private function createHtmlPart(RenderedField $part, bool $withLabel, bool $vertical): string
-    {
-        $label = $withLabel
-            ? RenderResult::htmlTag('span', ['class' => 'taxmod-compact-label'])
-                . RenderResult::escape($part->relation->name) . '</span>'
-            : '';
-
-        // ⚠️ **Senkrecht steht die Hilfe bei ihrem Feld, waagerecht nicht**
-        // ([D-662](../../../docs/NewConcept/90-decision-log.md)). *Sein Grund, wörtlich: «bei compact
-        // horizontal würde ich die Texte sammeln und in ein Fragezeichen am Ende kombinieren» — dort
-        // trennt die Felder nur ein Leerzeichen, **ein Zeichen je Feld wäre ein Zeichen je
-        // Leerzeichen**. Senkrecht hat jedes Feld seine eigene Zeile und damit auch Platz für sein
-        // eigenes Zeichen.*
-        $hint = $vertical ? RenderResult::draw(new \Taxmod\Core\Description\Hint($part->hint)) : '';
-
-        return RenderResult::htmlTag('span', ['class' => 'taxmod-compact-part'])
-            . $label
-            . RenderResult::htmlTag('span', ['class' => 'taxmod-compact-field'])
-            . $part->result->markup
-            . '</span>' . $hint . '</span>';
-    }
+    // ⚠️ **The label is the attribute's own name** — a field should read its label in the `form` role
+    // ([D-196](../../../docs/NewConcept/90-decision-log.md)); until it arrives in the context, the relation's internal name stands, never
+    // nothing ([D-020](../../../docs/NewConcept/90-decision-log.md)). ⚠️ **Senkrecht steht die Hilfe bei ihrem Feld, waagerecht nicht**
+    // ([D-662](../../../docs/NewConcept/90-decision-log.md)): *«bei compact horizontal würde ich die Texte sammeln und in ein Fragezeichen am
+    // Ende kombinieren»*.
 }

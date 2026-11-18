@@ -62,10 +62,7 @@ abstract class TypedFieldRenderer extends RendererNode
         // ⚠️ *What that removes is not a line but a class of fault: as a setting, `hide` on a **type**
         // reached every field of that type through the chain, and the check here is where it landed.
         // **Measured twice** (OQ-101, and again 2026-08-27).*
-        return new RenderResult(
-            $this->control($context),
-            $used
-        );
+        return RenderResult::described($this->control($context), ...$used);
     }
 
     /**
@@ -74,34 +71,24 @@ abstract class TypedFieldRenderer extends RendererNode
      * gefüllt».* Ein `<fieldset disabled>` sperrt jedes Steuerelement darin ohne Skript und ohne dass jeder Renderer sein
      * `disabled` selbst schreibt.
      */
-    private function control(RenderContext $context): string
+    private function control(RenderContext $context): Describes
     {
         if ($context->mayEdit()) {
-            return self::drawn($this->input($context));
+            return $this->input($context);
         }
 
         if ($context->editable && $context->purpose === Purpose::Edit) {
-            $input = $this->input($context);
-
-            return $input instanceof Describes
-                ? RenderResult::draw(new Locked($input))
-                : '<fieldset disabled class="taxmod-read-only">' . $input . '</fieldset>';
+            return new Locked($this->input($context));
         }
 
-        return self::drawn($this->display($context));
-    }
-
-    /** ⚠️ *Markup only while a renderer still draws itself (6c, A15).* */
-    private static function drawn(Describes|string $piece): string
-    {
-        return $piece instanceof Describes ? RenderResult::draw($piece) : $piece;
+        return $this->display($context);
     }
 
     /** The value as a reader sees it. */
-    abstract protected function display(RenderContext $context): Describes|string;
+    abstract protected function display(RenderContext $context): Describes;
 
     /** A control to change it by. */
-    abstract protected function input(RenderContext $context): Describes|string;
+    abstract protected function input(RenderContext $context): Describes;
 
     /** Whether the field must hold a value — `1..1` (R32). */
     final protected function required(RenderContext $context): bool
@@ -184,16 +171,4 @@ abstract class TypedFieldRenderer extends RendererNode
         };
     }
 
-    final protected function createHtmlAttribute(string $name, ?string $value): string
-    {
-        return $value === null || $value === ''
-            ? ''
-            : ' ' . $name . '="' . RenderResult::escape($value) . '"';
-    }
-
-    /** What a `<span>` holding a read value looks like, in one place. */
-    final protected function createHtmlValueSpan(string $markup): string
-    {
-        return '<span class="taxmod-value">' . $markup . '</span>';
-    }
 }

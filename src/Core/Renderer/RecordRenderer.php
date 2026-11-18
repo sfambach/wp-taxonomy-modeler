@@ -2,6 +2,7 @@
 
 namespace Taxmod\Core\Renderer;
 
+use Taxmod\Core\Description\RecordView;
 use Taxmod\Core\Model\Identity;
 use Taxmod\Core\Model\Node;
 use Taxmod\Core\Model\Relation;
@@ -81,53 +82,20 @@ final class RecordRenderer extends RendererNode
         }
 
         // ⚠️ *A table for readers has no title (D-916, D-955); an empty head drew a blank bold line above it in the post.*
-        $inside = ($form->title === '' ? '' : '<div class="taxmod-record-head">'
-            // ⚠️ **What a record *is* comes in as a finished sentence** (`AR-2`, [OQ-087](../../../docs/NewConcept/91-open-questions.md)):
-            // *Record #12 · written against version 3* names an id and a version, and the core can
-            // make neither the word nor the number formatting.
-            . '<strong>' . RenderResult::escape($form->title) . '</strong>'
-            . '</div>')
-            . '<div class="taxmod-record-form">' . $form->body . '</div>';
-
         $diagnostic = $context->surroundings->sections[self::DIAGNOSTIC] ?? null;
+        $submits    = $context->surroundings->submits;
+        $edit       = $context->purpose === Purpose::Edit && $submits !== null;
 
-        if ($context->developerMode && $diagnostic !== null && $diagnostic->body !== '') {
-            $inside .= '<div class="taxmod-record-diagnostic">' . $diagnostic->body . '</div>';
-        }
-
-        return RenderResult::of('<div class="taxmod-record">' . $this->form($inside, $context) . '</div>');
-    }
-
-    /**
-     * The one form the record's values are written through.
-     *
-     * ⚠️ **One form per record and one button in it**, which is where the settings panel's shape does
-     * **not** transfer: settings belong to a node and a page saves them together, while two records
-     * on one screen are two different things and one save must not write both.
-     */
-    private function form(string $inside, RenderContext $context): string
-    {
-        $submits = $context->surroundings->submits;
-
-        if ($context->purpose !== Purpose::Edit || $submits === null) {
-            return $inside;
-        }
-
-        $buttons = '';
-
-        foreach ($context->surroundings->actions as $control) {
-            if (($control)->isAWord()) {
-                continue;
-            }
-
-            $buttons .= RenderResult::draw($control);
-        }
-
-        return '<form method="post" action="' . RenderResult::escape($submits->action) . '">'
-            . RenderResult::draw(\Taxmod\Core\Description\Carried::of($submits))
-            // D-1308: the buttons above the fields, as the toolbar.
-            . ($buttons === '' ? '' : '<div class="taxmod-record-acts taxmod-toolbar" role="toolbar">' . $buttons . '</div>')
-            . $inside
-            . '</form>';
+        // ⚠️ **What a record *is* comes in as a finished sentence** (`AR-2`, [OQ-087](../../../docs/NewConcept/91-open-questions.md)):
+        // *Record #12 · written against version 3* names an id and a version, and the core can make neither the word nor the number
+        // formatting.
+        return RenderResult::described(new RecordView(
+            $form->title,
+            $form->piece ?? $form->body,
+            $context->developerMode && $diagnostic !== null && $diagnostic->body !== '' ? ($diagnostic->piece ?? $diagnostic->body) : null,
+            $edit ? $submits->action : null,
+            $edit ? $submits->hidden : [],
+            array_values(array_filter($context->surroundings->actions, static fn (Control $c): bool => ! $c->isAWord()))
+        ));
     }
 }

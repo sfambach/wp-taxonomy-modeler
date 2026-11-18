@@ -15,6 +15,7 @@ use Taxmod\Core\Description\PickableNode;
 use Taxmod\Core\Description\RecordBrowser;
 use Taxmod\Core\Description\RecordChoice;
 use Taxmod\Core\Description\RecordPicker;
+use Taxmod\Core\Description\RecordView;
 use Taxmod\Core\Description\SettingOrigin;
 use Taxmod\Core\Description\SettingRow;
 use Taxmod\Core\Description\SettingsPanel;
@@ -25,9 +26,15 @@ use Taxmod\Core\Description\TreeLine;
 use Taxmod\Core\Description\TreeView;
 use Taxmod\Core\Description\UnfoldingSummary;
 use Taxmod\Core\Description\Describes;
+use Taxmod\Core\Description\OrderedChoice;
+use Taxmod\Core\Description\RepeatableList;
+use Taxmod\Core\Description\PageView;
+use Taxmod\Core\Description\HeadView;
+use Taxmod\Core\Description\CompactView;
 use Taxmod\Core\Description\DialogBox;
 use Taxmod\Core\Description\Drawn;
 use Taxmod\Core\Description\FieldRow;
+use Taxmod\Core\Description\FormView;
 use Taxmod\Core\Description\Hint;
 use Taxmod\Core\Description\Icon;
 use Taxmod\Core\Description\Drawer;
@@ -86,6 +93,17 @@ final class EdgeDrawer implements Drawer
             $piece instanceof TreeChoice => $this->treeChoice($piece),
             $piece instanceof CurrentChoice => self::current($piece),
             $piece instanceof SharedBody => $this->sharedBody($piece),
+            $piece instanceof OrderedChoice => $this->orderedChoice($piece),
+            $piece instanceof CompactView => $this->compact($piece),
+            $piece instanceof HeadView   => $piece->rows === [] ? '' : '<table class="taxmod-head"><tbody>' . implode('', array_map(fn (array $r): string => '<tr><th scope="row" class="taxmod-head-label">'
+                . self::e($r['title']) . '</th><td class="taxmod-head-' . self::e($r['key']) . '">' . $this->part($r['body']) . '</td></tr>', $piece->rows)) . '</tbody></table>',
+            $piece instanceof PageView   => $piece->blocks === [] ? '' : '<div class="taxmod-page">' . implode('', array_map($this->pageBlock(...), $piece->blocks)) . '</div>',
+            $piece instanceof RepeatableList => '<ul class="taxmod-repeatable">' . implode('', array_map(fn (array $e): string => '<li class="taxmod-repeatable-entry">'
+                . '<span class="taxmod-repeatable-value">' . $this->draw($e['value']) . '</span>'
+                . ($e['remove'] === null ? '' : '<span class="taxmod-repeatable-act">' . $this->draw($e['remove']) . '</span>') . '</li>', $piece->entries)) . '</ul>'
+                . ($piece->add === null ? '' : '<div class="taxmod-repeatable-add">' . $this->draw($piece->add) . '</div>'),
+            $piece instanceof FormView   => $piece->lines === [] ? '' : '<div class="taxmod-form">' . implode('', array_map($this->formLine(...), $piece->lines)) . '</div>',
+            $piece instanceof RecordView => $this->record($piece),
             $piece instanceof ComplexView => $this->complex($piece),
             $piece instanceof UnfoldingSummary => '<details class="taxmod-complex-link"><summary>' . self::e($piece->words) . '</summary>' . $this->draw($piece->part) . '</details>',
             $piece instanceof TableView  => $this->table($piece),
@@ -464,6 +482,86 @@ final class EdgeDrawer implements Drawer
         }
 
         return $markup === '' ? '' : '<div class="taxmod-node">' . $markup . '</div>';
+    }
+
+    /** @param array{name: string, field: ?Describes, hint: string} $zeile */
+    private function formLine(array $zeile): string
+    {
+        return $zeile['field'] === null
+            ? '<div class="taxmod-form-group"><span class="taxmod-form-group-name">' . self::e($zeile['name']) . '</span></div>'
+            : '<div class="taxmod-form-row"><span class="taxmod-form-label">' . self::e($zeile['name']) . '</span>'
+                . '<span class="taxmod-form-field">' . $this->draw($zeile['field']) . '</span>' . HintMarkup::icon($zeile['hint']) . '</div>';
+    }
+
+    private function record(RecordView $r): string
+    {
+        $innen = ($r->title === '' ? '' : '<div class="taxmod-record-head"><strong>' . self::e($r->title) . '</strong></div>')
+            . '<div class="taxmod-record-form">' . $this->part($r->form) . '</div>'
+            . ($r->diagnostic === null ? '' : '<div class="taxmod-record-diagnostic">' . $this->part($r->diagnostic) . '</div>');
+        $knoepfe = implode('', array_map($this->draw(...), $r->acts));
+
+        return '<div class="taxmod-record">' . ($r->action === null ? $innen
+            : '<form method="post" action="' . self::e($r->action) . '">' . $this->draw(new Carried($r->carried))
+                . ($knoepfe === '' ? '' : '<div class="taxmod-record-acts taxmod-toolbar" role="toolbar">' . $knoepfe . '</div>')
+                . $innen . '</form>') . '</div>';
+    }
+
+    /** Shown without labels and nothing in any field: an empty value, not an empty frame (D-869). */
+    private function compact(CompactView $c): string
+    {
+        if ($c->parts === []) {
+            return '';
+        }
+
+        $felder = array_map(fn (array $p): string => $this->draw($p['field']), $c->parts);
+
+        if ($c->emptyIsAValue && array_filter($felder, static fn (string $m): bool => trim(strip_tags($m)) !== '' || str_contains($m, '<img') || str_contains($m, '<input')) === []) {
+            return '<span class="taxmod-value"></span>';
+        }
+
+        $innen = '';
+
+        foreach ($c->parts as $i => $p) {
+            $innen .= '<span class="taxmod-compact-part">'
+                . ($c->withLabel ? '<span class="taxmod-compact-label">' . self::e($p['name']) . '</span>' : '')
+                . '<span class="taxmod-compact-field">' . $felder[$i] . '</span>' . HintMarkup::icon($p['hint']) . '</span>';
+        }
+
+        // `.25em` is the width of a space in this font; `.5em` looked like columns, which compact is not.
+        return '<div class="taxmod-compact taxmod-compact-' . ($c->vertical ? \Taxmod\Core\Renderer\Orientation::Vertical : \Taxmod\Core\Renderer\Orientation::Horizontal)->value . '" style="display:flex;gap:.25em;'
+            . ($c->vertical ? 'flex-direction:column;align-items:flex-start;flex-wrap:wrap' : 'flex-direction:row;align-items:baseline;flex-wrap:nowrap') . '">'
+            . $innen . ($c->gathered === null ? '' : $this->draw($c->gathered)) . '</div>';
+    }
+
+    /** @param array{title: string, body: Describes|string, collapsed: bool} $b */
+    private function pageBlock(array $b): string
+    {
+        return $b['collapsed']
+            ? '<details class="taxmod-page-block" style="margin-top:1em"><summary style="cursor:pointer;font-weight:600">' . self::e($b['title']) . '</summary>' . $this->part($b['body']) . '</details>'
+            : '<div class="taxmod-page-block">' . ($b['title'] === '' ? '' : '<h3 style="margin:1em 0 .4em">' . self::e($b['title']) . '</h3>') . $this->part($b['body']) . '</div>';
+    }
+
+    /** The arrows move a line by script and never submit; the first cannot go up, the last not down. Removing is always the bin (D-828). */
+    private function orderedChoice(OrderedChoice $o): string
+    {
+        $form    = $o->form === '' ? '' : ' form="' . self::e($o->form) . '"';
+        $letzter = count($o->chosen) - 1;
+        $pfeil   = static fn (string $wohin, bool $aus, string $wort): string => '<button type="button" class="button ' . ControlMarkup::ICON_ONLY . ' taxmod-list-move" data-taxmod-move="' . $wohin . '"'
+            . ($aus ? ' disabled style="color:#1d2327;opacity:.35"' : ' style="color:#1d2327"') . '>' . IconMarkup::dashicon('arrow-' . $wohin . '-alt2', $wort) . '</button>';
+        $html    = '<span class="taxmod-switch-picker"><ol class="taxmod-switch-cascade">';
+
+        foreach ($o->chosen as $platz => $g) {
+            $html .= '<li class="taxmod-switch-chosen" data-taxmod-id="' . $g['id'] . '">'
+                . '<input type="hidden" class="taxmod-switch-member" name="' . self::e($g['name']) . '" value="1"' . $form . '>'
+                . '<span class="taxmod-switch-name">' . self::e($g['word']) . '</span>'
+                . ($g['positionName'] === null ? ''
+                    : '<input type="hidden" class="taxmod-setting-list-position" name="' . self::e($g['positionName']) . '" value="' . $g['position'] . '"' . $form . '>'
+                        . ' ' . $pfeil('up', $platz === 0, $g['word']) . $pfeil('down', $platz === $letzter, $g['word']))
+                . '<button type="button" class="button ' . ControlMarkup::ICON_ONLY . ' taxmod-list-remove" style="color:#b32d2e">' . IconMarkup::dashicon('trash', $g['word']) . '</button>'
+                . '</li>';
+        }
+
+        return $html . '</ol><span class="taxmod-switch-add">' . $this->draw($o->offer) . $this->draw($o->add) . '</span></span>';
     }
 
     private function sharedBody(SharedBody $platz): string

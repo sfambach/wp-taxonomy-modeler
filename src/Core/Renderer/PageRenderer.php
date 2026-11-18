@@ -2,6 +2,7 @@
 
 namespace Taxmod\Core\Renderer;
 
+use Taxmod\Core\Description\PageView;
 use Taxmod\Core\Model\Identity;
 use Taxmod\Core\Model\Node;
 use Taxmod\Core\Model\Relation;
@@ -68,7 +69,7 @@ final class PageRenderer extends RendererNode
     public function render(Renderable $subject, RenderContext $context): RenderResult
     {
         $sections = $context->surroundings->sections;
-        $body     = '';
+        $body     = [];
 
         // ⚠️ **Declaration order of the enum is the frame order.** Iterating the slots rather than
         // what was handed in is what makes the sequence a property of the concept instead of a
@@ -80,47 +81,9 @@ final class PageRenderer extends RendererNode
                 continue;
             }
 
-            $body .= $this->block($section);
+            $body[] = ['title' => $section->title, 'body' => $section->piece ?? $section->body, 'collapsed' => $section->collapsed];
         }
 
-        if ($body === '') {
-            return RenderResult::of('');
-        }
-
-        return RenderResult::of(
-            // ⚠️ **The frame carries no paint of its own any more** (D-391, D-392): each band inside
-            // draws its own box now, so a border here made a box inside a box. *What a renderer states
-            // is that the page **is** one container; how heavy that container looks is the surface's.*
-            '<div class="taxmod-page">' . $body . '</div>'
-        );
-    }
-
-    /**
-     * One block.
-     *
-     * ⚠️ **`relations` is collapsed and R20a says so** — *and last the relations, collapsed.* A
-     * `<details>` does that in plain HTML, which is why no other section needs one: only this one
-     * was decided to start shut.
-     */
-    private function block(Section $section): string
-    {
-        // ⚠️ **An empty title means no heading**, and the owner asked for that after seeing the whole
-        // page: *look at a few more frames, and push the path behind the name, and leave out a few
-        // headings.* Three bands had a heading over a single control — *Name* over a name field,
-        // *Display* over two panels that carry their own headings — and a heading that repeats what
-        // is directly under it is a line of noise. *An empty string rather than a second field,
-        // because «this band has no heading» is exactly «its heading is nothing».*
-        $heading = $section->title === ''
-            ? ''
-            : '<h3 style="margin:1em 0 .4em">' . RenderResult::escape($section->title) . '</h3>';
-
-        if (! $section->collapsed) {
-            return '<div class="taxmod-page-block">' . $heading . $section->body . '</div>';
-        }
-
-        return '<details class="taxmod-page-block" style="margin-top:1em">'
-            . '<summary style="cursor:pointer;font-weight:600">'
-            . RenderResult::escape($section->title) . '</summary>'
-            . $section->body . '</details>';
+        return RenderResult::described(new PageView($body));
     }
 }

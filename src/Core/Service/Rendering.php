@@ -6914,38 +6914,21 @@ final class Rendering implements Presets, \Taxmod\Core\Port\FieldAddons
 
         $prefix     = (string) preg_replace('/^([A-Za-z0-9_]+)/', '$1_set', $fieldPrefix, 1) . '[' . $erklaert->name . ']';
         $listPrefix = (string) preg_replace('/^([A-Za-z0-9_]+)/', '$1_list', $fieldPrefix, 1) . '[' . $erklaert->name . ']';
-        $form       = $formId === '' ? '' : ' form="' . RenderResult::escape($formId) . '"';
-
         // ⚠️ **Gewählte als Liste, der Rest als Auswahlfeld mit «hinzufügen»** ([D-799](../../../docs/NewConcept/90-decision-log.md)) — *sein
         // Wort an `erlaubte_einheiten`: «to space consuming, better would be a selection list and an add button. select unit and press add,
         // added showing up in a list and can be removed again … also used for the field selections». Ein gewähltes Glied reist als
         // verborgene 1 (entfernt: 0), das Auswahlfeld als `[add]` — ohne Skript wählt man dort und speichert die Seite.*
-        $html = '<span class="taxmod-switch-picker"><ol class="taxmod-switch-cascade">';
+        // ⚠️ *Verschoben mit Pfeilen — sein Wort: «more ordered by arrows». Die Stelle reist verborgen; nur ein geschriebenes Glied hat eine.*
+        $glieder = [];
 
         foreach ($gewaehlt as $platz => $kandidatId) {
-            $name  = RenderResult::escape($prefix . '[' . $kandidatId . ']');
-            $html .= '<li class="taxmod-switch-chosen" data-taxmod-id="' . (int) $kandidatId . '">'
-                . '<input type="hidden" class="taxmod-switch-member" name="' . $name . '" value="1"' . $form . '>'
-                . '<span class="taxmod-switch-name">' . RenderResult::escape($kandidaten[$kandidatId]) . '</span>'
-                // ⚠️ *Verschoben mit Pfeilen — sein Wort: «more ordered by arrows». Die Stelle reist verborgen; das Skript tauscht die
-                // Zeile mit ihrer Nachbarin und zählt die Stellen neu. Die Pfeile sind `type="button"` und schicken nie ab.*
-                . (isset($an[$kandidatId], $zeile[$kandidatId])
-                    ? '<input type="hidden" class="taxmod-setting-list-position"'
-                        . ' name="' . RenderResult::escape($listPrefix . '[' . $zeile[$kandidatId] . '][position]') . '"'
-                        . ' value="' . (int) ($stelle[$kandidatId] ?? $platz) . '"' . $form . '>'
-                        // *Wie die Pfeile der Feldzeilen: dasselbe Zeichen, randlos, der erste nach oben und der letzte nach unten ausgegraut —
-                        // sein Wort «like the fields».*
-                        . ' <button type="button" class="button ' . \Taxmod\Core\Renderer\Look::ICON_ONLY . ' taxmod-list-move" data-taxmod-move="up"'
-                        . ($platz === 0 ? ' disabled style="color:#1d2327;opacity:.35"' : ' style="color:#1d2327"') . '>'
-                        . RenderResult::draw(\Taxmod\Core\Description\Icon::named('arrow-up-alt2', $kandidaten[$kandidatId])) . '</button>'
-                        . '<button type="button" class="button ' . \Taxmod\Core\Renderer\Look::ICON_ONLY . ' taxmod-list-move" data-taxmod-move="down"'
-                        . ($platz === count($gewaehlt) - 1 ? ' disabled style="color:#1d2327;opacity:.35"' : ' style="color:#1d2327"') . '>'
-                        . RenderResult::draw(\Taxmod\Core\Description\Icon::named('arrow-down-alt2', $kandidaten[$kandidatId])) . '</button>'
-                    : '')
-                . '<button type="button" class="button ' . \Taxmod\Core\Renderer\Look::ICON_ONLY . ' taxmod-list-remove" style="color:#b32d2e">'
-                // *Löschen ist immer der Mülleimer (D-828).*
-                . RenderResult::draw(\Taxmod\Core\Description\Icon::named('trash', $kandidaten[$kandidatId])) . '</button>'
-                . '</li>';
+            $glieder[] = [
+                'id'           => (int) $kandidatId,
+                'word'         => $kandidaten[$kandidatId],
+                'name'         => $prefix . '[' . $kandidatId . ']',
+                'positionName' => isset($an[$kandidatId], $zeile[$kandidatId]) ? $listPrefix . '[' . $zeile[$kandidatId] . '][position]' : null,
+                'position'     => (int) ($stelle[$kandidatId] ?? $platz),
+            ];
         }
 
         $frei = [];
@@ -6955,10 +6938,12 @@ final class Rendering implements Presets, \Taxmod\Core\Port\FieldAddons
         }
 
         // *Das eine Auswahlfeld (Choosing): sein Befund an `filter_feld` — «select felder leer aber nicht ausgegraut».*
-        return RenderResult::of($html . '</ol><span class="taxmod-switch-add">'
-            . RenderResult::draw(Choosing::offer($prefix . '[add]', $frei, null, true, $formId, ChoicePurpose::Candidate))
-            . RenderResult::draw(AddChosen::beside($frei, $erklaert->name))
-            . '</span></span>');
+        return RenderResult::described(new \Taxmod\Core\Description\OrderedChoice(
+            $glieder,
+            $formId,
+            Choosing::offer($prefix . '[add]', $frei, null, true, $formId, ChoicePurpose::Candidate),
+            AddChosen::beside($frei, $erklaert->name)
+        ));
     }
 
     /**

@@ -2,6 +2,7 @@
 
 namespace Taxmod\Core\Renderer;
 
+use Taxmod\Core\Description\RepeatableList;
 use Taxmod\Core\Model\Relation;
 
 /**
@@ -89,7 +90,7 @@ final class RepeatableRenderer extends RendererNode
             }
         }
 
-        $zeilen    = '';
+        $zeilen    = [];
         $usedRelations = [];
 
         foreach ($context->surroundings->parts as $part) {
@@ -104,18 +105,11 @@ final class RepeatableRenderer extends RendererNode
             // Zuordnung nach Stellung zeigte danach auf den falschen Eintrag.*
             $knopf = $entfernen[$part->valueId] ?? null;
 
-            $zeilen .= '<li class="taxmod-repeatable-entry">'
-                . '<span class="taxmod-repeatable-value">' . $part->result->markup . '</span>'
-                . ($knopf === null ? '' : '<span class="taxmod-repeatable-act">' . RenderResult::draw($knopf) . '</span>')
-                . '</li>';
+            $zeilen[] = ['value' => $part->result->piece(), 'remove' => $knopf];
         }
 
         // ⚠️ **Eine leere Liste bleibt eine Liste.** *Sie zeigt den Knopf zum Hinzufügen und sonst
         // nichts — **ein Feld ohne Werte verschwindet nicht**, sonst könnte man ihm nie einen geben.*
-        return RenderResult::of(
-            '<ul class="taxmod-repeatable">' . $zeilen . '</ul>'
-            . ($hinzu === null ? '' : '<div class="taxmod-repeatable-add">' . RenderResult::draw($hinzu) . '</div>'),
-            ...$usedRelations
-        );
+        return RenderResult::described(new RepeatableList($zeilen, $hinzu), ...$usedRelations);
     }
 }

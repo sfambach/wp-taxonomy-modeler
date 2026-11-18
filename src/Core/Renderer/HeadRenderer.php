@@ -2,6 +2,7 @@
 
 namespace Taxmod\Core\Renderer;
 
+use Taxmod\Core\Description\HeadView;
 use Taxmod\Core\Model\Identity;
 use Taxmod\Core\Model\Node;
 use Taxmod\Core\Model\Relation;
@@ -92,7 +93,7 @@ final class HeadRenderer extends RendererNode
 
     public function render(Renderable $subject, RenderContext $context): RenderResult
     {
-        $rows = '';
+        $rows = [];
 
         foreach (self::ORDER as $key) {
             $section = $context->surroundings->sections[$key] ?? null;
@@ -103,22 +104,9 @@ final class HeadRenderer extends RendererNode
                 continue;
             }
 
-            $rows .= '<tr>'
-                . '<th scope="row" class="taxmod-head-label">'
-                . RenderResult::escape($section->title)
-                . '</th>'
-                . '<td class="taxmod-head-' . RenderResult::escape($key) . '">'
-                . $section->body
-                . '</td>'
-                . '</tr>';
+            $rows[] = ['key' => $key, 'title' => $section->title, 'body' => $section->piece ?? $section->body];
         }
 
-        if ($rows === '') {
-            return RenderResult::of('');
-        }
-
-        return RenderResult::of(
-            '<table class="taxmod-head"><tbody>' . $rows . '</tbody></table>'
-        );
+        return RenderResult::described(new HeadView($rows));
     }
 }

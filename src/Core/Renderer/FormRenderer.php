@@ -2,6 +2,7 @@
 
 namespace Taxmod\Core\Renderer;
 
+use Taxmod\Core\Description\FormView;
 use Taxmod\Core\Model\Identity;
 use Taxmod\Core\Model\Node;
 use Taxmod\Core\Model\Relation;
@@ -64,7 +65,7 @@ final class FormRenderer extends RendererNode
 
     public function render(Renderable $subject, RenderContext $context): RenderResult
     {
-        $rows      = '';
+        $rows      = [];
         $usedRelations = [];
 
         foreach ($this->grouped($context->surroundings->parts) as $part) {
@@ -75,13 +76,10 @@ final class FormRenderer extends RendererNode
             }
 
             $usedRelations = [...$usedRelations, ...$part->result->usedRelations];
-            $rows     .= $this->row($part);
+            $rows      = [...$rows, ...$this->row($part)];
         }
 
-        return new RenderResult(
-            $rows === '' ? '' : '<div class="taxmod-form">' . $rows . '</div>',
-            array_values(array_unique($usedRelations))
-        );
+        return RenderResult::described(new FormView($rows), ...array_values(array_unique($usedRelations)));
     }
 
     /**
@@ -152,24 +150,20 @@ final class FormRenderer extends RendererNode
      * wird nur im waagerechten `compact` ({@see CompactRenderer}), wo die Felder ein Leerzeichen
      * trennt.*
      */
-    private function row(RenderedField $part): string
+    /** @return list<array{name: string, field: ?\Taxmod\Core\Description\Describes, hint: string}> */
+    private function row(RenderedField $part): array
     {
+        $stueck = $part->result->piece();
+
         // ⚠️ **Ein geschachteltes Formular ist eine Trennzeile mit dem Namen, und seine Felder stehen in
         // derselben Beschriftungsspalte** ([D-725](../../../docs/NewConcept/90-decision-log.md)). *Sein Wort am
         // 2026-09-11: «darstellung trennzeile mit addresse und dann labels ganz links.» Das innere Formular
-        // ist schon flach — seine eigenen Teile gingen durch dieselbe Stelle —, also wird nur die Hülle
-        // abgestreift und der Name davorgesetzt.*
-        $markup = $part->result->markup;
-
-        if ($part->rendererName === self::NAME && str_starts_with($markup, '<div class="taxmod-form">') && str_ends_with($markup, '</div>')) {
-            return '<div class="taxmod-form-group"><span class="taxmod-form-group-name">' . RenderResult::escape($part->relation->name) . '</span></div>'
-                . substr($markup, strlen('<div class="taxmod-form">'), -strlen('</div>'));
+        // ist schon flach — seine eigenen Teile gingen durch dieselbe Stelle —, also kommen nur seine Zeilen
+        // hinter den Namen.*
+        if ($part->rendererName === self::NAME && $stueck instanceof FormView && $stueck->lines !== []) {
+            return [['name' => $part->relation->name, 'field' => null, 'hint' => ''], ...$stueck->lines];
         }
 
-        return '<div class="taxmod-form-row">'
-            . '<span class="taxmod-form-label">' . RenderResult::escape($part->relation->name) . '</span>'
-            . '<span class="taxmod-form-field">' . $part->result->markup . '</span>'
-            . RenderResult::draw(new \Taxmod\Core\Description\Hint($part->hint))
-            . '</div>';
+        return [['name' => $part->relation->name, 'field' => $stueck, 'hint' => $part->hint]];
     }
 }
