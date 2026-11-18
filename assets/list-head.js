@@ -1,10 +1,22 @@
 /**
- * The one table head of every Taxmod list (D-1227): above each `table.taxmod-list` a bar with the filter over the whole
- * table, «Group by» a column and the filter row; every column head sorts. It works on the rows the page drew — a list
- * the server sorts, filters or pages (D-1054, D-1147) keeps its own links, this only adds what they lack.
+ * The one table head of every Taxmod list (D-1227, D-1462): every column head sorts, «Group by» stands in the menu «Columns»,
+ * and the search and the filter row narrow the list. The bar itself is the server's — bulk actions, filters, «Filter row»,
+ * «Columns» in one row, the search on the right (D-1462 replaces the part of D-1240 in which this script rebuilt it).
+ *
+ * One field, one meaning: where the server marked its answer complete (`data-taxmod-complete`, every hit on this page) and a
+ * new question only narrows it, the drawn rows are narrowed and sorted here, at once; otherwise the server is asked, after a
+ * short pause, without loading the page (`window.taxmodShow`, D-1408). Either way the address holds the question.
+ *
+ * ```mermaid
+ * flowchart LR
+ *   T[typing · Enter · Filter] --> N{complete and narrows?}
+ *   N -- yes --> D[narrow the drawn rows] --> A[replaceState]
+ *   N -- no --> S[ask the server] --> P[page put in place] --> H[head again]
+ * ```
  *
  * A row's details (`tr.taxmod-list-details`) and the rows a module marks `tr.taxmod-list-more` move with the row above
- * them. A cell sorts by its `[data-taxmod-sort]` value when it holds one, else by its text.
+ * them. A cell sorts by its `[data-taxmod-sort]` value when it holds one, else by its text; a row's `data-taxmod-text` is what
+ * the server searched in it, its cells split by U+001F.
  *
  * Loaded by `ListPage::table()`, so a module page needs nothing else (D-1187).
  */
@@ -189,6 +201,112 @@
 		};
 	}
 
+	/**
+	 * D-1462: the one rule for a column filter, as `FilterTerm` in the core — a number column also reads `2`, `>2`, `<2`, `>=2`,
+	 * `<=2` and `2-10`; anything else is «contains». Change both or neither (`list-head-check` runs the same cases through both).
+	 */
+	var NUMBER = '-?\\d+(?:[.,]\\d+)?';
+
+	function decimal( text ) {
+		return parseFloat( text.replace( ',', '.' ) );
+	}
+
+	function rangeOf( term ) {
+		term = term.trim();
+
+		var m = term.match( new RegExp( '^(' + NUMBER + ')\\s*(?:-|–|\\.\\.)\\s*(' + NUMBER + ')$' ) );
+
+		if ( m ) {
+			return [ '-', decimal( m[ 1 ] ), decimal( m[ 2 ] ) ];
+		}
+
+		m = term.match( new RegExp( '^(>=|<=|>|<|=)?\\s*(' + NUMBER + ')$' ) );
+
+		return m ? [ m[ 1 ] || '=', decimal( m[ 2 ] ), decimal( m[ 2 ] ) ] : null;
+	}
+
+	function numberOf( text ) {
+		var m = text.trim().replace( /^[#€$\s]+/, '' ).match( /^-?\d{1,3}(?:\.\d{3})+(?:,\d+)?(?!\d)|^-?\d+(?:[,.]\d+)?/ );
+
+		return m ? parseFloat( m[ 0 ].replace( /\.(?=\d{3}(?!\d))/g, '' ).replace( ',', '.' ) ) : null;
+	}
+
+	function filterMatches( text, term, number ) {
+		term = term.trim();
+
+		if ( term === '' ) {
+			return true;
+		}
+
+		var range = number ? rangeOf( term ) : null;
+
+		if ( ! range ) {
+			return matches( text, term );
+		}
+
+		var value = numberOf( text );
+
+		if ( value === null ) {
+			return false;
+		}
+
+		switch ( range[ 0 ] ) {
+			case '>': return value > range[ 1 ];
+			case '<': return value < range[ 1 ];
+			case '>=': return value >= range[ 1 ];
+			case '<=': return value <= range[ 1 ];
+			case '-': return value >= Math.min( range[ 1 ], range[ 2 ] ) && value <= Math.max( range[ 1 ], range[ 2 ] );
+			default: return value === range[ 1 ];
+		}
+	}
+
+	/** The search form's question as name → value; the controls that join it with `form=` count. */
+	function questionOf( form ) {
+		var question = {};
+
+		new FormData( form ).forEach( function ( value, name ) {
+			if ( typeof value === 'string' && name !== 'paged' && name !== 'orderby' && name !== 'order' ) {
+				question[ name ] = value.trim();
+			}
+		} );
+
+		return question;
+	}
+
+	/**
+	 * D-1462: whether the rows the server drew answer `now` as well — the server marked them complete (every hit stands on this
+	 * page) and `now` only narrows what they answered: the same choices, a search and text filters that hold the old term, a
+	 * number filter set where none was. Anything else is the server's.
+	 */
+	function narrows( then, now, numbers ) {
+		var names = Object.keys( then ).concat( Object.keys( now ) );
+
+		return names.every( function ( name ) {
+			var old = then[ name ] || '';
+			var fresh = now[ name ] || '';
+
+			if ( old === fresh || old === '' && ( name === 's' || /^f\[/.test( name ) ) ) {
+				return true;
+			}
+
+			if ( name === 's' || ( /^f\[/.test( name ) && ! numbers[ name ] ) ) {
+				return canonical( fresh ).indexOf( canonical( old ) ) !== -1;
+			}
+
+			return false;
+		} );
+	}
+
+	function precedingNav( table ) {
+		var above = table.previousElementSibling;
+
+		while ( above && ( above.tagName === 'STYLE' || above.tagName === 'SCRIPT' ) ) {
+			above = above.previousElementSibling;
+		}
+
+		return above && above.classList.contains( 'tablenav' ) && above.classList.contains( 'top' ) ? above : null;
+	}
+
 	function enhance( table, position ) {
 		if ( table.dataset.taxmodHead ) {
 			return;
@@ -214,7 +332,8 @@
 			var label = cell.textContent.replace( ' •', '' ).replace( /\s+/g, ' ' ).trim();
 
 			if ( label !== '' ) {
-				columns.push( { index: index, label: label, cell: cell, server: !! cell.querySelector( 'a[href]' ) } );
+				var link = cell.querySelector( 'a[href]' );
+				columns.push( { index: index, label: label, cell: cell, server: !! link, key: link ? new URL( link.href, location.href ).searchParams.get( 'orderby' ) || '' : '' } );
 			}
 		} );
 
@@ -226,56 +345,39 @@
 			+ ( new URLSearchParams( location.search ).get( 'tab' ) || '' ) + ':' + position;
 		var state = load( key );
 		var all = unitsOf( body );
-		var serverFilter = table.tHead.querySelector( '.taxmod-filter-row' );
-
-		// The bar: filter over the whole table, group by, filter row, count.
-		var bar = element( 'div', 'taxmod-list-head' );
-		var search = element( 'input', 'taxmod-list-head-search' );
-		search.type = 'search';
-		search.placeholder = word( 'search', 'Filter the whole table …' );
-		search.setAttribute( 'aria-label', word( 'search', 'Filter the whole table …' ) );
-
-		var groupLabel = element( 'label', 'taxmod-list-head-group' );
-		var group = element( 'select' );
-		group.appendChild( new Option( word( 'noGroup', 'No grouping' ), '' ) );
-		columns.forEach( function ( column ) {
-			group.appendChild( new Option( column.label, String( column.index ) ) );
-		} );
-		groupLabel.append( word( 'group', 'Group by' ) + ' ', group );
-
-		var count = element( 'span', 'taxmod-list-head-count displaying-num' );
-		bar.append( search, groupLabel );
-
-		// One search field, not two: the page's own box hides, its term stands here, Enter asks the server; typing still narrows
-		// the drawn rows at once. A term the server already applied is not applied again here — the server also looks at words
-		// the row does not show.
+		var serverFilter = table.tHead.querySelector( '.taxmod-filter-row:not(.taxmod-filter-row-client)' );
 		var server = serverSearchOf( table, position );
+		var form = server ? server.form : null;
+		// D-1462: every hit of the server's answer stands on this page, so narrowing and sorting it needs no server.
+		var complete = table.hasAttribute( 'data-taxmod-complete' );
+		var then = form ? questionOf( form ) : {};
+		var nav = precedingNav( table );
+		var numbers = {};
+		var filters = [];
+		var search = server;
 
-		if ( server ) {
-			search.value = server.value;
-			search.dataset.server = server.value;
-			search.placeholder = server.placeholder || search.placeholder;
-			// WordPress styles p.search-box as flex, which outranks the hidden attribute.
-			server.closest( 'p.search-box' ).style.display = 'none';
-			search.addEventListener( 'keydown', function ( event ) {
-				if ( event.key !== 'Enter' ) {
-					return;
-				}
-
-				event.preventDefault();
-				server.value = search.value;
-
-				if ( server.form.requestSubmit ) {
-					server.form.requestSubmit();
-				} else {
-					server.form.submit();
-				}
+		// The server's filter row: each box filters its column; a number box by number.
+		if ( serverFilter ) {
+			Array.prototype.forEach.call( serverFilter.querySelectorAll( 'input[name^="f["]' ), function ( input ) {
+				input.dataset.column = String( input.closest( 'td' ).cellIndex );
+				numbers[ input.name ] = input.hasAttribute( 'data-taxmod-number' );
+				filters.push( input );
 			} );
 		}
 
-		// A filter row of its own where the server draws none.
-		var filters = [];
+		// Without a search of the server's, one of the head's own, standing where the server's stands: right, above the bar.
+		if ( ! server ) {
+			var box = element( 'p', 'search-box taxmod-list-head-search-box' );
+			search = element( 'input', 'taxmod-list-head-search' );
+			search.type = 'search';
+			search.placeholder = word( 'search', 'Filter the whole table …' );
+			search.setAttribute( 'aria-label', word( 'search', 'Filter the whole table …' ) );
+			search.addEventListener( 'input', draw );
+			box.appendChild( search );
+			( nav || table ).before( box );
+		}
 
+		// A filter row of its own where the server draws none.
 		if ( ! serverFilter ) {
 			var row = element( 'tr', 'taxmod-filter-row taxmod-filter-row-client' );
 			row.hidden = true;
@@ -298,14 +400,49 @@
 				row.appendChild( td );
 			} );
 			head.after( row );
+		}
+
+		// D-1462 (his choice B): «Group by» stands in the menu «Columns», so the bar keeps one row.
+		var groupLabel = element( 'label', 'taxmod-list-head-group' );
+		var group = element( 'select' );
+		group.appendChild( new Option( word( 'noGroup', 'No grouping' ), '' ) );
+		columns.forEach( function ( column ) {
+			group.appendChild( new Option( column.label, String( column.index ) ) );
+		} );
+		groupLabel.append( word( 'group', 'Group by' ) + ' ', group );
+
+		var bar = null;
+		var menu = nav ? nav.querySelector( '.taxmod-columns form' ) : null;
+		var actions = nav ? null : element( 'div', 'alignleft actions' );
+
+		if ( menu ) {
+			groupLabel.style.display = 'block';
+			groupLabel.style.marginBottom = '8px';
+			menu.prepend( groupLabel );
+		} else if ( nav ) {
+			actions = element( 'div', 'alignleft actions' );
+			actions.appendChild( groupLabel );
+			( nav.querySelector( '.tablenav-pages' ) || nav.lastElementChild ).before( actions );
+		} else {
+			bar = element( 'div', 'tablenav top taxmod-list-head' );
+			bar.appendChild( actions );
+			actions.appendChild( groupLabel );
+		}
+
+		if ( ! serverFilter ) {
+			if ( ! actions ) {
+				actions = element( 'div', 'alignleft actions' );
+				( nav.querySelector( '.tablenav-pages' ) || nav.lastElementChild ).before( actions );
+			}
 
 			var toggle = element( 'button', 'button', word( 'filterRow', 'Filter row' ) );
 			toggle.type = 'button';
 			toggle.addEventListener( 'click', function () {
-				row.hidden = ! row.hidden;
-				toggle.setAttribute( 'aria-expanded', String( ! row.hidden ) );
+				var own = table.tHead.querySelector( '.taxmod-filter-row-client' );
+				own.hidden = ! own.hidden;
+				toggle.setAttribute( 'aria-expanded', String( ! own.hidden ) );
 
-				if ( row.hidden ) {
+				if ( own.hidden ) {
 					filters.forEach( function ( input ) {
 						input.value = '';
 					} );
@@ -313,18 +450,53 @@
 				}
 			} );
 			toggle.setAttribute( 'aria-expanded', 'false' );
-			bar.appendChild( toggle );
+			actions.appendChild( toggle );
 		}
 
-		bar.appendChild( count );
+		var total = nav ? nav.querySelector( '.displaying-num' ) : null;
+		var count = total || element( 'span', 'taxmod-list-head-count displaying-num' );
+		var said = count.textContent;
 
-		// Every column head sorts: the server's links stay, the others sort here.
+		if ( bar ) {
+			var pages = element( 'div', 'tablenav-pages one-page' );
+			pages.appendChild( count );
+			bar.append( pages, element( 'br', 'clear' ) );
+		} else if ( ! total ) {
+			nav.appendChild( count );
+		}
+
+		// Every column head sorts: on the page, or — where the server sorts and its answer is not all here — by the server.
 		columns.forEach( function ( column ) {
+			var cell = column.cell;
+
 			if ( column.server ) {
+				if ( cell.classList.contains( 'sorted' ) ) {
+					state.sort = column.index;
+					state.desc = cell.classList.contains( 'desc' );
+					state.fromServer = true;
+				}
+
+				// A property, not a listener: a head put in place again keeps this link, and one click asks once.
+				cell.querySelector( 'a[href]' ).onclick = function ( event ) {
+					event.preventDefault();
+
+					// Not all here: the server sorts, and the page is put in place without loading (D-1408).
+					if ( ! complete ) {
+						if ( window.taxmodShow ) {
+							window.taxmodShow( this.href );
+						} else {
+							location.href = this.href;
+						}
+
+						return;
+					}
+
+					sortBy( column );
+				};
+
 				return;
 			}
 
-			var cell = column.cell;
 			var link = element( 'a' );
 			link.href = '#';
 			link.append( element( 'span', '', column.label ) );
@@ -336,36 +508,138 @@
 			cell.classList.add( 'sortable', 'desc' );
 			link.addEventListener( 'click', function ( event ) {
 				event.preventDefault();
-				state.desc = state.sort === column.index ? ! state.desc : false;
-				state.sort = column.index;
-				save( key, state );
-				draw();
+				sortBy( column );
 			} );
 		} );
 
-		// The foot repeats the head; it keeps its plain labels.
+		function sortBy( column ) {
+			state.desc = state.sort === column.index ? ! state.desc : false;
+			state.sort = column.index;
+			state.fromServer = false;
+
+			if ( ! column.server ) {
+				save( key, { sort: state.sort, desc: state.desc, group: state.group } );
+			}
+
+			draw();
+			remember();
+		}
+
 		group.value = state.group !== undefined && columns.some( function ( c ) {
 			return String( c.index ) === String( state.group );
 		} ) ? String( state.group ) : '';
 		group.addEventListener( 'change', function () {
 			state.group = group.value === '' ? undefined : +group.value;
-			save( key, state );
+			save( key, { sort: state.fromServer ? undefined : state.sort, desc: state.desc, group: state.group } );
 			draw();
 		} );
-		search.addEventListener( 'input', draw );
+
+		/** D-1462: what the page shows stands in its address, so a reload or «back» brings it again — without loading (D-1408). */
+		function remember() {
+			if ( ! form ) {
+				return;
+			}
+
+			var url = new URL( location.href );
+			var question = questionOf( form );
+
+			Object.keys( question ).forEach( function ( name ) {
+				if ( name === 's' || /^f\[/.test( name ) ) {
+					if ( question[ name ] === '' ) {
+						url.searchParams.delete( name );
+					} else {
+						url.searchParams.set( name, question[ name ] );
+					}
+				}
+			} );
+
+			var sorted = columns.filter( function ( c ) {
+				return c.index === state.sort && c.server;
+			} )[ 0 ];
+
+			if ( sorted && ! state.fromServer ) {
+				url.searchParams.set( 'orderby', sorted.key );
+				url.searchParams.set( 'order', state.desc ? 'desc' : 'asc' );
+			}
+
+			url.searchParams.delete( 'paged' );
+			history.replaceState( history.state, '', url.toString() );
+		}
+
+		var waiting = null;
+
+		/** One field, one meaning (D-1462): the same answer whether the page narrows it or the server is asked. */
+		function changed( now ) {
+			clearTimeout( waiting );
+
+			if ( complete && narrows( then, questionOf( form ), numbers ) ) {
+				draw();
+				remember();
+
+				return;
+			}
+
+			var ask = function () {
+				var url = new URL( form.getAttribute( 'action' ) || location.href, location.href );
+				var query = new URLSearchParams();
+
+				// An empty box asks nothing; it stays out of the address.
+				new FormData( form ).forEach( function ( value, name ) {
+					if ( typeof value === 'string' && ( value.trim() !== '' || ! ( name === 's' || /^f\[/.test( name ) ) ) ) {
+						query.append( name, value );
+					}
+				} );
+				url.search = query.toString();
+
+				if ( window.taxmodShow ) {
+					window.taxmodShow( url.toString() );
+				} else {
+					location.href = url.toString();
+				}
+			};
+
+			if ( now ) {
+				ask();
+			} else {
+				waiting = setTimeout( ask, 400 );
+			}
+		}
+
+		if ( form ) {
+			form.taxmodHead = changed;
+		}
 
 		var collapsed = {};
 
-		function draw() {
-			var needle = search.dataset.server !== undefined && search.value === search.dataset.server ? '' : search.value.trim();
-			var active = filters.filter( function ( input ) {
-				return input.value.trim() !== '';
-			} );
-			var units = all.slice();
+		// The terms the drawn rows are narrowed by here: all of them where the page answers, none while the server is asked.
+		function local() {
+			return ! form || ( complete && narrows( then, questionOf( form ), numbers ) );
+		}
 
-			if ( typeof state.sort === 'number' && columns.some( function ( c ) {
-				return c.index === state.sort && ! c.server;
-			} ) ) {
+		function textsOf( unit ) {
+			var marked = unit.rows[ 0 ].getAttribute( 'data-taxmod-text' );
+
+			if ( marked !== null ) {
+				return marked.split( '\u001f' );
+			}
+
+			return columns.map( function ( column ) {
+				return cellText( unit, column.index );
+			} );
+		}
+
+		function draw() {
+			var narrowing = local();
+			var needle = narrowing && search ? search.value.trim() : '';
+			var active = narrowing ? filters.filter( function ( input ) {
+				return input.value.trim() !== '';
+			} ) : [];
+			var units = all.slice();
+			var byPage = typeof state.sort === 'number' && ! state.fromServer && columns.some( function ( c ) {
+				return c.index === state.sort && ( ! c.server || complete );
+			} );
+
+			if ( byPage ) {
 				var by = comparer( units, state.sort );
 				units.sort( function ( a, b ) {
 					return ( state.desc ? -1 : 1 ) * by( a, b ) || a.at - b.at;
@@ -373,7 +647,7 @@
 			}
 
 			columns.forEach( function ( column ) {
-				if ( column.server ) {
+				if ( column.server && ! complete ) {
 					return;
 				}
 
@@ -414,11 +688,10 @@
 			};
 
 			units.forEach( function ( unit ) {
-				var text = unit.rows.map( function ( row ) {
-					return row.textContent;
-				} ).join( ' ' );
-				var keep = ( needle === '' || matches( text, needle ) ) && active.every( function ( input ) {
-					return matches( cellText( unit, +input.dataset.column ), input.value );
+				var keep = ( needle === '' || textsOf( unit ).some( function ( text ) {
+					return matches( text, needle );
+				} ) ) && active.every( function ( input ) {
+					return filterMatches( cellText( unit, +input.dataset.column ), input.value, numbers[ input.name ] || false );
 				} );
 
 				if ( groupBy !== null ) {
@@ -488,50 +761,43 @@
 			}
 
 			table.classList.toggle( 'taxmod-list-grouped', groupBy !== null );
-			count.textContent = shown === all.length ? '' : word( 'count', '%1$d of %2$d' ).replace( '%1$d', shown ).replace( '%2$d', all.length );
+			count.textContent = shown === all.length ? said : word( 'count', '%1$d of %2$d' ).replace( '%1$d', shown ).replace( '%2$d', all.length );
 		}
 
-		// His word 2026-11-08: «können wir die gruppen aktionen rechts neben die gruppierung machen und alle andere aus der zeile
-		// drüber auch» — the bar of bulk actions, expand/collapse and count that `ListPage::bulkBar()` draws above the list joins
-		// this bar, right of «Group by»; its count stands at the far right.
-		var above = table.previousElementSibling;
+		if ( bar ) {
+			if ( all.length < 2 ) {
+				// Nothing to sort or group by: the head still sorts once rows come, the bar waits.
+				bar.hidden = true;
 
-		while ( above && ( above.tagName === 'STYLE' || above.tagName === 'SCRIPT' ) ) {
-			above = above.previousElementSibling;
-		}
-
-		var moved = false;
-
-		if ( above && above.classList.contains( 'tablenav' ) && above.classList.contains( 'top' ) ) {
-			var actions = element( 'div', 'taxmod-list-head-actions' );
-			var total = above.querySelector( '.displaying-num' );
-
-			Array.prototype.slice.call( above.children ).forEach( function ( child ) {
-				if ( child.tagName === 'BR' || child.classList.contains( 'tablenav-pages' ) ) {
-					return;
+				if ( ! server ) {
+					search.parentNode.hidden = true;
 				}
-
-				actions.appendChild( child );
-			} );
-			count.before( actions );
-
-			if ( total ) {
-				total.classList.add( 'taxmod-list-head-total' );
-				bar.appendChild( total );
 			}
 
-			above.remove();
-			moved = true;
+			table.before( bar );
 		}
 
-		if ( all.length < 2 && ! moved && ! server ) {
-			// Nothing to sort or group by: the head still sorts once rows come, the bar waits.
-			bar.hidden = true;
-		}
-
-		table.before( bar );
 		draw();
 	}
+
+	// D-1462: the search form and its filter row answer through the head of their list — typing, Enter and «Filter» alike.
+	document.addEventListener( 'input', function ( event ) {
+		var field = event.target;
+		var form = field && field.form;
+
+		if ( form && form.taxmodHead && ( field.name === 's' || /^f\[/.test( field.name || '' ) ) ) {
+			form.taxmodHead( false );
+		}
+	} );
+
+	document.addEventListener( 'submit', function ( event ) {
+		var form = event.target;
+
+		if ( form && form.taxmodHead && form.method.toLowerCase() === 'get' ) {
+			event.preventDefault();
+			form.taxmodHead( true );
+		}
+	}, true );
 
 	function start( root, prefix ) {
 		( root || document ).querySelectorAll( 'table.taxmod-list' ).forEach( function ( table, i ) {
@@ -546,6 +812,11 @@
 	} else {
 		start();
 	}
+
+	// A list the server answered in place (D-1408, D-1462) has its head again.
+	document.addEventListener( 'taxmod:replaced', function ( event ) {
+		start( event.target.closest && event.target.closest( '.wrap' ) ? event.target.closest( '.wrap' ) : event.target );
+	} );
 
 	// Details drawn on opening (D-1147) may hold a list of their own.
 	document.addEventListener( 'taxmod:details', function ( event ) {

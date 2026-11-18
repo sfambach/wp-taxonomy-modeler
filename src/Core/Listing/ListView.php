@@ -48,10 +48,10 @@ final class ListView
         return array_values(array_filter($this->columns, static fn (ListColumn $c): bool => $c->fixed || ($start ? $c->default : in_array($c->key, $chosen, true))));
     }
 
-    /** @return array<string, string> the column filters that are set, for known columns only */
+    /** @return array<string, string> the column filters that are set, for known columns that can be filtered only */
     public function filters(): array
     {
-        $known = array_flip(array_map(static fn (ListColumn $c): string => $c->key, $this->columns));
+        $known = array_flip(array_map(static fn (ListColumn $c): string => $c->key, array_filter($this->columns, static fn (ListColumn $c): bool => $c->filterable)));
 
         return array_filter(array_intersect_key($this->filters, $known), static fn (string $text): bool => trim($text) !== '');
     }
@@ -74,13 +74,19 @@ final class ListView
     {
         $search  = trim($this->search);
         $filters = $this->filters();
-        $kept    = array_values(array_filter($rows, static function (array $row) use ($search, $filters): bool {
-            if ($search !== '' && ! self::anyContains([...array_values($row['cells']), ...($row['words'] ?? [])], $search)) {
+        $numbers = [];
+
+        foreach ($this->columns as $column) {
+            $numbers[$column->key] = $column->number;
+        }
+
+        $kept    = array_values(array_filter($rows, static function (array $row) use ($search, $filters, $numbers): bool {
+            if ($search !== '' && ! self::anyContains(self::searched($row), $search)) {
                 return false;
             }
 
             foreach ($filters as $key => $text) {
-                if (! self::anyContains([$row['cells'][$key] ?? ''], trim($text))) {
+                if (! FilterTerm::matches($row['cells'][$key] ?? '', $text, $numbers[$key] ?? false)) {
                     return false;
                 }
             }
@@ -100,6 +106,24 @@ final class ListView
             : $value($a) <=> $value($b)));
 
         return $kept;
+    }
+
+    /**
+     * The texts the search looks at in a row — every cell, shown or not, and its extra words — for the head on the page, which
+     * narrows by the same texts (D-1462).
+     *
+     * @param array{cells: array<string, string>, words?: list<string>} $row
+     * @return list<string>
+     */
+    public static function searched(array $row): array
+    {
+        return [...array_values($row['cells']), ...($row['words'] ?? [])];
+    }
+
+    /** Whether every kept row stands on one page, so the page holds the whole answer (D-1462). */
+    public static function onePage(int $total, int $perPage): bool
+    {
+        return $total <= max(1, $perPage);
     }
 
     /**

@@ -335,8 +335,17 @@ final class ListPage
         $html   = '<tr class="taxmod-filter-row"' . ($active === [] ? ' hidden' : '') . ' style="background:#f6f7f7"><td></td>';
 
         foreach ($view->visible() as $column) {
+            // D-1462: a column with nothing to compare (a picture) has no box; a number column says what it reads.
+            if (! $column->filterable) {
+                $html .= '<td></td>';
+
+                continue;
+            }
+
             $html .= '<td><input type="search" name="f[' . esc_attr($column->key) . ']" value="' . esc_attr($active[$column->key] ?? '') . '" form="' . esc_attr($searchFormId)
-                . '" aria-label="' . esc_attr(sprintf(/* translators: %s: column */ __('Filter %s', 'taxmod'), $column->label)) . '" style="width:100%;min-width:4em"></td>';
+                . '" aria-label="' . esc_attr(sprintf(/* translators: %s: column */ __('Filter %s', 'taxmod'), $column->label)) . '"'
+                . ($column->number ? ' data-taxmod-number placeholder="' . esc_attr__('2, >2, <2, 2-10', 'taxmod') . '" title="' . esc_attr__('A number: exactly 2, more than 2, less than 2, or from 2 to 10', 'taxmod') . '"' : '')
+                . ' style="width:100%;min-width:4em"></td>';
         }
 
         return $html . '<td style="text-align:right">' . get_submit_button(__('Filter', 'taxmod'), 'small', '', false, ['form' => $searchFormId]) . '</td></tr>';
@@ -969,8 +978,10 @@ final class ListPage
      *
      * @param list<array{0: string, 1?: string|null, 2?: string, 3?: ''|'asc'|'desc'}> $columns label, CSS width, sort address, state
      * @param string $filterRow from {@see self::filterRow()}, under the heads
+     * @param bool   $complete  every row of the answer stands in `$rows` (no further page): the head may narrow and sort them on
+     *                          the page without asking the server (D-1462)
      */
-    public static function table(array $columns, string $rows, string $filterRow = ''): string
+    public static function table(array $columns, string $rows, string $filterRow = '', bool $complete = false): string
     {
         $head = '<tr><td class="manage-column column-cb check-column"><input type="checkbox" aria-label="' . esc_attr__('Select all', 'taxmod') . '"></td>';
 
@@ -999,7 +1010,7 @@ final class ListPage
             // D-1230: a row opened by its link (#id) stands out, e.g. a lot from the Platzbestand.
             . '.taxmod-list tr:target > *{background:#fff8c5}'
             . self::detailsStyle() . '</style>' . self::detailsScript()
-            . '<table class="wp-list-table widefat fixed striped table-view-list taxmod-list"><thead>' . $head . $filterRow . '</thead><tbody>' . $rows . '</tbody><tfoot>' . $head . '</tfoot></table>';
+            . '<table class="wp-list-table widefat fixed striped table-view-list taxmod-list"' . ($complete ? ' data-taxmod-complete' : '') . '><thead>' . $head . $filterRow . '</thead><tbody>' . $rows . '</tbody><tfoot>' . $head . '</tfoot></table>';
     }
 
     /**
@@ -1114,10 +1125,12 @@ final class ListPage
      * {@see self::lazyDetails()}: then they are drawn when opened (D-1147).
      *
      * @param list<string> $cells HTML, escaped by the caller
+     * @param list<string> $searched the texts the server's search looked at in this row ({@see ListView::searched()}), so the
+     *                               head narrows by the same words (D-1462); empty: the cells as shown
      */
-    public static function row(string $formId, string $value, array $cells, string $buttons, string $details, bool $expanded = false): string
+    public static function row(string $formId, string $value, array $cells, string $buttons, string $details, bool $expanded = false, array $searched = []): string
     {
-        $html = '<tr><th scope="row" class="check-column"><input type="checkbox" name="selected[]" value="' . esc_attr($value)
+        $html = '<tr' . ($searched === [] ? '' : ' data-taxmod-text="' . esc_attr(implode("\u{001F}", $searched)) . '"') . '><th scope="row" class="check-column"><input type="checkbox" name="selected[]" value="' . esc_attr($value)
             . '" form="' . esc_attr($formId) . '" aria-label="' . esc_attr__('Select', 'taxmod') . '"></th>';
 
         foreach ($cells as $cell) {

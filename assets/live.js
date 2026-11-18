@@ -367,6 +367,49 @@
 
 	window.taxmodRefresh = refresh;
 
+	var showing = null;
+
+	/**
+	 * D-1462: a list asks the server for another answer — a search, a filter, an order — and the page is put in place without
+	 * loading (D-1408); its address follows. An older question still on its way is dropped.
+	 */
+	function show( url ) {
+		if ( ! window.fetch || ! window.DOMParser || ! wrapIn( document ) ) {
+			window.location.href = url;
+
+			return;
+		}
+
+		if ( showing ) {
+			showing.abort();
+		}
+
+		showing = new AbortController();
+
+		window.fetch( url, { credentials: 'same-origin', signal: showing.signal } )
+			.then( function ( answer ) {
+				if ( ! answer.ok || pageOf( answer.url ) !== pageOf( url ) ) {
+					throw new Error( String( answer.status ) );
+				}
+
+				return answer.text();
+			} )
+			.then( function ( html ) {
+				showing = null;
+				place( html, url );
+			} )
+			.catch( function ( error ) {
+				if ( error && error.name === 'AbortError' ) {
+					return;
+				}
+
+				showing = null;
+				window.location.href = url;
+			} );
+	}
+
+	window.taxmodShow = show;
+
 	function fileName( answer ) {
 		var found = /filename\*?=(?:UTF-8'')?"?([^";]+)"?/i.exec( answer.headers.get( 'Content-Disposition' ) || '' );
 
