@@ -35,6 +35,8 @@ final class DialogBox implements Describes
         return [
             'dialog'       => $this->switch,
             'opener'       => $this->opener instanceof Describes ? $this->opener->toArray() : $this->opener,
+            // *Reading order: the title bar stands above the current choice (D-1436).*
+            'title'        => $this->title,
             'head'         => $this->head instanceof Describes ? $this->head->toArray() : $this->head,
             'body'         => $this->body instanceof Describes ? $this->body->toArray() : $this->body,
             'foot'         => $this->foot instanceof Describes ? $this->foot->toArray() : $this->foot,
@@ -43,7 +45,6 @@ final class DialogBox implements Describes
             'cancel'       => $this->cancel,
             'open'         => $this->open,
             'tree'         => $this->tree,
-            'title'        => $this->title,
         ];
     }
 }
