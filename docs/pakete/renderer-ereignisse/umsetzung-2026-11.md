@@ -178,6 +178,7 @@ Am Gate bestätigt (18.11., D-1429 A14), mit Bedingung: eine neue Art nur, wenn 
 |---|---|---|
 | 1 Ratsche ohne Kommentare, Startmuster am Rand | gebaut 18.11. | 54/249 → 42/247 |
 | 2 Getippte Werte beschreiben: Plain, Field, Textarea, Code, Spinner, Slider, Color, Mailto, Jump, Reference, UserRef, Checkbox → `ShownValue`, `ValueInput`, `Locked`, `Sequence`; Rand: `Taxmod\WordPress\Draw\EdgeDrawer` | gebaut 18.11. | → 34/228 |
+| 3 Auswahl, Schalter, Zeitpunkt: Choice, ColorChoice, Toggle, DateTime, Summary-Auswahl und alle Auswahlfelder in `Rendering` → `Choosing` (+`ChoicePurpose`), `AddChosen`; `SelectMarkup` und `ToggleMarkup` ziehen an den Rand (`Taxmod\WordPress\Draw`) | gebaut 18.11. | → 30/213 |
 
 - **A15** — *Gerüst, nicht Ziel:* solange zusammengesetzte Renderer noch Markup bauen, brauchen sie das gezeichnete Stück eines Renderers, der schon nur beschreibt. Dafür reicht der Rand seinen Zeichner einmal über den Autoloader herein (`src/WordPress/Draw/register.php`, `RenderResult::drawWith()`). Es fällt, wenn der letzte zusammengesetzte Renderer beschreibt; vor dem Merge prüft das die Ratsche mit (Ziel 0).
 - **A16** — *Gleiches Markup:* der Rand-Zeichner zeichnet Zeichen für Zeichen, was der Kern vorher zeichnete. Damit bleiben alle Prüfungen und Bildschirme gleich, und eine Abweichung ist ein Fehler, keine Absicht. Escapen dort mit `htmlspecialchars`, weil der Kernlauf ohne WordPress den Zeichner auch ruft.

@@ -396,7 +396,7 @@ vermutlich im Fliesstext und sollte eine eigene Zeile bekommen.
 | **A3** | Basiseinheiten splits into With prefix and Without prefix; Kelvin, Celsius and Stück sit under the latter. Children inherit Praefix and Kuerzel fro… | [01-standard-tree.md:45](01-standard-tree.md) | 4 |
 | **A4** | Attributes appear as children of their owning node (Bauteilliste › Name, Bauart, Position). | [01-standard-tree.md:46](01-standard-tree.md) | 5 |
 | **A5** | Eigene Datentypen exists as a branch beside Simple/Complex. | [01-standard-tree.md:47](01-standard-tree.md) | 2 |
-| **A14** | (same gate, 18.11.) — the renderer classes keep their names and place in the core, because the model stores them (settings_value.klasse, nodes.klas… | [90-decision-log.md:1716](90-decision-log.md) | 4 |
+| **A14** | (same gate, 18.11.) — the renderer classes keep their names and place in the core, because the model stores them (settings_value.klasse, nodes.klas… | [90-decision-log.md:1716](90-decision-log.md) | 5 |
 
 ## B — Standardbaum — Inhalt
 

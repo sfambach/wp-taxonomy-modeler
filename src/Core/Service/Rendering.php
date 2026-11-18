@@ -1,6 +1,9 @@
 <?php declare(strict_types=1);
 
 namespace Taxmod\Core\Service;
+use Taxmod\Core\Description\AddChosen;
+use Taxmod\Core\Description\ChoicePurpose;
+use Taxmod\Core\Description\Choosing;
 use Taxmod\Core\Renderer\DecimalText;
 use Taxmod\Core\Renderer\SummaryRenderer;
 
@@ -34,7 +37,6 @@ use Taxmod\Core\Renderer\ChooserRenderer;
 use Taxmod\Core\Renderer\ReferenceRenderer;
 use Taxmod\Core\Renderer\Control;
 use Taxmod\Core\Renderer\ControlMarkup;
-use Taxmod\Core\Renderer\SelectMarkup;
 use Taxmod\Core\Renderer\IconMarkup;
 use Taxmod\Core\Renderer\DrawnRow;
 use Taxmod\Core\Renderer\FormRenderer;
@@ -1134,10 +1136,10 @@ final class Rendering implements Presets, \Taxmod\Core\Port\FieldAddons
                 . '</template>';
         }
 
-        // *Das eine Auswahlfeld (SelectMarkup): ohne wählbare Funktion ausgegraut, der «+» mit (D-380, D-370).*
+        // *Das eine Auswahlfeld (Choosing): ohne wählbare Funktion ausgegraut, der «+» mit (D-380, D-370).*
         $html .= '</ol><span class="taxmod-switch-add">'
-            . SelectMarkup::of('', $wahlen, null, true, trim($form) === '' ? '' : (string) preg_replace('/^ form="(.*)"$/', '$1', $form), ['class' => 'taxmod-addon-candidates'])
-            . SelectMarkup::addButton($wahlen, $wort('add', '+'), 'taxmod-addon-add')
+            . RenderResult::draw(Choosing::offer('', $wahlen, null, true, trim($form) === '' ? '' : (string) preg_replace('/^ form="(.*)"$/', '$1', $form), ChoicePurpose::AddonCandidate))
+            . RenderResult::draw(AddChosen::beside($wahlen, $wort('add', '+'), ChoicePurpose::AddonCandidate))
             . '</span>' . $vorlagen . '</span>';
 
         return RenderResult::of($html);
@@ -1163,7 +1165,7 @@ final class Rendering implements Presets, \Taxmod\Core\Port\FieldAddons
             $html    .= '<label class="taxmod-addon-field">' . $beschrift . ' ';
 
             if ($erklaert->type === \Taxmod\Core\Model\NodeClass\AttributeType::RelationRef) {
-                $html .= SelectMarkup::of(html_entity_decode($feld, ENT_QUOTES), $this->addonFieldCandidates($erklaert->fieldsFrom, $knoten, $kante), $wert?->reference === null ? null : (string) $wert->reference, true, (string) preg_replace('/^ form="(.*)"$/', '$1', $form));
+                $html .= RenderResult::draw(Choosing::offer(html_entity_decode($feld, ENT_QUOTES), $this->addonFieldCandidates($erklaert->fieldsFrom, $knoten, $kante), $wert?->reference === null ? null : (string) $wert->reference, true, (string) preg_replace('/^ form="(.*)"$/', '$1', $form)));
             } elseif ($erklaert->type === \Taxmod\Core\Model\NodeClass\AttributeType::Enum) {
                 $faelle = [];
 
@@ -1171,7 +1173,7 @@ final class Rendering implements Presets, \Taxmod\Core\Port\FieldAddons
                     $faelle[$fall] = $wort('enum:' . $fall, $fall);
                 }
 
-                $html .= SelectMarkup::of(html_entity_decode($feld, ENT_QUOTES), $faelle, $wert?->text, false, (string) preg_replace('/^ form="(.*)"$/', '$1', $form));
+                $html .= RenderResult::draw(Choosing::offer(html_entity_decode($feld, ENT_QUOTES), $faelle, $wert?->text, false, (string) preg_replace('/^ form="(.*)"$/', '$1', $form)));
             } elseif ($erklaert->type === \Taxmod\Core\Model\NodeClass\AttributeType::Bool) {
                 $html .= '<input type="hidden" name="' . $feld . '" value="0"' . $form . '><input type="checkbox" name="' . $feld . '" value="1"' . ((bool) $wert?->rawValue() ? ' checked' : '') . $form . '>';
             } else {
@@ -6954,10 +6956,10 @@ final class Rendering implements Presets, \Taxmod\Core\Port\FieldAddons
             $frei[(int) $kandidatId] = $kandidaten[$kandidatId];
         }
 
-        // *Das eine Auswahlfeld (SelectMarkup): sein Befund an `filter_feld` — «select felder leer aber nicht ausgegraut».*
+        // *Das eine Auswahlfeld (Choosing): sein Befund an `filter_feld` — «select felder leer aber nicht ausgegraut».*
         return RenderResult::of($html . '</ol><span class="taxmod-switch-add">'
-            . SelectMarkup::of($prefix . '[add]', $frei, null, true, $formId, ['class' => 'taxmod-switch-candidates'])
-            . SelectMarkup::addButton($frei, $erklaert->name)
+            . RenderResult::draw(Choosing::offer($prefix . '[add]', $frei, null, true, $formId, ChoicePurpose::Candidate))
+            . RenderResult::draw(AddChosen::beside($frei, $erklaert->name))
             . '</span></span>');
     }
 
@@ -7973,8 +7975,8 @@ final class Rendering implements Presets, \Taxmod\Core\Port\FieldAddons
         // bzw ausgrauen» — und das ist die bestehende Regel: D-380 «select fields always greyed out when there is no entry», D-370 eine unmögliche
         // Handlung ist ausgegraut, nicht weg. Hier von Hand gebaut, weil die Liste nicht durch den ChoiceRenderer geht; ein gesperrtes Feld wird nicht geschickt.*
         if ($waehlt) {
-            // *Das eine Auswahlfeld (SelectMarkup) — ohne freie Wahl gesperrt und ausgegraut, der «+» mit.*
-            $html .= SelectMarkup::of($name, array_map('strval', $frei), null, true, $formId, ['class' => 'taxmod-switch-candidates taxmod-value-candidates', 'data-taxmod-name' => $name]);
+            // *Das eine Auswahlfeld (Choosing) — ohne freie Wahl gesperrt und ausgegraut, der «+» mit.*
+            $html .= RenderResult::draw(Choosing::offer($name, array_map('strval', $frei), null, true, $formId, ChoicePurpose::ValueCandidate));
         } else {
             // *Alles andere wird geschrieben: ein Feld für den nächsten Wert, in der Gestalt seines Typs.*
             $html .= '<input type="text" class="taxmod-value-new" name="' . RenderResult::escape($name) . '" data-taxmod-name="' . RenderResult::escape($name) . '"' . $form . ' size="30">';
@@ -7986,7 +7988,7 @@ final class Rendering implements Presets, \Taxmod\Core\Port\FieldAddons
             }
         }
 
-        $html .= ($waehlt ? SelectMarkup::addButton($frei, $relation->name) : SelectMarkup::addButton(['x' => ''], $relation->name)) . '</span></span>';
+        $html .= RenderResult::draw($waehlt ? AddChosen::beside($frei, $relation->name) : AddChosen::beside(['x' => ''], $relation->name)) . '</span></span>';
 
         return [
             'renderer' => $context->surroundings->options !== [] ? SummaryRenderer::NAME : 'field',
@@ -8034,7 +8036,7 @@ final class Rendering implements Presets, \Taxmod\Core\Port\FieldAddons
             }
 
             $html .= '<tr class="taxmod-ref-row"><td>'
-                . SelectMarkup::of($name, $optionen, $jetzt === null ? null : (string) $jetzt, true, $formId, ['class' => 'taxmod-ref-select'])
+                . RenderResult::draw(Choosing::offer($name, $optionen, $jetzt === null ? null : (string) $jetzt, true, $formId, ChoicePurpose::ReferenceRow))
                 . '</td><td class="taxmod-table-acts">'
                 . '<button type="button" class="button ' . ControlMarkup::ICON_ONLY . ' taxmod-ref-add" style="color:#1d2327"' . ($einfuegen === '' ? '' : ' title="' . RenderResult::escape($einfuegen) . '"') . '>'
                 . IconMarkup::dashicon('plus-alt2', $einfuegen) . '</button>'

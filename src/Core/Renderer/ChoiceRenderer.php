@@ -2,6 +2,9 @@
 
 namespace Taxmod\Core\Renderer;
 
+use Taxmod\Core\Description\Choosing;
+use Taxmod\Core\Description\ShownValue;
+use Taxmod\Core\Description\ValueKind;
 use Taxmod\Core\Model\Identity;
 use Taxmod\Core\Model\Node;
 use Taxmod\Core\Model\Relation;
@@ -102,29 +105,21 @@ final class ChoiceRenderer extends RendererNode
         //
         // ⚠️ *Dieser Renderer **zeichnet** eine Wahl und **rechnet** sie nicht. Ausgänge, entschieden,
         // unerfüllbar — alles Fragen an das eine Objekt, das sie beantworten darf.*
-        // ⚠️ **Gezeichnet vom einen Auswahlfeld** ({@see SelectMarkup}) — die Regel rechnet {@see Choice}, das Aussehen steht an einer Stelle,
+        // ⚠️ **Gezeichnet vom einen Auswahlfeld** ({@see \Taxmod\Core\Description\Choosing}) — die Regel rechnet {@see Choice}, das Aussehen steht an einer Stelle,
         // damit jedes andere Auswahlfeld der Oberfläche gleich gesperrt und ausgegraut ist.
         $unsatisfiable = Choice::forSetting($offered, ! $context->surroundings->mayBeNothing)->isUnsatisfiable();
-        $breite        = $context->setting('display_size')?->int;
-        $merkmale      = [];
 
-        // ⚠️ *«chooser sollte auch display size haben» (D-727): die Breite, wo der Aufrufer eine mitgibt.*
-        if ($breite !== null && $breite > 0) {
-            $merkmale['style'] = 'width:' . $breite . 'ch';
-        }
-
-        if ($unsatisfiable) {
-            $merkmale['title'] = $context->surroundings->refersTo ?? '';
-        }
-
-        return RenderResult::of(SelectMarkup::of(
+        return RenderResult::described(Choosing::offer(
             $context->fieldName,
             $offered,
             $now,
             $context->surroundings->mayBeNothing,
             $context->surroundings->formId,
-            $merkmale,
-            $context->editable
+            editable: $context->editable,
+            // ⚠️ *«chooser sollte auch display size haben» (D-727): die Breite, wo der Aufrufer eine mitgibt.*
+            width: $context->setting('display_size')?->int,
+            // ⚠️ *Unerfüllbar: der Grund steht im Titel, sonst sieht die Zeile aus, als könne man sie füllen.*
+            hint: $unsatisfiable ? ($context->surroundings->refersTo ?? '') : null,
         ));
     }
 
@@ -139,16 +134,12 @@ final class ChoiceRenderer extends RendererNode
     private function shown(?string $now, array $offered): RenderResult
     {
         if ($now === null || $now === '') {
-            return RenderResult::of('<span class="taxmod-nothing">—</span>');
+            return RenderResult::described(new ShownValue('', ValueKind::Chosen));
         }
 
-        if (! array_key_exists($now, $offered)) {
-            // Set, but no longer one of the possibilities — usually a member somebody deleted.
-            return RenderResult::of(
-                '<span class="taxmod-choice taxmod-unknown-choice">' . RenderResult::escape($now) . '</span>'
-            );
-        }
-
-        return RenderResult::of('<span class="taxmod-choice">' . RenderResult::escape($offered[$now]) . '</span>');
+        // Set, but no longer one of the possibilities — usually a member somebody deleted.
+        return RenderResult::described(array_key_exists($now, $offered)
+            ? new ShownValue($offered[$now], ValueKind::Chosen)
+            : new ShownValue($now, ValueKind::NotOffered));
     }
 }

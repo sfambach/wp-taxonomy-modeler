@@ -23,6 +23,14 @@ enum ValueKind: string
     case Jump = 'jump';
     /** A yes/no: `1`, `0`, or empty for nothing. */
     case Flag = 'flag';
+    /** A yes/no shown as a switch, the look the owner chose for it (`1`, `0`, or empty). */
+    case Switch = 'switch';
+    /** The word of the chosen option; empty: nothing chosen. */
+    case Chosen = 'chosen';
+    /** A stored value the offer does not hold: the text is the value itself. */
+    case NotOffered = 'not_offered';
+    /** The word of a chosen colour (`target`: the colour, if any); empty: nothing chosen. */
+    case ChosenColour = 'chosen_colour';
     /** Points at something that is gone: the text is its number. */
     case Dangling = 'dangling';
 }

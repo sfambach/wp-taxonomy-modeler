@@ -2116,7 +2116,7 @@ final class NodesScreen
         }
 
         // ⚠️ *Das eine Auswahlfeld — ist nur eine Klasse erlaubt, steht sie ausgegraut da (D-380).*
-        return \Taxmod\Core\Renderer\SelectMarkup::of('klasse', $klassen, $selected->klasse, false, self::pageForm($selected), ['class' => 'taxmod-toolbar-class', 'title' => __('The class of this node — saved with the page', 'taxmod')]);
+        return \Taxmod\WordPress\Draw\SelectMarkup::of('klasse', $klassen, $selected->klasse, false, self::pageForm($selected), ['class' => 'taxmod-toolbar-class', 'title' => __('The class of this node — saved with the page', 'taxmod')]);
     }
 
     /**
@@ -2133,9 +2133,9 @@ final class NodesScreen
         }
 
         // *Das eine Auswahlfeld (D-380). Ein gesperrtes Feld schickt nichts — die eine erlaubte Klasse reist darum zusätzlich verborgen mit.*
-        $wahl = \Taxmod\Core\Renderer\SelectMarkup::of('klasse', $klassen, $vertrag->defaultChildClass, false, '', ['class' => 'taxmod-toolbar-class', 'title' => __('Class of the new child — not the class of this node', 'taxmod')]);
+        $wahl = \Taxmod\WordPress\Draw\SelectMarkup::of('klasse', $klassen, $vertrag->defaultChildClass, false, '', ['class' => 'taxmod-toolbar-class', 'title' => __('Class of the new child — not the class of this node', 'taxmod')]);
 
-        return \Taxmod\Core\Renderer\SelectMarkup::operable($klassen, false) || $klassen === []
+        return \Taxmod\WordPress\Draw\SelectMarkup::operable($klassen, false) || $klassen === []
             ? $wahl
             : $wahl . '<input type="hidden" name="klasse" value="' . esc_attr((string) array_key_first($klassen)) . '">';
     }
@@ -4577,7 +4577,7 @@ final class NodesScreen
             // recht:** die Satzart hatte ich eine Stunde vorher genau so gekürzt
             // ([D-661](../../../docs/NewConcept/90-decision-log.md)) und diese Liste dabei
             // übersehen — zwei Auswahlfelder auf einer Seite, zwei Macharten.*
-            . \Taxmod\Core\Renderer\SelectMarkup::of('relation_kind', [
+            . \Taxmod\WordPress\Draw\SelectMarkup::of('relation_kind', [
                 'composition' => __('composition', 'taxmod'),
                 'aggregation' => __('aggregation', 'taxmod'),
                 'setting'     => __('setting', 'taxmod'),
@@ -4771,7 +4771,7 @@ final class NodesScreen
         $pattern = esc_url_raw(add_query_arg('taxmod_locale', self::LOCALE_MARKER, $base));
 
         // *Das eine Auswahlfeld (D-380); ohne Namen, es schickt nichts.*
-        return \Taxmod\Core\Renderer\SelectMarkup::of('', array_map('strval', $offered), (string) $gewaehlteSprache, false, '', [
+        return \Taxmod\WordPress\Draw\SelectMarkup::of('', array_map('strval', $offered), (string) $gewaehlteSprache, false, '', [
             'class'    => 'taxmod-locale',
             'style'    => 'max-width:100%',
             'onchange' => 'location.href=' . wp_json_encode($pattern) . '.replace(' . wp_json_encode(self::LOCALE_MARKER) . ',encodeURIComponent(this.value))',
@@ -6426,7 +6426,7 @@ final class NodesScreen
         // ihrem Formular, dort bleibt das Attribut weg.*
         return '<label class="taxmod-record-type">'
             . '<span class="screen-reader-text">' . esc_html__('Kind of record', 'taxmod') . '</span>'
-            . \Taxmod\Core\Renderer\SelectMarkup::of('record_type', $optionen, $steht->value, false, $formId)
+            . \Taxmod\WordPress\Draw\SelectMarkup::of('record_type', $optionen, $steht->value, false, $formId)
             . '</label>' . $hinweis . ' ';
     }
 

@@ -2,6 +2,9 @@
 
 namespace Taxmod\WordPress\Draw;
 
+use Taxmod\Core\Description\AddChosen;
+use Taxmod\Core\Description\ChoicePurpose;
+use Taxmod\Core\Description\Choosing;
 use Taxmod\Core\Description\Describes;
 use Taxmod\Core\Description\Drawer;
 use Taxmod\Core\Description\InputKind;
@@ -23,6 +26,8 @@ use Taxmod\Core\Renderer\IconMarkup;
  */
 final class EdgeDrawer implements Drawer
 {
+    private const NOTHING = '<span class="taxmod-nothing">—</span>';
+
     public function draw(Describes $piece): string
     {
         return match (true) {
@@ -30,6 +35,8 @@ final class EdgeDrawer implements Drawer
             $piece instanceof ValueInput => $this->input($piece),
             $piece instanceof Locked     => '<fieldset disabled class="taxmod-read-only">' . $this->draw($piece->inner) . '</fieldset>',
             $piece instanceof Sequence   => implode('', array_map($this->draw(...), $piece->pieces)),
+            $piece instanceof Choosing   => $this->choosing($piece),
+            $piece instanceof AddChosen  => SelectMarkup::add($piece, $piece->purpose === ChoicePurpose::AddonCandidate ? 'taxmod-addon-add' : 'taxmod-list-add'),
             default                      => throw new \InvalidArgumentException('Nothing draws a ' . $piece::class . '.'),
         };
     }
@@ -49,6 +56,11 @@ final class EdgeDrawer implements Drawer
             ValueKind::Jump     => self::valueSpan($value->target === '' ? '' : '<a class="taxmod-jump" href="' . self::e($value->target) . '">'
                 . IconMarkup::dashicon('external', $text) . '</a>'),
             ValueKind::Flag     => self::valueSpan($text === '' ? '' : self::tag('input', ['type' => 'checkbox', 'disabled' => true, 'checked' => $text === '1'])),
+            ValueKind::Switch   => self::valueSpan($text === '' ? '' : ToggleMarkup::track($text === '1', false)),
+            ValueKind::Chosen   => $text === '' ? self::NOTHING : '<span class="taxmod-choice">' . self::e($text) . '</span>',
+            ValueKind::NotOffered => '<span class="taxmod-choice taxmod-unknown-choice">' . self::e($text) . '</span>',
+            ValueKind::ChosenColour => $text === '' ? self::NOTHING
+                : '<span class="taxmod-choice taxmod-color-choice">' . self::swatch($value->target) . self::e($text) . '</span>',
         };
     }
 
@@ -83,8 +95,61 @@ final class EdgeDrawer implements Drawer
             // The hidden field is what makes *unticked* mean false rather than absent; PHP keeps the last of two equal names.
             InputKind::Flag     => self::tag('input', ['type' => 'hidden', 'name' => $in->name, 'form' => $in->form, 'value' => '0'])
                 . self::tag('input', ['type' => 'checkbox', 'name' => $in->name, 'form' => $in->form, 'value' => '1', 'checked' => $in->value === '1']),
+            InputKind::Switch   => ToggleMarkup::input($in->name, $in->value === '1', $in->form),
+            InputKind::Moment   => self::tag('input', [
+                'type' => self::momentType($in->note), 'name' => $in->name, 'form' => $in->form, 'aria-required' => $required, 'value' => $in->value,
+                'pattern' => $in->pattern, 'min' => $in->min, 'max' => $in->max,
+            ]),
             InputKind::Fixed    => self::tag('input', ['type' => 'text', 'class' => 'taxmod-locked', 'value' => $in->shown ?? '', 'disabled' => true, 'title' => $in->note])
                 . self::tag('input', ['type' => 'hidden', 'name' => $in->name, 'form' => $in->form, 'value' => $in->value]),
+        };
+    }
+
+    private function choosing(Choosing $wahl): string
+    {
+        $merkmale = match ($wahl->purpose) {
+            ChoicePurpose::Value, ChoicePurpose::Colour => [],
+            ChoicePurpose::Summary        => ['class' => 'taxmod-summary-choice'],
+            ChoicePurpose::Candidate      => ['class' => 'taxmod-switch-candidates'],
+            ChoicePurpose::ValueCandidate => ['class' => 'taxmod-switch-candidates taxmod-value-candidates', 'data-taxmod-name' => $wahl->name],
+            ChoicePurpose::AddonCandidate => ['class' => 'taxmod-addon-candidates'],
+            ChoicePurpose::ReferenceRow   => ['class' => 'taxmod-ref-select'],
+        };
+
+        if ($wahl->width !== null && $wahl->width > 0) {
+            $merkmale['style'] = 'width:' . $wahl->width . 'ch';
+        }
+
+        if ($wahl->hint !== null) {
+            $merkmale['title'] = $wahl->hint;
+        }
+
+        if ($wahl->purpose !== ChoicePurpose::Colour) {
+            return SelectMarkup::select($wahl, $merkmale);
+        }
+
+        $merkmale['data-taxmod-swatches'] = (string) json_encode($wahl->swatches);
+
+        return '<span class="taxmod-color-choice">' . self::swatch($wahl->swatches[(int) $wahl->now] ?? '') . SelectMarkup::select($wahl, $merkmale) . '</span>';
+    }
+
+    /** The patch of a chosen colour; dashed where the colour is not one a browser draws. */
+    private static function swatch(string $hex): string
+    {
+        return '<span class="taxmod-swatch" style="display:inline-block;width:1em;height:1em;vertical-align:middle;margin-right:.3em;'
+            . (self::isPatchable($hex) ? 'border:1px solid #8c8f94;background:' . self::e($hex) : 'border:1px dashed #8c8f94')
+            . '"></span>';
+    }
+
+    private static function momentType(string $precision): string
+    {
+        return match ($precision) {
+            'year'  => 'number',
+            'month' => 'month',
+            'date'  => 'date',
+            'time'  => 'time',
+            'any'   => 'text',
+            default => 'datetime-local',
         };
     }
 

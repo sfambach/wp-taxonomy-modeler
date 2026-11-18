@@ -4,7 +4,7 @@ namespace Taxmod\Tests\Core;
 
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
-use Taxmod\Core\Renderer\SelectMarkup;
+use Taxmod\WordPress\Draw\SelectMarkup;
 
 /**
  * Das eine Auswahlfeld (D-848) nach der Regel aus D-380: «select fields always greyed out when there is no entry or only one entry —

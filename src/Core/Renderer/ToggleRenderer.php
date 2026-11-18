@@ -2,6 +2,10 @@
 
 namespace Taxmod\Core\Renderer;
 
+use Taxmod\Core\Description\InputKind;
+use Taxmod\Core\Description\ShownValue;
+use Taxmod\Core\Description\ValueInput;
+use Taxmod\Core\Description\ValueKind;
 use Taxmod\Core\Model\SimpleType;
 
 /**
@@ -44,22 +48,14 @@ final class ToggleRenderer extends TypedFieldRenderer
         return [SimpleType::Bool];
     }
 
-    protected function display(RenderContext $context): string
+    protected function display(RenderContext $context): ShownValue
     {
-        if ($context->value->isNothing()) {
-            return $this->createHtmlValueSpan('');
-        }
-
-        return $this->createHtmlValueSpan(ToggleMarkup::track($context->value->asBool(), false));
+        return new ShownValue($context->value->isNothing() ? '' : ($context->value->asBool() ? '1' : '0'), ValueKind::Switch);
     }
 
-    protected function input(RenderContext $context): string
+    protected function input(RenderContext $context): ValueInput
     {
-        // ⚠️ **Das Aussehen steht in {@see ToggleMarkup}, seit die Konfigurationsseite denselben
-        // Schalter braucht** ([D-695](../../../docs/NewConcept/90-decision-log.md)). *Dort geht es
-        // um eine WordPress-Option und nicht um einen `bool` aus dem Modell — aber es ist derselbe
-        // Schalter, und einer mit zwei Gesichtern wäre keiner.*
-        return ToggleMarkup::input($context->fieldName, $this->isOn($context), $context->surroundings->formId);
+        return new ValueInput(InputKind::Switch, $context->fieldName, $this->isOn($context) ? '1' : '0', $context->surroundings->formId);
     }
 
     private function isOn(RenderContext $context): bool

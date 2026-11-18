@@ -11,7 +11,7 @@ use Taxmod\WordPress\Import\MailReading;
 use Taxmod\WordPress\Import\InboxScreen;
 use Taxmod\WordPress\Import\Sources;
 use Taxmod\Core\Model\SeededRole;
-use Taxmod\Core\Renderer\ToggleMarkup;
+use Taxmod\WordPress\Draw\ToggleMarkup;
 use Taxmod\WordPress\Persistence\Schema;
 use Taxmod\WordPress\Persistence\WpdbLabelRepository;
 use Taxmod\WordPress\Plugin;
@@ -417,7 +417,7 @@ final class SettingsScreen
 
         return $this->row(
             __('Default language', 'taxmod'),
-            \Taxmod\Core\Renderer\SelectMarkup::of('neutral_locale', $offered, self::neutralLocale(), false),
+            \Taxmod\WordPress\Draw\SelectMarkup::of('neutral_locale', $offered, self::neutralLocale(), false),
             __('A text written in this language counts as valid everywhere, and is stored without a language of its own. Other languages are stored beside it and win where they exist.', 'taxmod')
         );
     }
@@ -433,7 +433,7 @@ final class SettingsScreen
 
         return $this->row(
             __('Records per page', 'taxmod'),
-            \Taxmod\Core\Renderer\SelectMarkup::of('records_per_page', $options, (string) self::recordsPerPage(), false),
+            \Taxmod\WordPress\Draw\SelectMarkup::of('records_per_page', $options, (string) self::recordsPerPage(), false),
             __('How many records a node page draws at once. Drawing a record costs time; the rest are a page away.', 'taxmod')
         );
     }
@@ -445,7 +445,7 @@ final class SettingsScreen
         $wahl  = ['stay' => __('Stay where the page is', 'taxmod'), 'jump' => __('Jump to the top', 'taxmod')];
         return $this->row(
             __('Clicking a node in the tree', 'taxmod'),
-            \Taxmod\Core\Renderer\SelectMarkup::of('tree_click', $wahl, $jetzt, false),
+            \Taxmod\WordPress\Draw\SelectMarkup::of('tree_click', $wahl, $jetzt, false),
             __('Whether the node page keeps its scroll position or starts at the top when a node in the tree is chosen. Opening a record always lands at its input.', 'taxmod')
         );
     }
@@ -461,7 +461,7 @@ final class SettingsScreen
 
         return $this->row(
             __('Saving', 'taxmod'),
-            \Taxmod\Core\Renderer\SelectMarkup::of('autosave', $wahl, self::autosaves() ? 'on' : 'off', false),
+            \Taxmod\WordPress\Draw\SelectMarkup::of('autosave', $wahl, self::autosaves() ? 'on' : 'off', false),
             __('With «save on leaving a field» a change is written when the field loses focus — for switches and choices when the group around them is left, so several ticks travel together.', 'taxmod')
         );
     }
@@ -477,7 +477,7 @@ final class SettingsScreen
 
         return $this->row(
             $label,
-            \Taxmod\Core\Renderer\SelectMarkup::of(str_replace('taxmod_', '', $option), $options, (string) $now, false),
+            \Taxmod\WordPress\Draw\SelectMarkup::of(str_replace('taxmod_', '', $option), $options, (string) $now, false),
             $why
         );
     }

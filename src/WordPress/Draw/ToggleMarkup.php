@@ -1,18 +1,20 @@
 <?php declare(strict_types=1);
 
-namespace Taxmod\Core\Renderer;
+namespace Taxmod\WordPress\Draw;
+
+use Taxmod\Core\Renderer\RenderResult;
 
 /**
  * Das eine Stück Code, das weiss, wie ein Schiebeschalter aussieht.
  *
  * ⚠️ **Es gab ihn schon, aber nur als Teil eines Renderers**
- * ([D-695](../../../docs/NewConcept/90-decision-log.md)). *{@see ToggleRenderer} zeichnet einen
+ * ([D-695](../../../docs/NewConcept/90-decision-log.md)). *{@see \Taxmod\Core\Renderer\ToggleRenderer} zeichnet einen
  * `bool` **aus dem Modell** — Feldname, Formular, Vorschau, der verborgene `0` davor. Die
  * Konfigurationsseite hat kein Modell: ihre Schalter sind WordPress-Optionen
  * ([D-389](../../../docs/NewConcept/90-decision-log.md)), und ein Schalter, der dort anders aussähe
  * als im Baum, wäre derselbe Schalter mit zwei Gesichtern.*
  *
- * ⚠️ **Also wandert das Aussehen hierher und beide fragen es**, statt dass der Rand das Markup ein
+ * ⚠️ **Also wandert das Aussehen hierher und beide fragen es (seit Renderer 6c am Rand: der Renderer beschreibt nur, D-1429)**, statt dass der Rand das Markup ein
  * zweites Mal hinschreibt. *Das ist `CD-1` und das Verbot doppelter Tatsachen in einem: **eine
  * Stelle weiss, wie ein Schalter aussieht**, und die Farbe darauf ist weiter Sache der Oberfläche.*
  *
@@ -23,8 +25,8 @@ namespace Taxmod\Core\Renderer;
  *   M --> C["assets/admin.css · die Farbe"]
  * ```
  *
- * ⚠️ *Kein `$this`: die Klasse hält keinen Zustand und wird nie gebaut — wie {@see HintMarkup} und
- * {@see IconMarkup}, neben denen sie steht.*
+ * ⚠️ *Kein `$this`: die Klasse hält keinen Zustand und wird nie gebaut — wie {@see \Taxmod\Core\Renderer\HintMarkup} und
+ * {@see \Taxmod\Core\Renderer\IconMarkup}, neben denen sie steht.*
  *
  * @see docs/NewConcept/30-renderer.md
  */

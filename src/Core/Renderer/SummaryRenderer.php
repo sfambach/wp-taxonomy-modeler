@@ -88,16 +88,16 @@ final class SummaryRenderer extends TypedFieldRenderer
             $angebot[$gewaehlt] = '#' . $gewaehlt;
         }
 
-        // ⚠️ *Das eine Auswahlfeld ({@see SelectMarkup}) — gesperrt und ausgegraut, wo es nichts zu wählen gibt (D-380).*
-        return SelectMarkup::of(
+        // ⚠️ *Das eine Auswahlfeld ({@see \Taxmod\Core\Description\Choosing}) — gesperrt und ausgegraut, wo es nichts zu wählen gibt (D-380).*
+        return RenderResult::draw(\Taxmod\Core\Description\Choosing::offer(
             $context->fieldName,
             $angebot,
             $gewaehlt === null ? null : (string) $gewaehlt,
             $context->surroundings->mayBeNothing || $gewaehlt === null,
             $context->surroundings->formId,
-            ['class' => 'taxmod-summary-choice'],
+            \Taxmod\Core\Description\ChoicePurpose::Summary,
             nothingWord: '—'
-        );
+        ));
     }
 
     /**

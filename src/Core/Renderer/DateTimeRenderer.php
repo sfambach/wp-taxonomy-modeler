@@ -2,6 +2,9 @@
 
 namespace Taxmod\Core\Renderer;
 
+use Taxmod\Core\Description\InputKind;
+use Taxmod\Core\Description\ShownValue;
+use Taxmod\Core\Description\ValueInput;
 use Taxmod\Core\Model\SimpleType;
 
 /**
@@ -40,29 +43,28 @@ final class DateTimeRenderer extends TypedFieldRenderer
         return [SimpleType::DateTime];
     }
 
-    protected function display(RenderContext $context): string
+    protected function display(RenderContext $context): ShownValue
     {
-        return $this->createHtmlValueSpan(RenderResult::escape($this->forControl($context, ' ')));
+        return new ShownValue($this->forControl($context, ' '));
     }
 
-    protected function input(RenderContext $context): string
+    protected function input(RenderContext $context): ValueInput
     {
-        return RenderResult::htmlTag('input', [
-            'type'  => $this->controlType($context),
-            'name'  => $context->fieldName,
-            // ⚠️ *Ohne dies schickt die Eingabe nichts, wenn sie ausserhalb ihres Formulars steht.*
-            'form'  => $context->surroundings->formId,
-            // ⚠️ *[R32](../../../docs/NewConcept/30-renderer.md#r28r32--the-rule-complete), auf sein Wort: ein
-            // Eingabefeld muss sich immer gleich verhalten, und bei `1..1` muss ein Wert gesetzt sein.*
-            'aria-required' => $context->surroundings->mayBeNothing ? null : 'true',
+        return new ValueInput(
+            InputKind::Moment,
+            $context->fieldName,
             // ⚠️ *Das Steuerelement bekommt den ganzen gespeicherten Zeitpunkt, nie die kurze Form: «1994» ist für ein Datumsfeld kein Wert,
             // es bliebe leer, und das nächste Speichern löschte das Jahr (D-932). Nur das freie Feld nimmt die kurze Form, die es auch zurückschickt.*
-            'value' => $this->forControl($context, 'T', $this->controlType($context) === 'text' ? null : $context->value->date),
-            'pattern' => $this->controlType($context) === 'text' ? '\\d{4}(-\\d{2}(-\\d{2})?)?' : null,
+            $this->forControl($context, 'T', $this->controlType($context) === 'text' ? null : $context->value->date),
+            $context->surroundings->formId,
+            // ⚠️ *[R32](../../../docs/NewConcept/30-renderer.md#r28r32--the-rule-complete): bei `1..1` muss ein Wert gesetzt sein.*
+            $this->required($context),
+            pattern: $this->controlType($context) === 'text' ? '\\d{4}(-\\d{2}(-\\d{2})?)?' : null,
             // ⚠️ *Die Grenzen des Datums (D-757) reichen bis ins Eingabefeld, in der Genauigkeit des Feldes; ein Jahr bleibt vierstellig.*
-            'min'   => $this->bound($context, 'min', '0'),
-            'max'   => $this->bound($context, 'max', '9999'),
-        ]);
+            min: $this->bound($context, 'min', '0'),
+            max: $this->bound($context, 'max', '9999'),
+            note: $context->setting(self::PRECISION)?->text ?? 'datetime',
+        );
     }
 
     /**

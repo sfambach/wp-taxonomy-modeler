@@ -2,6 +2,11 @@
 
 namespace Taxmod\Core\Renderer;
 
+use Taxmod\Core\Description\ChoicePurpose;
+use Taxmod\Core\Description\Choosing;
+use Taxmod\Core\Description\ShownValue;
+use Taxmod\Core\Description\ValueKind;
+
 /**
  * Eine Farbe aus der einen Auswahl «Farben»: ihr Name mit einem Kästchen in ihrer Farbe.
  *
@@ -41,41 +46,20 @@ final class ColorChoiceRenderer extends RendererNode
         $now     = $context->value->reference === null ? ($context->value->text ?? '') : (string) $context->value->reference;
 
         if ($context->purpose === Purpose::Display || ! $context->editable) {
-            if ($now === '') {
-                return RenderResult::of('<span class="taxmod-nothing">—</span>');
-            }
-
-            $name = $offered[$now] ?? $context->surroundings->refersTo ?? ('#' . $now);
-
-            return RenderResult::of(
-                '<span class="taxmod-choice taxmod-color-choice">' . $this->patch((int) $now, $context) . RenderResult::escape($name) . '</span>'
-            );
+            return RenderResult::described($now === ''
+                ? new ShownValue('', ValueKind::ChosenColour)
+                : new ShownValue($offered[$now] ?? $context->surroundings->refersTo ?? ('#' . $now), ValueKind::ChosenColour, $context->surroundings->swatches[(int) $now] ?? ''));
         }
 
-        $merkmale = ['data-taxmod-swatches' => (string) json_encode($context->surroundings->swatches)];
-
-        return RenderResult::of(
-            '<span class="taxmod-color-choice">' . $this->patch((int) $now, $context)
-            . SelectMarkup::of(
-                $context->fieldName,
-                $offered,
-                $now === '' ? null : $now,
-                $context->surroundings->mayBeNothing,
-                $context->surroundings->formId,
-                $merkmale,
-                $context->editable
-            ) . '</span>'
-        );
-    }
-
-    /** Das Kästchen — leer und gestrichelt, wo die Farbe keinen Wert trägt, damit es nicht wie Weiss aussieht. */
-    private function patch(int $nodeId, RenderContext $context): string
-    {
-        $hex = $context->surroundings->swatches[$nodeId] ?? '';
-        $ok  = preg_match('/^#[0-9a-fA-F]{6}$/', $hex) === 1;
-
-        return '<span class="taxmod-swatch" style="display:inline-block;width:1em;height:1em;vertical-align:middle;margin-right:.3em;'
-            . ($ok ? 'border:1px solid #8c8f94;background:' . RenderResult::escape($hex) : 'border:1px dashed #8c8f94')
-            . '"></span>';
+        return RenderResult::described(Choosing::offer(
+            $context->fieldName,
+            $offered,
+            $now === '' ? null : $now,
+            $context->surroundings->mayBeNothing,
+            $context->surroundings->formId,
+            ChoicePurpose::Colour,
+            $context->editable,
+            swatches: $context->surroundings->swatches,
+        ));
     }
 }

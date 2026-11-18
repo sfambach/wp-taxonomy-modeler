@@ -21,6 +21,10 @@ enum InputKind: string
     case Email = 'email';
     /** Yes or no; unticked sends `0`. */
     case Flag = 'flag';
+    /** Yes or no as a switch, the look the owner chose for it. */
+    case Switch = 'switch';
+    /** A point in time to the precision in `note`: year, month, date, time, datetime, any. */
+    case Moment = 'moment';
     /** Shown but not changeable here (`reason` says why); the stored value travels hidden. */
     case Fixed = 'fixed';
 }
