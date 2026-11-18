@@ -197,7 +197,8 @@ $_GET['taxmod_node']      = (string) $eigene->id;
 $markup = $plugin->screen()->render();
 $zeile  = substr($markup, (int) strpos($markup, 'id="taxmod-node-' . $eigene->id . '"'), 600);
 
-check('die Zeile der Auswahl nennt «Choice»', str_contains($zeile, 'taxmod-tree-class') && str_contains($zeile, \Taxmod\WordPress\Admin\NodesScreen::className(Choice::class)));
+// ⚠️ *Seit D-1450 im Tooltip des Namens statt als eigene Zeile darunter.*
+check('die Zeile der Auswahl nennt «Choice» im Tooltip', str_contains($zeile, 'data-taxmod-class="' . \Taxmod\WordPress\Admin\NodesScreen::className(Choice::class) . '"'));
 check('die Zeile trägt das Icon der Klasse', str_contains($zeile, 'dashicons-' . Contracts::of(Choice::class)->icon));
 check('der Wähler bietet unter der Auswahl die Konstante vorgewählt an', preg_match('/<select name="klasse"[^>]*>.*?<option value="' . preg_quote(Constant::class, '/') . '" selected>/s', $markup) === 1);
 

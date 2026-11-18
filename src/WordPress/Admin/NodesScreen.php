@@ -1487,11 +1487,11 @@ final class NodesScreen
         // hat nichts, woran er scrollen könnte. Sein Befund: «no scrollbar, and records are shrinked to size of the page».*
         $html .= '<table style="width:100%;border:0;table-layout:fixed"><tr style="vertical-align:top">'
             // ⚠️ *35 zu 65 — erst «mach mal die baumansicht etwas breiter» (40 %), dann «baum kann 2/3 so breit sein wie jetzt» (D-776, 27 %),
-            // dann am 18.11. «der baum zu schmal» (D-1449).*
-            . '<td style="width:35%;padding:0 1.5em 0 0">'
+            // dann am 18.11. «der baum zu schmal» (D-1449, 35 %), und mit der Zeile je Knoten «noch ein bisschen schmaler» (D-1450, 31 %).*
+            . '<td style="width:31%;padding:0 1.5em 0 0">'
             . '<div class="taxmod-tree-pane" id="' . self::TREE_PANE . '" style="' . $pane . ';padding-right:.6em">' . $left . '</div>'
             . '</td>'
-            . '<td style="width:65%;padding:0">'
+            . '<td style="width:69%;padding:0">'
             . '<div class="taxmod-detail-pane" style="' . $pane . ';padding-right:.6em">'
             . ($nurBaum ? '' : $times->measure(__('Detail', 'taxmod'), fn (): string => $this->detail($selected, $rows, $root)))
             . '</div></td>'
