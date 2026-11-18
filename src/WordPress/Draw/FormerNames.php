@@ -23,6 +23,7 @@ final class FormerNames
         'Taxmod\\Core\\Renderer\\SelectMarkup'   => SelectMarkup::class,
         'Taxmod\\Core\\Renderer\\ToggleMarkup'   => ToggleMarkup::class,
         'Taxmod\\Core\\Renderer\\ConflictDialog' => ConflictDialog::class,
+        'Taxmod\\Core\\Renderer\\DialogNumber'   => DialogNumber::class,
         'Taxmod\\Core\\Tile\\TileGrid'          => TileGrid::class,
         'Taxmod\\Core\\Tile\\PeriodChart'       => PeriodChart::class,
     ];

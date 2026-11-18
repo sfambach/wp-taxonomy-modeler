@@ -209,7 +209,7 @@ foreach ($textMembers as $mitgliedName => $mitgliedRelation) {
 $drawnAddress = [];
 
 foreach ($rendering->fieldsFor(array_values($textMembers), $eingesetzt, Purpose::Display) as $field) {
-    $drawnAddress[$field->relation->name] = strip_tags($field->result->markup);
+    $drawnAddress[$field->relation->name] = strip_tags(\Taxmod\WordPress\Draw\Markup::of($field->result));
 }
 
 check(
@@ -249,7 +249,7 @@ foreach ($dimensionMembers as $name => $relation) {
 $drawnDimension = [];
 
 foreach ($rendering->fieldsFor(array_values($dimensionMembers), [], Purpose::Display) as $field) {
-    $drawnDimension[$field->relation->name] = $field->result->markup;
+    $drawnDimension[$field->relation->name] = \Taxmod\WordPress\Draw\Markup::of($field->result);
 }
 
 check('all three members were drawn', count($drawnDimension) === 3, (string) count($drawnDimension));
@@ -304,7 +304,7 @@ check('  · menge points at Einheitenwert', ($ingredientMembers['menge'] ?? null
 $drawnRecipe = [];
 
 foreach ($rendering->fieldsFor(array_values($recipeMembers), [], Purpose::Display) as $field) {
-    $drawnRecipe[$field->relation->name] = $field->result->markup;
+    $drawnRecipe[$field->relation->name] = \Taxmod\WordPress\Draw\Markup::of($field->result);
 }
 
 check('all four members were drawn', count($drawnRecipe) === 4, (string) count($drawnRecipe));

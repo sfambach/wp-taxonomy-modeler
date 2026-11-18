@@ -35,6 +35,7 @@ use Taxmod\Core\Renderer\HeadRenderer;
 use Taxmod\WordPress\Draw\HintMarkup;
 use Taxmod\WordPress\Draw\IconMarkup;
 use Taxmod\WordPress\Draw\PickOpenerMarkup;
+use Taxmod\WordPress\Draw\Markup;
 use Taxmod\Core\Renderer\Level;
 use Taxmod\Core\Renderer\PageSlot;
 use Taxmod\Core\Renderer\Purpose;
@@ -399,7 +400,7 @@ final class NodesScreen
                 [Control::saving('do', 'save_record', __('Save', 'taxmod'), __('Write these values', 'taxmod'))->at(Address::ofRecord($knoten->id, $recordId)), $this->moveRecordControl($satz, $knoten)]
             ), ...$toolbar]) . '</div>'
             . $this->claimedRows($recordId, $felder, $claimed)
-            . $this->rendering->withoutSharedRecordBodies()->withoutSharedPicker()->withPartActs(__('Add row', 'taxmod'), __('Remove this row', 'taxmod'), __('Add several', 'taxmod'), __('Insert a row below this one', 'taxmod'), __('Remove from this list — the record itself stays', 'taxmod'))
+            . \Taxmod\WordPress\Draw\Markup::of($this->rendering->withoutSharedRecordBodies()->withoutSharedPicker()->withPartActs(__('Add row', 'taxmod'), __('Remove this row', 'taxmod'), __('Add several', 'taxmod'), __('Insert a row below this one', 'taxmod'), __('Remove from this list — the record itself stays', 'taxmod'))
                 ->withRecordLinks(fn (int $andererSatz): string => $this->recordAddress($andererSatz))
                 // ⚠️ *Ohne die Adresse blieb ein Sprung (D-769) im Formular eines Moduls eine leere Zeile — gemessen an Satz 46700, «Kompatibilität».*
                 ->withJumps($this->jumpAddress(...), __('Open the matching records', 'taxmod'))
@@ -419,7 +420,7 @@ final class NodesScreen
                     $this->rendering->partsOfRecord($recordId, $felder),
                     formId: $formId,
                     recordId: $recordId
-                )->markup
+                ))
             . '</div>' . RecordPick::words();
     }
 
@@ -573,7 +574,7 @@ final class NodesScreen
             ->withChoiceAt(array_map(static fn (Relation $r): int => $r->id, $felder));
 
         foreach ($rendering->fieldsFor($felder, $held, Purpose::Edit, $prefix, $this->localeFromRequest(), Level::Admin, true, $formId) as $field) {
-            $out[$field->relation->id] = $field->result->markup;
+            $out[$field->relation->id] = \Taxmod\WordPress\Draw\Markup::of($field->result);
         }
 
         // D-1271: a chooser among these controls may create a record from its dialog; the address rides with the first control.
@@ -656,7 +657,7 @@ final class NodesScreen
             $gezeigte = array_values(array_filter($gezeigte, static fn (Relation $r): bool => in_array($r->id, $fields, true) !== $except));
         }
 
-        return $this->rendering->nodeAsForm(
+        return \Taxmod\WordPress\Draw\Markup::of($this->rendering->nodeAsForm(
             $knoten,
             $gezeigte,
             $this->rendering->previewValuesFor($felder, $resolved, $held),
@@ -668,7 +669,7 @@ final class NodesScreen
             $this->rendering->containerChosenFor($knoten) ? '' : \Taxmod\Core\Renderer\TableRenderer::NAME,
             self::rankedParts($this->rendering->partsOfRecord($recordId, $felder)),
             recordId: $recordId
-        )->markup;
+        ));
     }
 
     /**
@@ -758,7 +759,7 @@ final class NodesScreen
             $zeilen[] = ['id' => $id, 'values' => $gehalten, 'lead' => [], 'acts' => [], 'submits' => new Submission(''), 'editable' => false];
         }
 
-        return $this->rendering->recordsAsTable($knoten, $felder, $zeilen, '', '', false, Purpose::Display, $locale, Level::FrontEnd)->markup;
+        return \Taxmod\WordPress\Draw\Markup::of($this->rendering->recordsAsTable($knoten, $felder, $zeilen, '', '', false, Purpose::Display, $locale, Level::FrontEnd));
     }
 
     /**
@@ -1906,7 +1907,7 @@ final class NodesScreen
                 return '<p><em>' . esc_html__('Nothing here yet.', 'taxmod') . '</em></p>';
             }
 
-            return $this->rendering->treeFor(
+            return \Taxmod\WordPress\Draw\Markup::of($this->rendering->treeFor(
                 [],
                 cell: \Taxmod\Core\Renderer\TreeNodeRenderer::NAME,
                 level: \Taxmod\Core\Renderer\Level::Admin,
@@ -1915,7 +1916,7 @@ final class NodesScreen
                 filterValue: $gesucht,
                 leer: $leer,
                 filterForm: self::TREE_SEARCH_FORM
-            )->markup
+            ))
                 . '<p><em>' . esc_html__('Nothing matches that.', 'taxmod') . '</em></p>';
         }
 
@@ -1967,7 +1968,7 @@ final class NodesScreen
         // ⚠️ **Nothing here builds markup any more.** The walker nests, the cell draws, and the
         // screen supplies only what the core cannot make: URLs, nonces and the words on the
         // controls. That is `R1` for the left-hand side.
-        return $this->rendering->treeFor(
+        return \Taxmod\WordPress\Draw\Markup::of($this->rendering->treeFor(
             $rows,
             $actions,
             $hrefs,
@@ -1993,7 +1994,7 @@ final class NodesScreen
             // übersetzt hier am Rand (`AR-2`) — nur im Modellbaum, nicht im Papierkorb.
             $mode === 'tree' ? $this->classLabelsFor($rows) : [],
             filterForm: $mode === 'tree' ? self::TREE_SEARCH_FORM : ''
-        )->markup;
+        ));
     }
 
     /**
@@ -2464,13 +2465,13 @@ final class NodesScreen
                 // ⚠️ **Der Einstellungsbereich des Knotens aus dem Vertrag** (Schritt 4 des Bauplans):
                 // *seine Attribute, der gewählte Renderer, dessen Attribute — über den Feldern.
                 // Leer, solange kein Auflöser verdrahtet ist.*
-                $this->block(__('Settings', 'taxmod'), fn (): string => $this->rendering->settingsPanelForNode(
+                $this->block(__('Settings', 'taxmod'), fn (): string => Markup::of($this->rendering->settingsPanelForNode(
                     $selected,
                     self::SETTING_FIELD,
                     self::pageForm($selected),
                     $this->settingsPanelWords(),
                     $this->localeFromRequest()
-                ))
+                )))
                 . $this->block(__('Fields', 'taxmod'), fn (): string => $this->attributes($selected, $rows))
             ),
 
@@ -2497,7 +2498,7 @@ final class NodesScreen
         // ⚠️ **No heading with the node name.** The owner: *the heading with the node name goes.* *The
         // head's first row already holds that name as an editable field — printing it again above in
         // larger type was the duplication, and he saw it the moment the head existed.*
-        return $this->rendering->nodeAsPage($selected, $sections)->markup
+        return \Taxmod\WordPress\Draw\Markup::of($this->rendering->nodeAsPage($selected, $sections))
             // ⚠️ *Ein eigener Name für den Satzblock, damit er waagerecht scrollt statt die Seite zu dehnen — sein Befund: «scrollbar for records
             // disappeared webside is again stretched to wide» (D-777, verloren mit D-785).*
             . '<div class="taxmod-page-block taxmod-records-block">' . $this->block(__('Records', 'taxmod'), fn (): string => $this->recordsPanel($selected)) . '</div>'
@@ -2608,7 +2609,7 @@ final class NodesScreen
         // ⚠️ **Der Knopf nur, wo die Bearbeiten-Seite ein Feld zeichnet** — *sein Befund an `Gramm`: «add as example scheint
         // entweder nicht zu funktionieren oder der satz wird danach nicht angezeigt». Eine Konstante wird nicht getippt,
         // sie zeigt ihre Beschriftung; der Knopf schickte ein Feld, das es nicht gab, und «nichts im Feld» war die Antwort.*
-        $mitFeld = str_contains($edit?->markup ?? '', 'name="' . self::OWN_VALUE_FIELD . '"');
+        $mitFeld = str_contains(\Taxmod\WordPress\Draw\Markup::of($edit ?? null), 'name="' . self::OWN_VALUE_FIELD . '"');
 
         // ⚠️ **The same two sides as the attribute preview, and the same words** — the owner: *the
         // render field and the output sit next to each other without separation; maybe put a heading
@@ -2634,7 +2635,7 @@ final class NodesScreen
             $html .= '<div class="taxmod-preview-side">'
                 . '<h4>' . esc_html($title) . '</h4>'
                 . '<p><strong>' . esc_html($selected->name) . '</strong> '
-                . ($side?->markup ?? '')
+                . (\Taxmod\WordPress\Draw\Markup::of($side ?? null))
                 . '</p>'
                 . (! $mitKnopf ? '' : $this->form(
                     $selected->id,
@@ -2778,7 +2779,7 @@ final class NodesScreen
                 . ($formId === '' ? '' : self::reviewNote($satz))
                 // D-1308: the buttons above the form, as the toolbar.
                 . ($formId === '' ? '' : $this->previewActs($selected, $satz, $formId) . $this->claimedRows($satz, $relations, $claimed))
-                . $this->rendering->withPartActs(__('Add row', 'taxmod'), __('Remove this row', 'taxmod'), __('Add several', 'taxmod'), __('Insert a row below this one', 'taxmod'), __('Remove from this list — the record itself stays', 'taxmod'))->withRecordLinks(
+                . \Taxmod\WordPress\Draw\Markup::of($this->rendering->withPartActs(__('Add row', 'taxmod'), __('Remove this row', 'taxmod'), __('Add several', 'taxmod'), __('Insert a row below this one', 'taxmod'), __('Remove from this list — the record itself stays', 'taxmod'))->withRecordLinks(
                     // ⚠️ *Die Seite des Knotens, dem der Satz gehört, mit ihm in der Vorschau (D-852).*
                     fn (int $satz): string => $this->recordAddress($satz)
                 )->withRecordCreation(...$this->recordCreation())->nodeAsForm(
@@ -2796,7 +2797,7 @@ final class NodesScreen
                     formId: $formId,
                     // ⚠️ *Damit die Zeilen eines mehrfachen Feldes wissen, aus welchem Satz sie lesen (D-842).*
                     recordId: $satz
-                )->markup
+                ))
                 . '</div>';
         }
 
@@ -3204,10 +3205,10 @@ final class NodesScreen
                 . $this->trashDialog($selected)
             );
 
-        return $this->rendering->headFor($selected, [
+        return \Taxmod\WordPress\Draw\Markup::of($this->rendering->headFor($selected, [
             HeadRenderer::NODE   => new Section(__('Node', 'taxmod'), $node),
             HeadRenderer::SYSTEM => new Section(__('System', 'taxmod'), $this->constants($selected)),
-        ])->markup;
+        ]));
     }
 
     /**
@@ -3814,7 +3815,7 @@ final class NodesScreen
             // ⚠️ *Die Worte des Bereichs — der Kern kann keins machen (`AR-2`).*
             $this->settingsPanelWords()
         ) as $row) {
-            $body .= $row->result->markup;
+            $body .= \Taxmod\WordPress\Draw\Markup::of($row->result);
         }
 
         if ($this->geerbtModus === 'only') {
@@ -4072,7 +4073,7 @@ final class NodesScreen
 
     private function sharedPickerTree(): string
     {
-        return $this->rendering->nodeChooser(
+        return \Taxmod\WordPress\Draw\Markup::of($this->rendering->nodeChooser(
                 $this->framework->root(),
                 self::PICK_FIELD,
                 null,
@@ -4085,7 +4086,7 @@ final class NodesScreen
                 $this->localeFromRequest(),
                 Level::Admin,
                 settings: ChooserRenderer::asDialog()
-            )->markup;
+            ));
     }
 
     /**
@@ -4105,7 +4106,7 @@ final class NodesScreen
         $wahl   = $preselected === null ? null : $this->editor->find($preselected);
 
         // ⚠️ *Die Seite des Moduls gibt keine geteilten Vorlagen aus (D-866) — der Baum muss im Stück selbst stehen.*
-        $baum = $this->rendering->withoutSharedRecordBodies()->nodeChooser(
+        $baum = \Taxmod\WordPress\Draw\Markup::of($this->rendering->withoutSharedRecordBodies()->nodeChooser(
             $wurzel,
             $name,
             null,
@@ -4119,7 +4120,7 @@ final class NodesScreen
             Level::Admin,
             formId: $formId,
             settings: $inline ? [] : ChooserRenderer::asDialog()
-        )->markup;
+        ));
 
         // ⚠️ *D-1175: fest auf der Seite wie der Satzbaum (D-1090) — ein Klick öffnet `$pickUrl`, dasselbe Skript wie dort.*
         return $inline ? '<div class="taxmod-record-tree"' . ($pickUrl === '' ? '' : ' data-taxmod-pick="' . esc_attr($pickUrl) . '"') . '>' . $baum . '</div>' : $baum;
@@ -4222,7 +4223,7 @@ final class NodesScreen
         $zeilen = \Taxmod\Core\Service\RecordTree::preferredOnTop($zeilen, $preferred, __('Preferred', 'taxmod'));
 
         // ⚠️ *Die Seite des Moduls gibt keine geteilten Vorlagen aus (D-866) — der Baum muss im Stück selbst stehen.*
-        $baum = $this->rendering->withoutSharedRecordBodies()->recordChooser(
+        $baum = \Taxmod\WordPress\Draw\Markup::of($this->rendering->withoutSharedRecordBodies()->recordChooser(
             $zeilen,
             $name,
             $preselected,
@@ -4232,7 +4233,7 @@ final class NodesScreen
             Level::Admin,
             $formId,
             $inline ? [] : ChooserRenderer::asDialog()
-        )->markup;
+        ));
 
         if (! $inline) {
             return $baum;
@@ -4671,7 +4672,7 @@ final class NodesScreen
             __('What this node is called, in the language chosen on the left. Leave a field empty and the grey text is what will be shown instead — in the end, the node\'s own name.', 'taxmod')
         );
 
-        return $html . $this->rendering->labelsPanelFor(
+        return $html . \Taxmod\WordPress\Draw\Markup::of($this->rendering->labelsPanelFor(
             $selected,
             $slots,
             // ⚠️ **Kein eigener Knopf mehr — der Eigentümer hat entschieden.** *Er stand hier eine
@@ -4690,7 +4691,7 @@ final class NodesScreen
             $locale,
             Level::Admin,
             $pageForm
-        )->markup;
+        ));
     }
 
     /**
@@ -5216,7 +5217,7 @@ final class NodesScreen
             return [];
         }
 
-        return [__('Value', 'taxmod') => $feld->markup];
+        return [__('Value', 'taxmod') => \Taxmod\WordPress\Draw\Markup::of($feld)];
     }
 
     /**
@@ -6020,7 +6021,7 @@ final class NodesScreen
         ]);
 
         // ⚠️ *Die Worte der Knöpfe an mehrfachen Teilen (D-758) — der Kern macht keine (`AR-2`).*
-        return $html . $blaettern . $this->rendering->withPartActs(__('Add row', 'taxmod'), __('Remove this row', 'taxmod'), __('Add several', 'taxmod'), __('Insert a row below this one', 'taxmod'), __('Remove from this list — the record itself stays', 'taxmod'))->withJumps(
+        return $html . $blaettern . \Taxmod\WordPress\Draw\Markup::of($this->rendering->withPartActs(__('Add row', 'taxmod'), __('Remove this row', 'taxmod'), __('Add several', 'taxmod'), __('Insert a row below this one', 'taxmod'), __('Remove from this list — the record itself stays', 'taxmod'))->withJumps(
             $this->jumpAddress(...),
             __('Open the matching records', 'taxmod')
         // ⚠️ *Derselbe Weg zum Anlegen wie in der Vorschau — sonst unterschiede sich der Satzdialog von «neuer Satz» von dem der Vorschau und
@@ -6038,7 +6039,7 @@ final class NodesScreen
             // macht daraus den Text — **je Zelle**, sein Wort.*
             SettingsScreen::inDeveloperMode(),
             diagnose: SettingsScreen::inDeveloperMode() ? $this->drawnByPerCell(...) : null
-        )->markup . $blaettern;
+        )) . $blaettern;
     }
 
     /**
@@ -7767,14 +7768,14 @@ final class NodesScreen
      */
     public function fieldSettingsFragment(Node $node, Relation $useSite): string
     {
-        return $this->rendering->settingsPanelForUseSite(
+        return Markup::of($this->rendering->settingsPanelForUseSite(
             $useSite,
             $node->id,
             self::ROW_SETTING_FIELD . '[' . $useSite->id . ']',
             self::pageForm($node),
             $this->settingsPanelWords(),
             $this->localeFromRequest()
-        );
+        ));
     }
 
     /**

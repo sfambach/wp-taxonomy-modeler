@@ -72,7 +72,7 @@ final class ChooserCellRenderer extends RendererNode
     public function render(Renderable $subject, RenderContext $context): RenderResult
     {
         if (! $this->fits($subject)) {
-            return RenderResult::of('');
+            return RenderResult::nothing();
         }
 
         // WICHTIG: Dieselbe Zeile wie im Modellbaum, ein Renderer, unterschieden nur durch

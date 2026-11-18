@@ -103,8 +103,8 @@ final class RenderingFromContractTest extends TestCase
         self::assertSame(20, $rows['display_size']->setting->value->int, 'die Vorgabe des Vertrags');
         self::assertFalse($rows['display_size']->setting->setHere);
         self::assertTrue($rows['display_size']->wasDrawn());
-        self::assertStringContainsString('name="taxmod_setting[display_size]"', $rows['display_size']->result->markup);
-        self::assertStringContainsString('value="20"', $rows['display_size']->result->markup);
+        self::assertStringContainsString('name="taxmod_setting[display_size]"', \Taxmod\WordPress\Draw\Markup::of($rows['display_size']->result));
+        self::assertStringContainsString('value="20"', \Taxmod\WordPress\Draw\Markup::of($rows['display_size']->result));
         self::assertTrue($rows['min']->wasDrawn(), 'ohne Vorgabe, aber gezeichnet — leer');
         self::assertArrayNotHasKey('read_only', $rows, 'read_only ist eine Spalte der Kante (D-714)');
         self::assertArrayNotHasKey('orientation', $rows, 'kein Renderer gewählt: keine Renderer-Attribute');
@@ -117,8 +117,8 @@ final class RenderingFromContractTest extends TestCase
 
         self::assertArrayNotHasKey('min', $rows);
         self::assertArrayHasKey('renderer', $rows);
-        self::assertStringContainsString('<select', $rows['renderer']->result->markup);
-        self::assertStringContainsString('value="form"', $rows['renderer']->result->markup);
+        self::assertStringContainsString('<select', \Taxmod\WordPress\Draw\Markup::of($rows['renderer']->result));
+        self::assertStringContainsString('value="form"', \Taxmod\WordPress\Draw\Markup::of($rows['renderer']->result));
     }
 
     #[Test]
@@ -131,13 +131,13 @@ final class RenderingFromContractTest extends TestCase
 
         self::assertSame(999, $rows['max']->setting->value->int);
         self::assertTrue($rows['max']->setting->setHere);
-        self::assertStringContainsString('value="999"', $rows['max']->result->markup);
+        self::assertStringContainsString('value="999"', \Taxmod\WordPress\Draw\Markup::of($rows['max']->result));
 
         // ⚠️ *Und der Renderer eines Feldes auf diesen Typ liest dieselbe Auflösung.*
         $feld  = Relation::attribute(10, $this->kontakt->id, $this->integer->id, RelationKind::Composition, 'nr', 0, Multiplicity::ExactlyOne);
         $drawn = $this->rendering->fieldsFor([$feld], [], Purpose::Edit, 'v');
 
-        self::assertStringContainsString('size="4"', $drawn[0]->result->markup);
+        self::assertStringContainsString('size="4"', \Taxmod\WordPress\Draw\Markup::of($drawn[0]->result));
     }
 
     #[Test]
@@ -152,11 +152,11 @@ final class RenderingFromContractTest extends TestCase
         self::assertSame('compact', $rows['renderer']->setting->value->text);
         self::assertArrayHasKey('orientation', $rows);
         self::assertSame('vertical', $rows['orientation']->setting->value->text);
-        self::assertStringContainsString('value="vertical" selected', $rows['orientation']->result->markup);
-        self::assertStringContainsString('value="horizontal"', $rows['orientation']->result->markup, 'die Fälle des Enums');
+        self::assertStringContainsString('value="vertical" selected', \Taxmod\WordPress\Draw\Markup::of($rows['orientation']->result));
+        self::assertStringContainsString('value="horizontal"', \Taxmod\WordPress\Draw\Markup::of($rows['orientation']->result), 'die Fälle des Enums');
         self::assertArrayHasKey('with_label', $rows);
         self::assertTrue($rows['with_label']->setting->value->asBool(), 'die Vorgabe der Renderer-Klasse');
-        self::assertStringContainsString('taxmod-toggle-track', $rows['with_label']->result->markup);
+        self::assertStringContainsString('taxmod-toggle-track', \Taxmod\WordPress\Draw\Markup::of($rows['with_label']->result));
     }
 
     #[Test]
@@ -188,8 +188,8 @@ final class RenderingFromContractTest extends TestCase
         $drawn = $this->rendering->fieldsFor([$feld], [], Purpose::Edit, 'v');
 
         self::assertSame(SpinnerRenderer::NAME, $drawn[0]->rendererName);
-        self::assertStringContainsString('min="1"', $drawn[0]->result->markup);
-        self::assertStringContainsString('max="999"', $drawn[0]->result->markup);
+        self::assertStringContainsString('min="1"', \Taxmod\WordPress\Draw\Markup::of($drawn[0]->result));
+        self::assertStringContainsString('max="999"', \Taxmod\WordPress\Draw\Markup::of($drawn[0]->result));
     }
 
     #[Test]
@@ -205,7 +205,7 @@ final class RenderingFromContractTest extends TestCase
 
         self::assertArrayHasKey('label_role', $rows);
         self::assertSame('symbol', $rows['label_role']->setting->value->text, 'ein Verweis kommt als Wort');
-        self::assertStringContainsString('value="form"', $rows['label_role']->result->markup);
-        self::assertStringContainsString('value="symbol" selected', $rows['label_role']->result->markup);
+        self::assertStringContainsString('value="form"', \Taxmod\WordPress\Draw\Markup::of($rows['label_role']->result));
+        self::assertStringContainsString('value="symbol" selected', \Taxmod\WordPress\Draw\Markup::of($rows['label_role']->result));
     }
 }

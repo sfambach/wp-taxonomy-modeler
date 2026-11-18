@@ -56,8 +56,8 @@ final class RendererTest extends TestCase
             $this->context(Purpose::Display, TypedValue::ofText('Widerstand'))
         );
 
-        self::assertStringContainsString('Widerstand', $result->markup);
-        self::assertStringNotContainsString('<input', $result->markup);
+        self::assertStringContainsString('Widerstand', \Taxmod\WordPress\Draw\Markup::of($result));
+        self::assertStringNotContainsString('<input', \Taxmod\WordPress\Draw\Markup::of($result));
     }
 
     #[Test]
@@ -72,7 +72,7 @@ final class RendererTest extends TestCase
 
         // ⚠️ And it is marked `taxmod-no-renderer`: reaching the fallback at all means nobody
         // chose and the type has no default, which R14b says must **look** like the fault it is.
-        self::assertSame('<span class="taxmod-value taxmod-no-renderer"></span>', $result->markup);
+        self::assertSame('<span class="taxmod-value taxmod-no-renderer"></span>', \Taxmod\WordPress\Draw\Markup::of($result));
     }
 
     #[Test]
@@ -83,8 +83,8 @@ final class RendererTest extends TestCase
             $this->context(Purpose::Display, TypedValue::ofText('<script>alert(1)</script>'))
         );
 
-        self::assertStringNotContainsString('<script>', $result->markup);
-        self::assertStringContainsString('&lt;script&gt;', $result->markup);
+        self::assertStringNotContainsString('<script>', \Taxmod\WordPress\Draw\Markup::of($result));
+        self::assertStringContainsString('&lt;script&gt;', \Taxmod\WordPress\Draw\Markup::of($result));
     }
 
     #[Test]
@@ -95,9 +95,9 @@ final class RendererTest extends TestCase
             $this->context(Purpose::Edit, TypedValue::ofInt(40), [], 'value[7]')
         );
 
-        self::assertStringContainsString('<input', $result->markup);
-        self::assertStringContainsString('name="value[7]"', $result->markup);
-        self::assertStringContainsString('value="40"', $result->markup);
+        self::assertStringContainsString('<input', \Taxmod\WordPress\Draw\Markup::of($result));
+        self::assertStringContainsString('name="value[7]"', \Taxmod\WordPress\Draw\Markup::of($result));
+        self::assertStringContainsString('value="40"', \Taxmod\WordPress\Draw\Markup::of($result));
     }
 
     #[Test]
@@ -111,7 +111,7 @@ final class RendererTest extends TestCase
             ], 'v')
         );
 
-        self::assertStringNotContainsString('<input', $result->markup);
+        self::assertStringNotContainsString('<input', \Taxmod\WordPress\Draw\Markup::of($result));
     }
 
     #[Test]
@@ -132,7 +132,7 @@ final class RendererTest extends TestCase
             ])
         );
 
-        self::assertStringContainsString('secret', $result->markup);
+        self::assertStringContainsString('secret', \Taxmod\WordPress\Draw\Markup::of($result));
     }
 
     // -------------------------------------------------------------- the registry
@@ -189,7 +189,7 @@ final class RendererTest extends TestCase
             public function needsSomethingToChooseFrom(): bool { return false; }
             public function render(\Taxmod\Core\Renderer\Renderable $subject, RenderContext $context): RenderResult
             {
-                return RenderResult::of('shown');
+                return \Taxmod\Tests\Support\Fixture::result('shown');
             }
         };
 
@@ -229,12 +229,12 @@ final class RendererTest extends TestCase
     {
         // D-236: one mandatory entry and any number of additions; their outputs follow each
         // other. Nothing in the interface moves for it.
-        $first  = RenderResult::of('<b>40</b>', 7);
-        $second = RenderResult::of('<span class="rings"></span>', 7, 9);
+        $first  = \Taxmod\Tests\Support\Fixture::result('40', 7);
+        $second = \Taxmod\Tests\Support\Fixture::result('rings', 7, 9);
 
         $both = $first->followedBy($second);
 
-        self::assertSame('<b>40</b><span class="rings"></span>', $both->markup);
+        self::assertSame('40rings', \Taxmod\WordPress\Draw\Markup::of($both));
         self::assertSame([7, 9], $both->usedRelations);
     }
 
@@ -247,7 +247,7 @@ final class RendererTest extends TestCase
     #[Test]
     public function the_display_size_reaches_the_drawn_field(): void
     {
-        $markup = (new FieldRenderer())->render(
+        $markup = \Taxmod\WordPress\Draw\Markup::of((new FieldRenderer())->render(
             $this->subject,
             $this->context(
                 Purpose::Edit,
@@ -255,7 +255,7 @@ final class RendererTest extends TestCase
                 ['display_size' => TypedValue::ofInt(40)],
                 'v'
             )
-        )->markup;
+        ));
 
         self::assertStringContainsString('size="40"', $markup);
 
@@ -269,19 +269,19 @@ final class RendererTest extends TestCase
     #[Test]
     public function two_widths_draw_two_widths(): void
     {
-        $breit = (new FieldRenderer())->render($this->subject, $this->context(
+        $breit = \Taxmod\WordPress\Draw\Markup::of((new FieldRenderer())->render($this->subject, $this->context(
             Purpose::Edit,
             TypedValue::ofText('Bahnhofstrasse'),
             ['display_size' => TypedValue::ofInt(40)],
             'v'
-        ))->markup;
+        )));
 
-        $schmal = (new FieldRenderer())->render($this->subject, $this->context(
+        $schmal = \Taxmod\WordPress\Draw\Markup::of((new FieldRenderer())->render($this->subject, $this->context(
             Purpose::Edit,
             TypedValue::ofText('12a'),
             ['display_size' => TypedValue::ofInt(4)],
             'v'
-        ))->markup;
+        )));
 
         self::assertStringContainsString('size="4"', $schmal);
         self::assertNotSame($breit, $schmal);
@@ -294,10 +294,10 @@ final class RendererTest extends TestCase
     #[Test]
     public function without_a_display_size_nothing_changes(): void
     {
-        $markup = (new FieldRenderer())->render(
+        $markup = \Taxmod\WordPress\Draw\Markup::of((new FieldRenderer())->render(
             $this->subject,
             $this->context(Purpose::Edit, TypedValue::ofText('Bahnhofstrasse'), [], 'v')
-        )->markup;
+        ));
 
         self::assertStringNotContainsString('size=', $markup);
         self::assertStringContainsString('value="Bahnhofstrasse"', $markup);
@@ -310,16 +310,16 @@ final class RendererTest extends TestCase
     #[Test]
     public function the_textarea_takes_it_too_and_its_own_cols_wins(): void
     {
-        $nurBreite = (new TextareaRenderer())->render($this->subject, $this->context(
+        $nurBreite = \Taxmod\WordPress\Draw\Markup::of((new TextareaRenderer())->render($this->subject, $this->context(
             Purpose::Edit,
             TypedValue::ofText('x'),
             ['display_size' => TypedValue::ofInt(40)],
             'v'
-        ))->markup;
+        )));
 
         self::assertStringContainsString('cols="40"', $nurBreite);
 
-        $mitCols = (new TextareaRenderer())->render($this->subject, $this->context(
+        $mitCols = \Taxmod\WordPress\Draw\Markup::of((new TextareaRenderer())->render($this->subject, $this->context(
             Purpose::Edit,
             TypedValue::ofText('x'),
             [
@@ -327,7 +327,7 @@ final class RendererTest extends TestCase
                 'cols'                         => TypedValue::ofInt(12),
             ],
             'v'
-        ))->markup;
+        )));
 
         self::assertStringContainsString('cols="12"', $mitCols);
     }

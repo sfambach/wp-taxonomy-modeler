@@ -105,7 +105,7 @@ final class MediaRendererTest extends TestCase
     public function the_media_library_and_the_link_dialog_are_symbols_right_of_the_field(): void
     {
         // ⚠️ *Seit D-858 öffnet das Dateisymbol die Mediathek; daneben der Linkdialog (D-857). Beide nennen das Feld, das sie füllen.*
-        $markup = (new MediaRenderer())->render(
+        $markup = \Taxmod\WordPress\Draw\Markup::of((new MediaRenderer())->render(
             Node::create(1, 'Projekt', null),
             new RenderContext(
                 purpose: Purpose::Edit,
@@ -115,7 +115,7 @@ final class MediaRendererTest extends TestCase
                 type: SimpleType::Media,
                 surroundings: new Surroundings(dialogWords: ['upload' => 'Aus der Mediathek', 'link' => 'Link wählen']),
             )
-        )->markup;
+        ));
 
         $feld    = strpos($markup, 'class="taxmod-media-link"');
         $mediath = strpos($markup, 'taxmod-media-library');

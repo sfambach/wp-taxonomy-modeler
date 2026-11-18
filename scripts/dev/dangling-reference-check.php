@@ -177,7 +177,7 @@ try {
     // ⚠️ *So kommt der Fall beim Renderer an: der Wert traegt einen Verweis, der **Name** kam nicht
     // an, weil der Abstieg ihn nicht aufloesen konnte. Genau die Ableitung, an der beide Renderer
     // ihn erkennen — es gibt keine zweite Angabe, die dasselbe noch einmal sagt.*
-    $imBlick = (new ReferenceRenderer())->render(
+    $imBlick = \Taxmod\WordPress\Draw\Markup::of((new ReferenceRenderer())->render(
         $nodes->byId($besitzer->id),
         new RenderContext(
             purpose: Purpose::Display,
@@ -186,7 +186,7 @@ try {
             type: SimpleType::NodeRef,
             surroundings: new Surroundings(refersTo: null),
         )
-    )->markup;
+    ));
 
     check('sie ist markiert', str_contains($imBlick, 'taxmod-dangling'));
     check('und sie nennt, worauf sie zeigte', str_contains($imBlick, '#' . $zielId));
@@ -195,7 +195,7 @@ try {
 
     $baum = new Section('', '<span class="row">__leiche</span>');
 
-    $imDialog = (new ChooserRenderer())->render(
+    $imDialog = \Taxmod\WordPress\Draw\Markup::of((new ChooserRenderer())->render(
         $nodes->byId($besitzer->id),
         new RenderContext(
             purpose: Purpose::Edit,
@@ -210,14 +210,14 @@ try {
                 sections: [ChooserRenderer::CANDIDATES => $baum]
             ),
         )
-    )->markup;
+    ));
 
     check('der Auswahldialog markiert sie', str_contains($imDialog, 'taxmod-dangling'));
     check('und nennt sie', str_contains($imDialog, '#' . $zielId));
 
     // ⚠️ **Der Gegenfall traegt die Zusage.** *Ohne ihn waere «markiert» auch dann wahr, wenn
     // **jede** leere Wahl markiert wuerde — und ein Mal, das ueberall steht, sagt nichts.*
-    $ohneWahl = (new ChooserRenderer())->render(
+    $ohneWahl = \Taxmod\WordPress\Draw\Markup::of((new ChooserRenderer())->render(
         $nodes->byId($besitzer->id),
         new RenderContext(
             purpose: Purpose::Edit,
@@ -232,7 +232,7 @@ try {
                 sections: [ChooserRenderer::CANDIDATES => $baum]
             ),
         )
-    )->markup;
+    ));
 
     check('«nichts gewaehlt» bleibt unmarkiert', ! str_contains($ohneWahl, 'taxmod-dangling'));
     check('und ist als «nichts» erkennbar', str_contains($ohneWahl, 'taxmod-nothing'));

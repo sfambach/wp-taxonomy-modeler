@@ -181,7 +181,7 @@ final class SettingsRenderer extends RendererNode
         }
 
         if ($gruppen === []) {
-            return RenderResult::of('');
+            return RenderResult::nothing();
         }
 
         // ⚠️ **One form around the whole panel** ([D-392](../../../docs/NewConcept/90-decision-log.md)),

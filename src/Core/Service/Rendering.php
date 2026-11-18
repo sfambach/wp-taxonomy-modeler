@@ -1072,7 +1072,7 @@ final class Rendering implements Presets, \Taxmod\Core\Port\FieldAddons
         $knoten = $subject instanceof Node ? $subject : ($subject instanceof Relation ? $this->gemerkterKnoten($subject->toNodeId) : null);
 
         if ($knoten === null || $this->resolver === null || $this->addons === null) {
-            return RenderResult::of('');
+            return RenderResult::nothing();
         }
 
         $kante = $subject instanceof Relation ? $subject : null;
@@ -2784,7 +2784,7 @@ final class Rendering implements Presets, \Taxmod\Core\Port\FieldAddons
                 surroundings: new Surroundings(
                     refersTo: $chosenName,
                     sections: [
-                        ChooserRenderer::CANDIDATES => new Section($nothingToChoose, $tree->markup, piece: $tree->piece),
+                        ChooserRenderer::CANDIDATES => new Section($nothingToChoose, '', piece: $tree->piece),
                         ChooserRenderer::TRIGGER    => new Section('', $trigger),
                         ChooserRenderer::CONFIRM    => new Section('', $confirm),
                     ],
@@ -3148,7 +3148,7 @@ final class Rendering implements Presets, \Taxmod\Core\Port\FieldAddons
             )
         );
 
-        $sections = [RecordRenderer::FORM => new Section('', $tabelle->markup)];
+        $sections = [RecordRenderer::FORM => new Section('', '', piece: $tabelle->piece)];
 
         if ($diagnostic === '' && $diagnose !== null) {
             $diagnostic = (string) $diagnose($rows, $gezeichnet);
@@ -3200,7 +3200,8 @@ final class Rendering implements Presets, \Taxmod\Core\Port\FieldAddons
         $sections = [
             RecordRenderer::FORM => new Section(
                 $title,
-                $this->nodeAsForm(
+                '',
+                piece: $this->nodeAsForm(
                     $model,
                     $relations,
                     $values,
@@ -3210,7 +3211,7 @@ final class Rendering implements Presets, \Taxmod\Core\Port\FieldAddons
                     $level,
                     true,
                     TableRenderer::NAME
-                )->markup
+                )->piece
             ),
         ];
 
@@ -3441,7 +3442,7 @@ final class Rendering implements Presets, \Taxmod\Core\Port\FieldAddons
             //
             // ⚠️ *«wie oft» bleibt draussen: es steht als eigene Spalte in der Zeile, und zweimal
             // dasselbe Steuerelement ist genau der Mangel, den `R1` verbietet.*
-            $bereich = ! $offen ? '' : $this->panelMarkup(
+            $bereich = ! $offen ? null : $this->settingsPanel(
                 $relation,
                 $configured,
                 $settingsWords,
@@ -3605,9 +3606,9 @@ final class Rendering implements Presets, \Taxmod\Core\Port\FieldAddons
                             : [],
                         // ⚠️ *Nur wenn aufgeklappt. Die Abwesenheit des Abschnitts **ist** die
                         // Aussage «nicht gelesen» — die Zeile zeichnet dann keine zweite Zeile.*
-                        $bereich === ''
+                        $bereich === null
                             ? []
-                            : [FieldRowRenderer::SETTINGS => new Section('', $bereich)]
+                            : [FieldRowRenderer::SETTINGS => new Section('', '', piece: $bereich->piece)]
                     )
                 ),
             );
@@ -3889,7 +3890,7 @@ final class Rendering implements Presets, \Taxmod\Core\Port\FieldAddons
         array $words = [],
         string $locale = '',
         Level $level = Level::Admin,
-    ): string {
+    ): RenderResult {
         $editable   = $relation->fromNodeId === $declaredBy;
         $settings   = $this->withModelValues($this->vonDenKanten([$relation])[$relation->id] ?? [], $relation);
         $configured = [];
@@ -3908,7 +3909,7 @@ final class Rendering implements Presets, \Taxmod\Core\Port\FieldAddons
             $configured[$drawn->key] = $drawn;
         }
 
-        return $this->panelMarkup($relation, $configured, $words, $formId, $locale, $level, $editable);
+        return $this->settingsPanel($relation, $configured, $words, $formId, $locale, $level, $editable);
     }
 
     /**
@@ -3991,9 +3992,9 @@ final class Rendering implements Presets, \Taxmod\Core\Port\FieldAddons
         array $words = [],
         string $locale = '',
         Level $level = Level::Admin,
-    ): string {
+    ): RenderResult {
         if ($this->resolver === null) {
-            return '';
+            return RenderResult::nothing();
         }
 
         $configured = [];
@@ -4002,10 +4003,10 @@ final class Rendering implements Presets, \Taxmod\Core\Port\FieldAddons
             $configured[$drawn->key] = $drawn;
         }
 
-        return $this->panelMarkup($node, $configured, $words, $formId, $locale, $level, true);
+        return $this->settingsPanel($node, $configured, $words, $formId, $locale, $level, true);
     }
 
-    private function panelMarkup(
+    private function settingsPanel(
         Node|Relation $relation,
         array $configured,
         array $words,
@@ -4013,7 +4014,7 @@ final class Rendering implements Presets, \Taxmod\Core\Port\FieldAddons
         string $locale,
         Level $level,
         bool $editable,
-    ): string {
+    ): RenderResult {
         // ⚠️ *«Wie oft» und die Art stehen in eigenen Zellen der Feldzeile; `read_only` bleibt im
         // Bereich, als Schalter ([D-714](90-decision-log.md)).*
         // ⚠️ **Die drei Spalten der Kante stehen in der Zeile selbst (D-735) und nicht noch einmal hier** — sein Befund am
@@ -4023,7 +4024,7 @@ final class Rendering implements Presets, \Taxmod\Core\Port\FieldAddons
         unset($configured[EdgeColumn::MULTIPLICITY], $configured[EdgeColumn::READ_ONLY], $configured[EdgeColumn::UNIQUE], $configured[self::KIND_KEY]);
 
         if ($configured === []) {
-            return '';
+            return RenderResult::nothing();
         }
 
         return $this->renderers->byName(SettingsRenderer::NAME)->render(
@@ -4040,7 +4041,7 @@ final class Rendering implements Presets, \Taxmod\Core\Port\FieldAddons
                     formId: $formId,
                 ),
             )
-        )->markup;
+        );
     }
 
     /**
@@ -6166,7 +6167,7 @@ final class Rendering implements Presets, \Taxmod\Core\Port\FieldAddons
         // ⚠️ **Nur die erlaubten, wo der Teil sie nennt** (D-783) — *erlaubte Einheiten am Feld, erlaubte Präfixe an der Einheit.*
         // *Eine leere Liste, die der Teil **nennt**, heisst «nichts zu wählen» — der Präfix einer Einheit ohne Präfix.*
         if ($erlaubt !== null) {
-            return $erlaubt === [] ? RenderResult::of('') : $this->allowedChoiceMarkup($target, $erlaubt, $gewaehlt, $fieldName, $formId, $locale, $level, $settings, $required);
+            return $erlaubt === [] ? RenderResult::nothing() : $this->allowedChoiceMarkup($target, $erlaubt, $gewaehlt, $fieldName, $formId, $locale, $level, $settings, $required);
         }
 
         // ⚠️ **Ein Verweis auf den Typ «Node reference» selbst ist unbeschränkt: der ganze Baum, als Dialog** ([D-740](../../../docs/NewConcept/90-decision-log.md)) —
@@ -6457,7 +6458,7 @@ final class Rendering implements Presets, \Taxmod\Core\Port\FieldAddons
         string $filterForm = '',
     ): RenderResult {
         if ($walked === [] && ($filterName === '' || $leer === null)) {
-            return RenderResult::of('');
+            return RenderResult::nothing();
         }
 
         $nodes = $walked === []
@@ -6672,7 +6673,7 @@ final class Rendering implements Presets, \Taxmod\Core\Port\FieldAddons
 
         // ⚠️ **Die Zusatzfunktionen als geordnete Liste mit ihren Feldern je Glied** ([D-845](../../../docs/NewConcept/90-decision-log.md)).
         if ($typ === \Taxmod\Core\Model\NodeClass\AttributeType::Object && $erklaert->objectClass === \Taxmod\Core\Addon\Addon::class) {
-            return new RenderedSetting($key, SettingShape::Switch, null, $setting, $fieldPrefix === '' ? RenderResult::of('') : $this->drawAddons($subject, $fieldPrefix, $formId), CheckboxRenderer::NAME, $subjectType, band: $erklaert->band);
+            return new RenderedSetting($key, SettingShape::Switch, null, $setting, $fieldPrefix === '' ? RenderResult::nothing() : $this->drawAddons($subject, $fieldPrefix, $formId), CheckboxRenderer::NAME, $subjectType, band: $erklaert->band);
         }
 
         [$shape, $simple] = match ($typ) {
@@ -6757,7 +6758,7 @@ final class Rendering implements Presets, \Taxmod\Core\Port\FieldAddons
         if ($erklaert->list && $fieldPrefix !== '') {
             $liste      = $this->settingList($subject, $erklaert, $fieldPrefix, $formId);
             $mitListe   = $liste === null ? null : RenderResult::described(new \Taxmod\Core\Description\Sequence($gezeichnet->piece(), $liste));
-            $gezeichnet = $mitListe === null ? $gezeichnet : new RenderResult($mitListe->markup, $gezeichnet->usedRelations, $gezeichnet->condition, $mitListe->piece);
+            $gezeichnet = $mitListe === null ? $gezeichnet : $gezeichnet->showing($mitListe->piece());
         }
 
         return new RenderedSetting($key, $shape, null, $setting, $gezeichnet, $renderer->name(), $subjectType, band: $erklaert->band);
@@ -6810,7 +6811,7 @@ final class Rendering implements Presets, \Taxmod\Core\Port\FieldAddons
         $knoten = $subject instanceof Node ? $subject : ($subject instanceof Relation ? $this->gemerkterKnoten($subject->toNodeId) : null);
 
         if ($knoten === null) {
-            return RenderResult::of('');
+            return RenderResult::nothing();
         }
 
         // ⚠️ **Die Kandidaten: Kinder des Ankers für eine Knotenliste, die Felder des Knotens für eine Feldliste**
@@ -6832,7 +6833,7 @@ final class Rendering implements Presets, \Taxmod\Core\Port\FieldAddons
             $anker = $erklaert->from === null ? null : $this->framework->anchor($erklaert->from);
 
             if ($anker === null) {
-                return RenderResult::of('');
+                return RenderResult::nothing();
             }
 
             $kinder = $this->candidatesUnder($anker, $erklaert);
@@ -7150,7 +7151,7 @@ final class Rendering implements Presets, \Taxmod\Core\Port\FieldAddons
 
         $fest = RenderResult::described(new \Taxmod\Core\Description\FixedUnit($zeichen, $fieldName, $einzig, $formId));
 
-        return new RenderResult($fest->markup, $auswahl->usedRelations, $auswahl->condition, $fest->piece);
+        return $auswahl->showing($fest->piece());
     }
 
     /**
@@ -7978,7 +7979,7 @@ final class Rendering implements Presets, \Taxmod\Core\Port\FieldAddons
     {
         $beide = RenderResult::described(new \Taxmod\Core\Description\Sequence($teil->piece(), $danach));
 
-        return new RenderResult($beide->markup, $teil->usedRelations, $teil->condition, $beide->piece);
+        return $teil->showing($beide->piece());
     }
 
     /** @var array<int, list<\Taxmod\Core\Model\RelationRecord>> Die Werte eines Satzes, einmal je Zeichenlauf gelesen (`CD-7`). */
@@ -8420,7 +8421,7 @@ final class Rendering implements Presets, \Taxmod\Core\Port\FieldAddons
         $wahl = $renderer->render($relation, $context);
 
         return new RenderResult(
-            $wahl->markup . $tiefer->markup,
+            new \Taxmod\Core\Description\Sequence($wahl->piece(), $tiefer->piece()),
             [...$wahl->usedRelations, ...$tiefer->usedRelations],
             $tiefer->condition
         );
@@ -8499,7 +8500,7 @@ final class Rendering implements Presets, \Taxmod\Core\Port\FieldAddons
         $laeufer = $this->walker();
 
         if ($laeufer === null) {
-            return RenderResult::of('');
+            return RenderResult::nothing();
         }
 
         // ⚠️ *Teilt die Seite die Körper (D-866), klappt der Baum eines Satzformulars nicht auf die Wahl hin auf — sonst wäre jeder Baum ein

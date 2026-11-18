@@ -134,7 +134,7 @@ final class TableRenderer extends RendererNode
         // **eigenen Wert** des Knotens — und damit ist eine Tabelle ohne Feldspalten kein Sonderfall
         // mehr, sondern der gewöhnliche Fall für jeden Knoten unter `Primitives`.*
         if ($spalten === [] && $vorspalten === []) {
-            return RenderResult::of('');
+            return RenderResult::nothing();
         }
 
         $usedRelations = [];

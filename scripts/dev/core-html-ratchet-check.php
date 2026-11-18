@@ -18,8 +18,11 @@ const CEILINGS = [
     'hook calls in the core'             => 0,
     'arms of the node page dispatcher'   => 0,
     'modeller pages without the template' => 9,
-    'old names bridged for the modules'  => 10,
-    'core files handing markup through'  => 1,
+    // D-1431: +1 for `DialogNumber` (A17); falls with the next releases of Lager and Etiketten.
+    'old names bridged for the modules'  => 11,
+    'core files handing markup through'  => 0,
+    // A20: the one question the core asks the edge — never a way back into drawing.
+    'places asking whether a piece shows' => 2,
 ];
 
 const HTML_TAG = '/<(div|span|a|table|tr|td|th|p|ul|ol|li|input|select|option|label|form|button|details|summary|img|strong|em|h[1-6]|br|textarea|nav|section|fieldset|legend|dl|dt|dd|code|small|time|figure|svg|template)[ >\/"\']/';
@@ -59,8 +62,8 @@ foreach (phpFiles(ROOT . '/src/Core') as $file) {
     $code = withoutComments((string) file_get_contents($file));
     $name = substr($file, strlen(ROOT) + 1);
 
-    // A15: markup a part still draws itself, carried in a description (`Drawn`) — scaffolding of 6c, 0 at the merge.
-    if (preg_match('/\bDrawn\b/', $code) && ! str_ends_with($name, 'Description/Drawn.php')) {
+    // A15: markup carried through the core — the scaffold `Drawn`, a result's `markup`, a drawer handed in. 0 since 6c Teil 14b.
+    if (preg_match('/\bDrawn\b|->markup\b|\bdrawWith\b|RenderResult::draw\(/', $code)) {
         $counts['core files handing markup through']++;
         $where['core files handing markup through'][] = $name;
     }
@@ -71,6 +74,13 @@ foreach (phpFiles(ROOT . '/src/Core') as $file) {
     }
 
     // *Since 6c the escaping lives at the edge (`Draw\Html`); any way of escaping in the core counts.*
+    $fragt = substr_count($code, 'Shows::anything(');
+
+    if ($fragt > 0) {
+        $counts['places asking whether a piece shows'] += $fragt;
+        $where['places asking whether a piece shows'][] = $name;
+    }
+
     $counts['escapes in the core'] += preg_match_all('/\b(?:RenderResult::escape|Html::escape|htmlspecialchars|esc_html|esc_attr)\s*\(/', $code);
     $hooks = preg_match_all('/\b(add_action|add_filter|do_action|apply_filters)\s*\(/', $code);
 

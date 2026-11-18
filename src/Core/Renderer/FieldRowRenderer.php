@@ -161,7 +161,7 @@ final class FieldRowRenderer extends RendererNode
     public function render(Renderable $subject, RenderContext $context): RenderResult
     {
         if (! $subject instanceof Relation) {
-            return RenderResult::of('');
+            return RenderResult::nothing();
         }
 
         $u       = $context->surroundings;
@@ -212,7 +212,7 @@ final class FieldRowRenderer extends RendererNode
             $gemalt($u->configured[\Taxmod\Core\Model\EdgeColumn::UNIQUE] ?? null),
             $teil($haken),
             $wert !== null,
-            $wert === null || $u->locked || trim($wert->body) === '' ? null : $teil($wert),
+            $wert === null || $u->locked || ! $wert->shows() ? null : $teil($wert),
             $u->submits === null ? '' : self::formFor($subject),
             $u->submits?->action ?? '',
             $u->submits?->hidden ?? [],
@@ -220,7 +220,7 @@ final class FieldRowRenderer extends RendererNode
             $fold,
             8 + ($wert === null ? 0 : 1) + ($haken === null ? 0 : 1),
             self::settingsRowFor($subject),
-            $bereich === null || trim($bereich->body) === '' ? null : $teil($bereich)
+            $bereich === null || ! $bereich->shows() ? null : $teil($bereich)
         ));
     }
 

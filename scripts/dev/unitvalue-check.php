@@ -222,7 +222,7 @@ check('all three members were drawn', count($fields) === 3, (string) count($fiel
 $drawn = [];
 
 foreach ($fields as $field) {
-    $drawn[$field->relation->name] = $field->result->markup;
+    $drawn[$field->relation->name] = \Taxmod\WordPress\Draw\Markup::of($field->result);
 }
 
 check(
@@ -269,7 +269,7 @@ $withoutPrefix = $rendering->fieldsFor(
 $second = [];
 
 foreach ($withoutPrefix as $field) {
-    $second[$field->relation->name] = strip_tags($field->result->markup);
+    $second[$field->relation->name] = strip_tags(\Taxmod\WordPress\Draw\Markup::of($field->result));
 }
 
 // ⚠️ *Nothing is nothing* (D-232): an unanswered reference is not an empty string and not a zero.
@@ -339,7 +339,7 @@ check(
 $readBack = [];
 
 foreach ($rendering->fieldsFor(array_values($members), $held, Purpose::Display) as $field) {
-    $readBack[$field->relation->name] = trim(strip_tags($field->result->markup));
+    $readBack[$field->relation->name] = trim(strip_tags(\Taxmod\WordPress\Draw\Markup::of($field->result)));
 }
 
 check('und es zeichnet sich als 2.7 kilo Ohm — bis `OQ-134` steht', ($readBack['wert'] ?? '') === '2.7'

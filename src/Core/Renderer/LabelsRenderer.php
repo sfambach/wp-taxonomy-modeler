@@ -80,7 +80,7 @@ final class LabelsRenderer extends RendererNode
         $rows = $context->surroundings->rows;
 
         if ($rows === []) {
-            return RenderResult::of('');
+            return RenderResult::nothing();
         }
 
         $slots = array_values(array_filter($rows, static fn (mixed $row): bool => $row instanceof LabelSlot));

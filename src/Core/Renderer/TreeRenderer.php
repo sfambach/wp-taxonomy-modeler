@@ -67,7 +67,7 @@ final class TreeRenderer extends RendererNode
         // etwas stand, das auch ohne Zeilen dasteht. **Eine frühe Rückgabe gehört unter alles, was
         // nicht von dem abhängt, worauf sie prüft.***
         if ($rows === [] && $context->surroundings->filterName === '') {
-            return RenderResult::of('');
+            return RenderResult::nothing();
         }
 
         $lines = [];

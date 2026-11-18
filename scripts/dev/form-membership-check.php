@@ -226,7 +226,7 @@ foreach ([$erklaerend, $erbend, $beides] as $id) {
     $mitForm  = 0;
 
     foreach ($zeilen as $zeile) {
-        $befund = stummeElemente($zeile->result->markup);
+        $befund = stummeElemente(\Taxmod\WordPress\Draw\Markup::of($zeile->result));
 
         if ($befund['form'] === '') {
             continue;
@@ -281,7 +281,7 @@ $gefunden = 0;
 $stumm    = 0;
 
 foreach ($rendering->fieldRowsFor($kanten, $id, $actions, $submits, 'taxmod_field_name', 'taxmod_field_setting', '', Level::Admin, []) as $zeile) {
-    $markup = $zeile->result->markup;
+    $markup = \Taxmod\WordPress\Draw\Markup::of($zeile->result);
 
     if (! preg_match('/<input\b[^>]*\btaxmod-field-rename\b[^>]*>/', $markup, $treffer)) {
         continue;
@@ -336,7 +336,7 @@ $falschesFor = [];
 foreach ($zeilen as $zeile) {
     preg_match_all(
         '/<(?:input|select|textarea)\b[^>]*\bname="([^"]+)"[^>]*>/',
-        $zeile->result->markup,
+        \Taxmod\WordPress\Draw\Markup::of($zeile->result),
         $alle,
         PREG_SET_ORDER
     );

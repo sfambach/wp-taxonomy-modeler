@@ -128,8 +128,8 @@ final class TypedFieldsTest extends TestCase
             )
         );
 
-        self::assertStringContainsString('Gramm', $shown->markup);
-        self::assertStringNotContainsString('4711', $shown->markup);
+        self::assertStringContainsString('Gramm', \Taxmod\WordPress\Draw\Markup::of($shown));
+        self::assertStringNotContainsString('4711', \Taxmod\WordPress\Draw\Markup::of($shown));
 
         // ⚠️ **Er zeichnet jetzt auch beim Bearbeiten, und zwar dasselbe** *(2026-09-06, auf seine
         // Anweisung «für die Base units ist das einfach Referenz für alle»)*. **Der alte Grund —
@@ -154,8 +154,8 @@ final class TypedFieldsTest extends TestCase
             $this->context(Purpose::Display, TypedValue::ofReference(4711), SimpleType::NodeRef)
         );
 
-        self::assertStringContainsString('taxmod-dangling', $shown->markup);
-        self::assertStringContainsString('#4711', $shown->markup);
+        self::assertStringContainsString('taxmod-dangling', \Taxmod\WordPress\Draw\Markup::of($shown));
+        self::assertStringContainsString('#4711', \Taxmod\WordPress\Draw\Markup::of($shown));
     }
 
     /**
@@ -170,7 +170,7 @@ final class TypedFieldsTest extends TestCase
     {
         $baum = new Section('', '<span class="row">Gramm</span>');
 
-        $ins_leere = (new ChooserRenderer())->render(
+        $ins_leere = \Taxmod\WordPress\Draw\Markup::of((new ChooserRenderer())->render(
             $this->subject,
             new RenderContext(
                 purpose: Purpose::Edit,
@@ -184,9 +184,9 @@ final class TypedFieldsTest extends TestCase
                     sections: [ChooserRenderer::CANDIDATES => $baum]
                 ),
             )
-        )->markup;
+        ));
 
-        $nichts = (new ChooserRenderer())->render(
+        $nichts = \Taxmod\WordPress\Draw\Markup::of((new ChooserRenderer())->render(
             $this->subject,
             new RenderContext(
                 purpose: Purpose::Edit,
@@ -200,7 +200,7 @@ final class TypedFieldsTest extends TestCase
                     sections: [ChooserRenderer::CANDIDATES => $baum]
                 ),
             )
-        )->markup;
+        ));
 
         self::assertStringContainsString('taxmod-dangling', $ins_leere);
         self::assertStringContainsString('#4711', $ins_leere);
@@ -321,7 +321,7 @@ final class TypedFieldsTest extends TestCase
             $this->context(Purpose::Display, TypedValue::nothing(), SimpleType::Bool)
         );
 
-        self::assertStringNotContainsString('checkbox', $result->markup);
+        self::assertStringNotContainsString('checkbox', \Taxmod\WordPress\Draw\Markup::of($result));
     }
 
     #[Test]
@@ -334,9 +334,9 @@ final class TypedFieldsTest extends TestCase
             $this->context(Purpose::Edit, TypedValue::ofBool(false), SimpleType::Bool, [], 'v[7]')
         );
 
-        self::assertStringContainsString('<input type="hidden" name="v[7]" value="0">', $result->markup);
-        self::assertStringContainsString('type="checkbox"', $result->markup);
-        self::assertStringNotContainsString('checked', $result->markup);
+        self::assertStringContainsString('<input type="hidden" name="v[7]" value="0">', \Taxmod\WordPress\Draw\Markup::of($result));
+        self::assertStringContainsString('type="checkbox"', \Taxmod\WordPress\Draw\Markup::of($result));
+        self::assertStringNotContainsString('checked', \Taxmod\WordPress\Draw\Markup::of($result));
     }
 
     #[Test]
@@ -347,7 +347,7 @@ final class TypedFieldsTest extends TestCase
             $this->context(Purpose::Edit, TypedValue::ofBool(true), SimpleType::Bool, [], 'v[7]')
         );
 
-        self::assertStringContainsString('checked', $result->markup);
+        self::assertStringContainsString('checked', \Taxmod\WordPress\Draw\Markup::of($result));
     }
 
     #[Test]
@@ -361,9 +361,9 @@ final class TypedFieldsTest extends TestCase
             ], 'v[7]')
         );
 
-        self::assertStringContainsString('min="1"', $result->markup);
-        self::assertStringContainsString('max="10"', $result->markup);
-        self::assertStringContainsString('step="1"', $result->markup);
+        self::assertStringContainsString('min="1"', \Taxmod\WordPress\Draw\Markup::of($result));
+        self::assertStringContainsString('max="10"', \Taxmod\WordPress\Draw\Markup::of($result));
+        self::assertStringContainsString('step="1"', \Taxmod\WordPress\Draw\Markup::of($result));
     }
 
     #[Test]
@@ -380,7 +380,7 @@ final class TypedFieldsTest extends TestCase
                 ], 'v[7]')
             );
 
-            self::assertStringContainsString('step="5"', $result->markup, $renderer->name());
+            self::assertStringContainsString('step="5"', \Taxmod\WordPress\Draw\Markup::of($result), $renderer->name());
         }
     }
 
@@ -394,7 +394,7 @@ final class TypedFieldsTest extends TestCase
             $this->context(Purpose::Edit, TypedValue::nothing(), SimpleType::Decimal, [], 'v[7]')
         );
 
-        self::assertStringContainsString('step="any"', $result->markup);
+        self::assertStringContainsString('step="any"', \Taxmod\WordPress\Draw\Markup::of($result));
     }
 
     #[Test]
@@ -407,12 +407,12 @@ final class TypedFieldsTest extends TestCase
             $this->context(Purpose::Edit, TypedValue::nothing(), SimpleType::Int, [], 'v[7]')
         );
 
-        self::assertStringContainsString('pattern="[+\-]?\d+"', $result->markup);
-        self::assertStringContainsString('inputmode="numeric"', $result->markup);
+        self::assertStringContainsString('pattern="[+\-]?\d+"', \Taxmod\WordPress\Draw\Markup::of($result));
+        self::assertStringContainsString('inputmode="numeric"', \Taxmod\WordPress\Draw\Markup::of($result));
 
         // ⚠️ Not `type="number"`: it reports an **empty value** for content it cannot parse, and
         // empty here means *clear this attribute* — a stray keystroke would delete a value.
-        self::assertStringContainsString('type="text"', $result->markup);
+        self::assertStringContainsString('type="text"', \Taxmod\WordPress\Draw\Markup::of($result));
     }
 
     #[Test]
@@ -434,10 +434,10 @@ final class TypedFieldsTest extends TestCase
             $pattern = $type->pattern();
             self::assertNotNull($pattern);
 
-            $markup = (new FieldRenderer())->render(
+            $markup = \Taxmod\WordPress\Draw\Markup::of((new FieldRenderer())->render(
                 $this->subject,
                 $this->context(Purpose::Edit, TypedValue::nothing(), $type, [], 'v[7]')
-            )->markup;
+            ));
 
             self::assertStringContainsString('pattern="' . $pattern . '"', $markup, $type->value);
         }
@@ -452,8 +452,8 @@ final class TypedFieldsTest extends TestCase
             $this->context(Purpose::Edit, TypedValue::nothing(), SimpleType::Text, [], 'v[7]')
         );
 
-        self::assertStringNotContainsString('pattern', $result->markup);
-        self::assertStringNotContainsString('inputmode', $result->markup);
+        self::assertStringNotContainsString('pattern', \Taxmod\WordPress\Draw\Markup::of($result));
+        self::assertStringNotContainsString('inputmode', \Taxmod\WordPress\Draw\Markup::of($result));
     }
 
     #[Test]
@@ -464,8 +464,8 @@ final class TypedFieldsTest extends TestCase
             $this->context(Purpose::Edit, TypedValue::ofInt(47), SimpleType::Int, [], 'v[7]')
         );
 
-        self::assertStringContainsString('type="range"', $result->markup);
-        self::assertStringContainsString('47', $result->markup);
+        self::assertStringContainsString('type="range"', \Taxmod\WordPress\Draw\Markup::of($result));
+        self::assertStringContainsString('47', \Taxmod\WordPress\Draw\Markup::of($result));
     }
 
     /**
@@ -500,11 +500,11 @@ final class TypedFieldsTest extends TestCase
             )
         );
 
-        self::assertStringContainsString('value="12"', $result->markup);
-        self::assertStringNotContainsString('value="XII"', $result->markup);
+        self::assertStringContainsString('value="12"', \Taxmod\WordPress\Draw\Markup::of($result));
+        self::assertStringNotContainsString('value="XII"', \Taxmod\WordPress\Draw\Markup::of($result));
 
         // Und die Ziffer, die ein Mensch liest, steht daneben.
-        self::assertStringContainsString('XII', $result->markup);
+        self::assertStringContainsString('XII', \Taxmod\WordPress\Draw\Markup::of($result));
     }
 
     /** ⚠️ *Dieselbe Trennlinie am Zahlenfeld — dieselben Typen, dieselben Konverter.* */
@@ -528,8 +528,8 @@ final class TypedFieldsTest extends TestCase
             )
         );
 
-        self::assertStringContainsString('value="255"', $result->markup);
-        self::assertStringNotContainsString('value="FF"', $result->markup);
+        self::assertStringContainsString('value="255"', \Taxmod\WordPress\Draw\Markup::of($result));
+        self::assertStringNotContainsString('value="FF"', \Taxmod\WordPress\Draw\Markup::of($result));
     }
 
     /**
@@ -557,7 +557,7 @@ final class TypedFieldsTest extends TestCase
             )
         );
 
-        self::assertStringContainsString('value="XII"', $result->markup);
+        self::assertStringContainsString('value="XII"', \Taxmod\WordPress\Draw\Markup::of($result));
     }
 
     #[Test]
@@ -568,8 +568,8 @@ final class TypedFieldsTest extends TestCase
             $this->context(Purpose::Display, TypedValue::ofText('a"@b.example'), SimpleType::Email)
         );
 
-        self::assertStringContainsString('href="mailto:a&quot;@b.example"', $result->markup);
-        self::assertStringNotContainsString('"@b.example"', $result->markup);
+        self::assertStringContainsString('href="mailto:a&quot;@b.example"', \Taxmod\WordPress\Draw\Markup::of($result));
+        self::assertStringNotContainsString('"@b.example"', \Taxmod\WordPress\Draw\Markup::of($result));
     }
 
     #[Test]
@@ -580,7 +580,7 @@ final class TypedFieldsTest extends TestCase
             $this->context(Purpose::Display, TypedValue::nothing(), SimpleType::Email)
         );
 
-        self::assertStringNotContainsString('mailto', $result->markup);
+        self::assertStringNotContainsString('mailto', \Taxmod\WordPress\Draw\Markup::of($result));
     }
 
     #[Test]
@@ -600,11 +600,11 @@ final class TypedFieldsTest extends TestCase
             ], 'v[7]')
         );
 
-        self::assertStringContainsString('type="datetime-local"', $whole->markup);
-        self::assertStringContainsString('value="2026-08-25T14:32"', $whole->markup);
+        self::assertStringContainsString('type="datetime-local"', \Taxmod\WordPress\Draw\Markup::of($whole));
+        self::assertStringContainsString('value="2026-08-25T14:32"', \Taxmod\WordPress\Draw\Markup::of($whole));
 
-        self::assertStringContainsString('type="date"', $dateOnly->markup);
-        self::assertStringContainsString('value="2026-08-25"', $dateOnly->markup);
+        self::assertStringContainsString('type="date"', \Taxmod\WordPress\Draw\Markup::of($dateOnly));
+        self::assertStringContainsString('value="2026-08-25"', \Taxmod\WordPress\Draw\Markup::of($dateOnly));
     }
 
     #[Test]
@@ -622,8 +622,8 @@ final class TypedFieldsTest extends TestCase
             $this->context(Purpose::Edit, TypedValue::ofText('#663399'), SimpleType::Color, [], 'v[7]')
         );
 
-        self::assertStringContainsString('type="text"', $named->markup);
-        self::assertStringContainsString('type="color"', $hex->markup);
+        self::assertStringContainsString('type="text"', \Taxmod\WordPress\Draw\Markup::of($named));
+        self::assertStringContainsString('type="color"', \Taxmod\WordPress\Draw\Markup::of($hex));
     }
 
     #[Test]
@@ -648,8 +648,8 @@ final class TypedFieldsTest extends TestCase
             );
 
             // ⚠️ *Seit D-739 bleibt das Feld, ausgegraut und gefüllt: «feld ausgegraut und falls wert da ist gefüllt».*
-            self::assertStringStartsWith('<fieldset disabled class="taxmod-read-only">', $fixed->markup, $renderer->name());
-            self::assertStringContainsString('x', $fixed->markup, $renderer->name());
+            self::assertStringStartsWith('<fieldset disabled class="taxmod-read-only">', \Taxmod\WordPress\Draw\Markup::of($fixed), $renderer->name());
+            self::assertStringContainsString('x', \Taxmod\WordPress\Draw\Markup::of($fixed), $renderer->name());
         }
     }
 
@@ -666,7 +666,7 @@ final class TypedFieldsTest extends TestCase
             ])
         );
 
-        self::assertStringContainsString('x', $drawn->markup);
+        self::assertStringContainsString('x', \Taxmod\WordPress\Draw\Markup::of($drawn));
     }
 
     // ------------------------------------------------------------ reading back

@@ -100,7 +100,7 @@ final class HeadRenderer extends RendererNode
 
             // ⚠️ An absent row is absent, not empty. *The head of a framework node has no acts worth
             // offering, and drawing a hollow band there would read as something having gone wrong.*
-            if ($section === null || trim($section->body) === '') {
+            if ($section === null || ! $section->shows()) {
                 continue;
             }
 

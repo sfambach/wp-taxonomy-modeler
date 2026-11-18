@@ -145,7 +145,7 @@ final class RecordTreeTest extends TestCase
     #[Test]
     public function the_chooser_draws_them_with_the_node_choosers_dialog_rows_and_search_field(): void
     {
-        $html = $this->rendering()->recordChooser(
+        $html = \Taxmod\WordPress\Draw\Markup::of($this->rendering()->recordChooser(
             RecordTree::walk(self::lager(), null, [5]),
             'lager[ort]',
             3,
@@ -153,7 +153,7 @@ final class RecordTreeTest extends TestCase
             '',
             formId: 'lager-form',
             settings: ChooserRenderer::asDialog()
-        )->markup;
+        ));
 
         self::assertStringContainsString('taxmod-dialog', $html);
         self::assertStringContainsString('taxmod-tree-filter', $html);
@@ -175,7 +175,7 @@ final class RecordTreeTest extends TestCase
     #[Test]
     public function a_record_word_is_escaped(): void
     {
-        $html = $this->rendering()->recordChooser(RecordTree::walk([new RecordInTree(1, null, '<b>Fach</b> & "1"')]), 'ort')->markup;
+        $html = \Taxmod\WordPress\Draw\Markup::of($this->rendering()->recordChooser(RecordTree::walk([new RecordInTree(1, null, '<b>Fach</b> & "1"')]), 'ort'));
 
         self::assertStringNotContainsString('<b>Fach</b>', $html);
         self::assertStringContainsString('&lt;b&gt;Fach&lt;/b&gt; &amp;', $html);
@@ -198,7 +198,7 @@ final class RecordTreeTest extends TestCase
         self::assertSame(array_slice($top, 3), $rows, 'the tree below stays whole');
         self::assertSame($rows, RecordTree::preferredOnTop($rows, [], 'Preferred'), 'nothing preferred, nothing changes');
 
-        $html = $this->rendering()->recordChooser($top, 'location', null, [RecordTree::PREFERRED_GROUP])->markup;
+        $html = \Taxmod\WordPress\Draw\Markup::of($this->rendering()->recordChooser($top, 'location', null, [RecordTree::PREFERRED_GROUP]));
         self::assertStringNotContainsString('value="-1"', $html, 'the group cannot be picked');
         self::assertStringContainsString('data-fold="auf"', explode('★', $html)[0], 'and stands open');
         self::assertSame(2, substr_count($html, 'value="5"'), 'a preferred record can be picked on top and in the tree');

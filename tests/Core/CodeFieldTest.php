@@ -32,10 +32,10 @@ final class CodeFieldTest extends TestCase
             $resolved[$key] = new ResolvedSetting($key, $one, 1, true);
         }
 
-        return (new CodeRenderer())->render(
+        return \Taxmod\WordPress\Draw\Markup::of((new CodeRenderer())->render(
             Node::create(1, 'Layout', null),
             new RenderContext($purpose, $value, $resolved, '', Level::Admin, true, 'f[7]')
-        )->markup;
+        ));
     }
 
     #[Test]

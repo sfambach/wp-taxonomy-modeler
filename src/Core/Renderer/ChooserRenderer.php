@@ -104,7 +104,7 @@ final class ChooserRenderer extends RendererNode
     {
         $tree = $context->surroundings->sections[self::CANDIDATES] ?? null;
 
-        if ($tree === null || $tree->body === '') {
+        if ($tree === null || ! $tree->shows()) {
             return RenderResult::described(TreeChoice::nothingToChoose($tree?->title ?? ''));
         }
 
@@ -131,7 +131,7 @@ final class ChooserRenderer extends RendererNode
     {
         $confirm = $context->surroundings->sections[self::CONFIRM] ?? null;
 
-        $eigener = $trigger !== null && $trigger->body !== '';
+        $eigener = $trigger !== null && $trigger->shows();
 
         return RenderResult::described(new DialogBox(
             $switch,

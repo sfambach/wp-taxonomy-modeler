@@ -1,8 +1,13 @@
 <?php declare(strict_types=1);
 
-namespace Taxmod\Core\Renderer;
+namespace Taxmod\WordPress\Draw;
 
 use Taxmod\Core\Model\ResolvedSetting;
+use Taxmod\Core\Renderer\Purpose;
+use Taxmod\Core\Renderer\Renderable;
+use Taxmod\Core\Renderer\RenderContext;
+use Taxmod\Core\Renderer\SpinnerRenderer;
+use Taxmod\Core\Renderer\Surroundings;
 use Taxmod\Core\Model\SimpleType;
 use Taxmod\Core\Model\TypedValue;
 
@@ -11,7 +16,8 @@ use Taxmod\Core\Model\TypedValue;
  *
  * His word 2026-11-08 on the label count: «kein Standard-Int-Feld. Sondern wieder was Eigenes.» A dialog's number is not a
  * field of a record, so it has no relation; this is the one place that hands such a number to {@see SpinnerRenderer}, so it
- * looks and behaves like every integer in a record form.
+ * looks and behaves like every integer in a record form. At the edge since renderer step 6c: it hands the modules markup;
+ * the old name in the core still finds it (FormerNames, D-1431).
  *
  * @see docs/NewConcept/30-renderer.md
  */
@@ -36,13 +42,13 @@ final class DialogNumber implements Renderable
     {
         $bound = static fn (string $key, int $number): ResolvedSetting => new ResolvedSetting($key, TypedValue::ofInt($number), 0, true);
 
-        return (new SpinnerRenderer())->render(new self($label), new RenderContext(
+        return Markup::of((new SpinnerRenderer())->render(new self($label), new RenderContext(
             purpose: Purpose::Edit,
             value: $value === null ? TypedValue::nothing() : TypedValue::ofInt($value),
             settings: ['min' => $bound('min', $min), 'max' => $bound('max', $max)],
             fieldName: $name,
             type: SimpleType::Int,
             surroundings: new Surroundings(formId: $formId),
-        ))->markup;
+        )));
     }
 }

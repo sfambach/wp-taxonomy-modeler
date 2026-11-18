@@ -4,7 +4,7 @@ namespace Taxmod\Tests\Core;
 
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
-use Taxmod\Core\Renderer\DialogNumber;
+use Taxmod\WordPress\Draw\DialogNumber;
 
 /** A dialog's number is drawn by the model's integer field, not by hand (his word 2026-11-08: «kein Standard-Int-Feld»). */
 final class DialogNumberTest extends TestCase

@@ -99,7 +99,7 @@ final class InheritedSettingLockTest extends TestCase
             SettingShape::Words,
             SimpleType::Text,
             $angabe,
-            RenderResult::of('<input name="v">'),
+            \Taxmod\Tests\Support\Fixture::result('«input v»'),
             PlainRenderer::NAME,
             SimpleType::Text
         ))->withOrigin('Integer', 'taxmod_value_override[42]');
@@ -110,7 +110,7 @@ final class InheritedSettingLockTest extends TestCase
             new Control('word:automatic', '', 'automatisch gewählt — %s ist hier nicht zulässig'),
         ];
 
-        $markup = static fn (ResolvedSetting $angabe) => $tafel->render(
+        $markup = static fn (ResolvedSetting $angabe) => \Taxmod\WordPress\Draw\Markup::of($tafel->render(
             $subject,
             new RenderContext(
                 purpose: Purpose::Edit,
@@ -118,7 +118,7 @@ final class InheritedSettingLockTest extends TestCase
                 level: Level::Admin,
                 surroundings: new Surroundings(actions: $worte, configured: ['label_role' => $zeile($angabe)], formId: 'f'),
             )
-        )->markup;
+        ));
 
         $geerbt = $markup(new ResolvedSetting('label_role', TypedValue::ofText('symbol'), 3, false));
         self::assertStringContainsString('taxmod-setting-locked', $geerbt);

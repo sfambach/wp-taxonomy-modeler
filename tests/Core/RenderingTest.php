@@ -284,11 +284,11 @@ final class RenderingTest extends TestCase
         $this->neuZeichnen();
 
         $leer = $this->rendering->fieldsFor([$ding], [], Purpose::Edit, 'v');
-        self::assertStringContainsString('taxmod-record-remote', $leer[0]->result->markup);
-        self::assertStringNotContainsString('BC547', $leer[0]->result->markup, 'nichts unter Model wird vorab geladen');
+        self::assertStringContainsString('taxmod-record-remote', \Taxmod\WordPress\Draw\Markup::of($leer[0]->result));
+        self::assertStringNotContainsString('BC547', \Taxmod\WordPress\Draw\Markup::of($leer[0]->result), 'nichts unter Model wird vorab geladen');
 
         $gewaehlt = $this->rendering->fieldsFor([$ding], [$ding->id => TypedValue::ofRecordReference($satz)], Purpose::Edit, 'v');
-        self::assertStringContainsString('BC547', $gewaehlt[0]->result->markup, 'der gewählte Satz steht mit seinem Wort da');
+        self::assertStringContainsString('BC547', \Taxmod\WordPress\Draw\Markup::of($gewaehlt[0]->result), 'der gewählte Satz steht mit seinem Wort da');
     }
 
     /** D-1259: a property a module declares is set at a group, inherited below, overridden further down and dropped again. */
@@ -339,10 +339,10 @@ final class RenderingTest extends TestCase
 
         $offen = $this->rendering->withDialogWords('OK', 'Cancel', open: 'Open')->withRecordLinks(static fn (int $id): string => 'https://x.test/r/' . $id);
 
-        $gewaehlt = $offen->fieldsFor([$ding], [$ding->id => TypedValue::ofRecordReference($satz)], Purpose::Edit, 'v')[0]->result->markup;
+        $gewaehlt = \Taxmod\WordPress\Draw\Markup::of($offen->fieldsFor([$ding], [$ding->id => TypedValue::ofRecordReference($satz)], Purpose::Edit, 'v')[0]->result);
         self::assertStringContainsString('href="https://x.test/r/' . $satz . '" target="_blank"', $gewaehlt);
 
-        $leer = $offen->fieldsFor([$ding], [], Purpose::Edit, 'v')[0]->result->markup;
+        $leer = \Taxmod\WordPress\Draw\Markup::of($offen->fieldsFor([$ding], [], Purpose::Edit, 'v')[0]->result);
         self::assertStringNotContainsString('taxmod-record-open', $leer);
     }
 
@@ -359,11 +359,11 @@ final class RenderingTest extends TestCase
         $ding     = $this->editor->addField($material->id, $model->id, 'Bezug Ding', RelationKind::Aggregation);
         $this->neuZeichnen();
 
-        $markup = $this->rendering->withDialogWords('OK', 'Cancel', 'Show the tree')->fieldsFor([$ding], [], Purpose::Edit, 'v')[0]->result->markup;
+        $markup = \Taxmod\WordPress\Draw\Markup::of($this->rendering->withDialogWords('OK', 'Cancel', 'Show the tree')->fieldsFor([$ding], [], Purpose::Edit, 'v')[0]->result);
         self::assertStringContainsString('taxmod-record-browse', $markup);
         self::assertStringNotContainsString($teil->name, $markup, 'kein Knoten des Baums steht vorab in der Seite');
 
-        $ohneWort = $this->rendering->fieldsFor([$ding], [], Purpose::Edit, 'v')[0]->result->markup;
+        $ohneWort = \Taxmod\WordPress\Draw\Markup::of($this->rendering->fieldsFor([$ding], [], Purpose::Edit, 'v')[0]->result);
         self::assertStringNotContainsString('taxmod-record-browse', $ohneWort, 'ohne Wort vom Rand kein Knopf');
     }
 
@@ -389,7 +389,7 @@ final class RenderingTest extends TestCase
         $fields = $this->rendering->fieldsFor([$durch], [], Purpose::Edit, 'v');
 
         self::assertSame(SummaryRenderer::NAME, $fields[0]->rendererName, 'die Satzauswahl, nicht die Anzeige eines Knotenverweises');
-        self::assertStringContainsString('RS Components', $fields[0]->result->markup, 'der Satz steht im Angebot');
+        self::assertStringContainsString('RS Components', \Taxmod\WordPress\Draw\Markup::of($fields[0]->result), 'der Satz steht im Angebot');
     }
 
     // --------------------------------------------- the binding is the id (D-510)
@@ -519,8 +519,8 @@ final class RenderingTest extends TestCase
 
         $fields = $this->rendering->fieldsFor([$flag, $name], [], Purpose::Edit, 'taxmod_value');
 
-        self::assertStringContainsString('name="taxmod_value[' . $flag->id . ']"', $fields[0]->result->markup);
-        self::assertStringContainsString('name="taxmod_value[' . $name->id . ']"', $fields[1]->result->markup);
+        self::assertStringContainsString('name="taxmod_value[' . $flag->id . ']"', \Taxmod\WordPress\Draw\Markup::of($fields[0]->result));
+        self::assertStringContainsString('name="taxmod_value[' . $name->id . ']"', \Taxmod\WordPress\Draw\Markup::of($fields[1]->result));
     }
 
     #[Test]
@@ -537,8 +537,8 @@ final class RenderingTest extends TestCase
             'v'
         );
 
-        self::assertStringContainsString('4k7', $fields[0]->result->markup);
-        self::assertStringNotContainsString('4k7', $fields[1]->result->markup);
+        self::assertStringContainsString('4k7', \Taxmod\WordPress\Draw\Markup::of($fields[0]->result));
+        self::assertStringNotContainsString('4k7', \Taxmod\WordPress\Draw\Markup::of($fields[1]->result));
     }
 
     #[Test]
@@ -687,8 +687,8 @@ final class RenderingTest extends TestCase
         )[0];
 
         self::assertSame(ReferenceRenderer::NAME, $field->rendererName);
-        self::assertStringContainsString('Gramm', $field->result->markup);
-        self::assertStringNotContainsString((string) $gram->id, $field->result->markup);
+        self::assertStringContainsString('Gramm', \Taxmod\WordPress\Draw\Markup::of($field->result));
+        self::assertStringNotContainsString((string) $gram->id, \Taxmod\WordPress\Draw\Markup::of($field->result));
     }
 
     #[Test]
@@ -735,11 +735,11 @@ final class RenderingTest extends TestCase
             ''
         );
 
-        self::assertStringContainsString('k</', $fields[0]->result->markup, 'the symbol role was not used');
-        self::assertStringNotContainsString('kilo', $fields[0]->result->markup);
+        self::assertStringContainsString('k</', \Taxmod\WordPress\Draw\Markup::of($fields[0]->result), 'the symbol role was not used');
+        self::assertStringNotContainsString('kilo', \Taxmod\WordPress\Draw\Markup::of($fields[0]->result));
 
         // The other relation said nothing, so it keeps the ordinary role — same node, other text.
-        self::assertStringContainsString('kilo', $fields[1]->result->markup);
+        self::assertStringContainsString('kilo', \Taxmod\WordPress\Draw\Markup::of($fields[1]->result));
     }
 
     #[Test]
@@ -768,7 +768,7 @@ final class RenderingTest extends TestCase
             ''
         )[0];
 
-        self::assertStringContainsString('kilo', $field->result->markup);
+        self::assertStringContainsString('kilo', \Taxmod\WordPress\Draw\Markup::of($field->result));
     }
 
     /**
@@ -789,9 +789,9 @@ final class RenderingTest extends TestCase
         $field = $this->rendering->fieldsFor([$relation], [], Purpose::Edit, 'v')[0];
 
         self::assertSame(ChoiceRenderer::NAME, $field->rendererName);
-        self::assertStringContainsString('>form<', $field->result->markup);
-        self::assertStringContainsString('>table<', $field->result->markup);
-        self::assertStringNotContainsString('taxmod-unsatisfiable', $field->result->markup);
+        self::assertStringContainsString('>form<', \Taxmod\WordPress\Draw\Markup::of($field->result));
+        self::assertStringContainsString('>table<', \Taxmod\WordPress\Draw\Markup::of($field->result));
+        self::assertStringNotContainsString('taxmod-unsatisfiable', \Taxmod\WordPress\Draw\Markup::of($field->result));
     }
 
     /**
@@ -863,14 +863,14 @@ final class RenderingTest extends TestCase
         )[0];
 
         self::assertFalse($field->hasNoRenderer());
-        self::assertStringContainsString('taxmod-choice', $field->result->markup);
+        self::assertStringContainsString('taxmod-choice', \Taxmod\WordPress\Draw\Markup::of($field->result));
 
         // ⚠️ **Der Wert ist zu sehen — das ist der Kern der alten Zusage.** *Eine leere gesperrte Auswahl
         // hätte ihn verschwinden lassen, und das nächste Speichern hätte «nichts» geschrieben.*
-        self::assertStringContainsString('Gramm', $field->result->markup);
+        self::assertStringContainsString('Gramm', \Taxmod\WordPress\Draw\Markup::of($field->result));
 
         // ⚠️ *Und sie sieht nicht bedienbar aus: ein Ausgang ist keine Entscheidung (`R30`).*
-        self::assertStringContainsString('disabled', $field->result->markup);
+        self::assertStringContainsString('disabled', \Taxmod\WordPress\Draw\Markup::of($field->result));
     }
 
     #[Test]
@@ -893,9 +893,9 @@ final class RenderingTest extends TestCase
         )[0];
 
         self::assertTrue($field->hasNoRenderer(), 'it is still a marked fault, not a value');
-        self::assertStringNotContainsString('999001', $field->result->markup, 'and never the bare id');
-        self::assertStringContainsString('summary renderer', $field->result->markup);
-        self::assertStringNotContainsString('the one set for this cannot draw', $field->result->markup);
+        self::assertStringNotContainsString('999001', \Taxmod\WordPress\Draw\Markup::of($field->result), 'and never the bare id');
+        self::assertStringContainsString('summary renderer', \Taxmod\WordPress\Draw\Markup::of($field->result));
+        self::assertStringNotContainsString('the one set for this cannot draw', \Taxmod\WordPress\Draw\Markup::of($field->result));
     }
 
     // ------------------------------------------------ the converter in effect · D-219
@@ -910,13 +910,13 @@ final class RenderingTest extends TestCase
 
         $before = $this->rendering->fieldsFor([$relation], [$relation->id => TypedValue::ofInt(12)], Purpose::Display)[0];
 
-        self::assertStringContainsString('12', $before->result->markup, 'no converter means shown as stored');
+        self::assertStringContainsString('12', \Taxmod\WordPress\Draw\Markup::of($before->result), 'no converter means shown as stored');
 
         $this->einstellung($relation, 'converter', TypedValue::ofText('roman'));
 
         $after = $this->rendering->fieldsFor([$relation], [$relation->id => TypedValue::ofInt(12)], Purpose::Display)[0];
 
-        self::assertStringContainsString('XII', $after->result->markup);
+        self::assertStringContainsString('XII', \Taxmod\WordPress\Draw\Markup::of($after->result));
         // ⚠️ *The same renderer as before* — the mapping changed, the form did not. That is D-219's
         // split: the converter is the mapping, the renderer is the form.
         self::assertSame($before->rendererName, $after->rendererName);
@@ -934,7 +934,7 @@ final class RenderingTest extends TestCase
 
         $field = $this->rendering->fieldsFor([$relation], [], Purpose::Display)[0];
 
-        self::assertStringNotContainsString('—', $field->result->markup);
+        self::assertStringNotContainsString('—', \Taxmod\WordPress\Draw\Markup::of($field->result));
     }
 
     #[Test]
@@ -950,7 +950,7 @@ final class RenderingTest extends TestCase
 
         $field = $this->rendering->fieldsFor([$relation], [$relation->id => TypedValue::ofText('12')], Purpose::Display)[0];
 
-        self::assertStringContainsString('12', $field->result->markup);
+        self::assertStringContainsString('12', \Taxmod\WordPress\Draw\Markup::of($field->result));
     }
 
     #[Test]
@@ -972,7 +972,7 @@ final class RenderingTest extends TestCase
 
         $field = $this->rendering->fieldsFor([$relation], [$relation->id => TypedValue::ofInt(12)], Purpose::Display)[0];
 
-        self::assertStringContainsString('12', $field->result->markup);
+        self::assertStringContainsString('12', \Taxmod\WordPress\Draw\Markup::of($field->result));
     }
 
     // --------------------------------------------------------- the tree's cell
@@ -988,7 +988,7 @@ final class RenderingTest extends TestCase
 
         self::assertStringContainsString(
             'dashicons-' . \Taxmod\Core\Model\NodeClass\Contracts::of(\Taxmod\Core\Model\NodeClass\Category::class)->icon,
-            $this->rendering->cellsFor([$part])[$part->id]->markup
+            \Taxmod\WordPress\Draw\Markup::of($this->rendering->cellsFor([$part])[$part->id])
         );
     }
 
@@ -999,7 +999,7 @@ final class RenderingTest extends TestCase
         // cell where a name belongs is impossible by construction rather than by care.
         $part = $this->thing('Supplier');
 
-        self::assertStringContainsString('Supplier', $this->rendering->cellsFor([$part])[$part->id]->markup);
+        self::assertStringContainsString('Supplier', \Taxmod\WordPress\Draw\Markup::of($this->rendering->cellsFor([$part])[$part->id]));
     }
 
     #[Test]
@@ -1011,12 +1011,12 @@ final class RenderingTest extends TestCase
         // is where the row sits: indent and collapse are the walker's (D-367).
         $part = $this->thing('Part');
 
-        $markup = $this->rendering->cellsFor(
+        $markup = \Taxmod\WordPress\Draw\Markup::of($this->rendering->cellsFor(
             [$part],
             [$part->id => [new Control('do', 'up', '↑', 'Move up')]],
             [$part->id => 'https://example.test/?taxmod_node=' . $part->id],
             [$part->id => new Submission('https://example.test/post', ['_nonce' => 'abc123'])]
-        )[$part->id]->markup;
+        )[$part->id]);
 
         // ⚠️ **The button is built here, from what the boundary described.** The owner corrected the
         // claim that a renderer cannot: what it cannot do is invent the URL, the nonce and the
@@ -1040,14 +1040,14 @@ final class RenderingTest extends TestCase
         // clicked by accident would look different in each of them.
         $part = $this->thing('Part');
 
-        $markup = $this->rendering->cellsFor(
+        $markup = \Taxmod\WordPress\Draw\Markup::of($this->rendering->cellsFor(
             [$part],
             [$part->id => [
                 new Control('do', 'up', '↑', 'Move up'),
                 new Control('do', 'trash_node', '🗑', 'Park it', true, destroys: true),
             ]],
             submits: [$part->id => new Submission('https://example.test/post')]
-        )[$part->id]->markup;
+        )[$part->id]);
 
         self::assertStringContainsString('value="up" title="Move up" style="color:#1d2327"', $markup);
         self::assertStringContainsString('value="trash_node" title="Park it" style="color:#b32d2e"', $markup);
@@ -1062,7 +1062,7 @@ final class RenderingTest extends TestCase
 
         self::assertStringNotContainsString(
             'taxmod-tree-writes',
-            $this->rendering->cellsFor([$part])[$part->id]->markup,
+            \Taxmod\WordPress\Draw\Markup::of($this->rendering->cellsFor([$part])[$part->id]),
             'off unless somebody said otherwise'
         );
 
@@ -1073,7 +1073,7 @@ final class RenderingTest extends TestCase
         // Compositions» is not a thing.*
         self::assertStringContainsString(
             'taxmod-tree-writes',
-            $this->rendering->cellsFor([$part], developerMode: true)[$part->id]->markup
+            \Taxmod\WordPress\Draw\Markup::of($this->rendering->cellsFor([$part], developerMode: true)[$part->id])
         );
     }
 
@@ -1083,7 +1083,7 @@ final class RenderingTest extends TestCase
         // A URL is a boundary fact (`CD-1`); a surface that has nowhere to go hands none in.
         $part = $this->thing('Part');
 
-        self::assertStringNotContainsString('<a ', $this->rendering->cellsFor([$part])[$part->id]->markup);
+        self::assertStringNotContainsString('<a ', \Taxmod\WordPress\Draw\Markup::of($this->rendering->cellsFor([$part])[$part->id]));
     }
 
     #[Test]
@@ -1115,13 +1115,13 @@ final class RenderingTest extends TestCase
         // looks*. Handed in deliberately jumbled, so the order can only come from the enum.
         $part = $this->thing('Part');
 
-        $markup = $this->rendering->nodeAsPage($part, [
+        $markup = \Taxmod\WordPress\Draw\Markup::of($this->rendering->nodeAsPage($part, [
             PageSlot::Attributes->value => new Section('ATTRS', '<p>a</p>'),
             PageSlot::Name->value       => new Section('NAME', '<p>n</p>'),
             PageSlot::Acts->value       => new Section('ACTS', '<p>b</p>'),
             PageSlot::Display->value    => new Section('DISPLAY', '<p>d</p>'),
             PageSlot::Fixed->value      => new Section('FIXED', '<p>f</p>'),
-        ])->markup;
+        ]));
 
         $at = static fn (string $title): int => (int) strpos($markup, $title);
 
@@ -1136,9 +1136,9 @@ final class RenderingTest extends TestCase
     {
         $part = $this->thing('Part');
 
-        $markup = $this->rendering->nodeAsPage($part, [
+        $markup = \Taxmod\WordPress\Draw\Markup::of($this->rendering->nodeAsPage($part, [
             PageSlot::Name->value => new Section('Name', '<p>n</p>'),
-        ])->markup;
+        ]));
 
         self::assertStringContainsString('class="taxmod-page"', $markup);
         self::assertSame(1, substr_count($markup, 'class="taxmod-page"'));
@@ -1151,10 +1151,10 @@ final class RenderingTest extends TestCase
         // were. Absence says the truth; the frame need not be complete to be right.
         $part = $this->thing('Part');
 
-        $markup = $this->rendering->nodeAsPage($part, [
+        $markup = \Taxmod\WordPress\Draw\Markup::of($this->rendering->nodeAsPage($part, [
             PageSlot::Name->value    => new Section('Name', '<p>n</p>'),
             PageSlot::Preview->value => new Section('Preview', ''),
-        ])->markup;
+        ]));
 
         self::assertStringNotContainsString('Preview', $markup);
     }
@@ -1166,10 +1166,10 @@ final class RenderingTest extends TestCase
         // no other block needs one.
         $part = $this->thing('Part');
 
-        $markup = $this->rendering->nodeAsPage($part, [
+        $markup = \Taxmod\WordPress\Draw\Markup::of($this->rendering->nodeAsPage($part, [
             PageSlot::Name->value      => new Section('Name', '<p>n</p>'),
             PageSlot::Relations->value => new Section('Relations', '<p>r</p>', collapsed: true),
-        ])->markup;
+        ]));
 
         // Exactly one block starts shut, and it is not the name.
         self::assertSame(1, substr_count($markup, '<details'));
@@ -1179,7 +1179,7 @@ final class RenderingTest extends TestCase
     #[Test]
     public function a_page_with_nothing_in_it_draws_nothing(): void
     {
-        self::assertSame('', $this->rendering->nodeAsPage($this->thing('Part'), [])->markup);
+        self::assertSame('', \Taxmod\WordPress\Draw\Markup::of($this->rendering->nodeAsPage($this->thing('Part'), [])));
     }
 
     // --------------------------------------------------------- the tree's walker
@@ -1197,17 +1197,17 @@ final class RenderingTest extends TestCase
             ['node' => $child, 'depth' => 1, 'hasChildren' => false, 'collapsed' => false, 'isFirst' => true, 'isLast' => true],
         ]);
 
-        self::assertStringContainsString('taxmod-tree-row', $tree->markup);
-        self::assertStringContainsString('Part', $tree->markup);
-        self::assertStringContainsString('Resistor', $tree->markup);
+        self::assertStringContainsString('taxmod-tree-row', \Taxmod\WordPress\Draw\Markup::of($tree));
+        self::assertStringContainsString('Part', \Taxmod\WordPress\Draw\Markup::of($tree));
+        self::assertStringContainsString('Resistor', \Taxmod\WordPress\Draw\Markup::of($tree));
 
         // The child is indented and the parent is not.
-        self::assertStringContainsString('width:1.40em', $tree->markup);
-        self::assertStringContainsString('width:0.00em', $tree->markup);
+        self::assertStringContainsString('width:1.40em', \Taxmod\WordPress\Draw\Markup::of($tree));
+        self::assertStringContainsString('width:0.00em', \Taxmod\WordPress\Draw\Markup::of($tree));
 
         // ⚠️ Not a table: a tree is one column at varying depth, and a table forces every row to
         // the height of its tallest cell.
-        self::assertStringNotContainsString('<table', $tree->markup);
+        self::assertStringNotContainsString('<table', \Taxmod\WordPress\Draw\Markup::of($tree));
     }
 
     #[Test]
@@ -1226,12 +1226,12 @@ final class RenderingTest extends TestCase
             toggles: [$part->id => 'https://example.test/fold']
         );
 
-        self::assertStringContainsString('href="https://example.test/fold"', $tree->markup);
-        self::assertStringContainsString('&#9656;', $tree->markup, 'collapsed shows the closed triangle');
+        self::assertStringContainsString('href="https://example.test/fold"', \Taxmod\WordPress\Draw\Markup::of($tree));
+        self::assertStringContainsString('&#9656;', \Taxmod\WordPress\Draw\Markup::of($tree), 'collapsed shows the closed triangle');
 
         // A leaf keeps the space, or depth stops being readable.
         // ⚠️ *Geändert am 2026-09-15 mit D-816, sichtbar: die Breite steht seither in der Klasse und nicht mehr inline.*
-        self::assertSame(2, substr_count($tree->markup, 'taxmod-tree-fold-box'));
+        self::assertSame(2, substr_count(\Taxmod\WordPress\Draw\Markup::of($tree), 'taxmod-tree-fold-box'));
     }
 
     #[Test]
@@ -1248,13 +1248,13 @@ final class RenderingTest extends TestCase
             highlight: $part->id
         );
 
-        self::assertSame(1, substr_count($tree->markup, 'background:#e8f0fb'));
+        self::assertSame(1, substr_count(\Taxmod\WordPress\Draw\Markup::of($tree), 'background:#e8f0fb'));
     }
 
     #[Test]
     public function an_empty_tree_draws_nothing(): void
     {
-        self::assertSame('', $this->rendering->treeFor([])->markup);
+        self::assertSame('', \Taxmod\WordPress\Draw\Markup::of($this->rendering->treeFor([])));
     }
 
     /**
@@ -1266,12 +1266,12 @@ final class RenderingTest extends TestCase
     #[Test]
     public function an_empty_tree_still_draws_the_search_field(): void
     {
-        $markup = $this->rendering->treeFor(
+        $markup = \Taxmod\WordPress\Draw\Markup::of($this->rendering->treeFor(
             [],
             filterName: 'taxmod_search',
             filterValue: 'nichts davon',
             leer: $this->thing('Part')
-        )->markup;
+        ));
 
         self::assertStringContainsString('taxmod-tree-filter', $markup);
         self::assertStringContainsString('nichts davon', $markup);
@@ -1296,9 +1296,9 @@ final class RenderingTest extends TestCase
             Purpose::Display
         );
 
-        self::assertStringContainsString('taxmod-form', $form->markup);
-        self::assertStringContainsString('label', $form->markup);
-        self::assertStringContainsString('4k7', $form->markup);
+        self::assertStringContainsString('taxmod-form', \Taxmod\WordPress\Draw\Markup::of($form));
+        self::assertStringContainsString('label', \Taxmod\WordPress\Draw\Markup::of($form));
+        self::assertStringContainsString('4k7', \Taxmod\WordPress\Draw\Markup::of($form));
         self::assertSame([$label->id], $form->usedRelations);
     }
 
@@ -1318,7 +1318,7 @@ final class RenderingTest extends TestCase
 
         $fixed = $this->editor->setReadOnly($part->id, $fixed->id, true);
 
-        $markup = $this->rendering->nodeAsForm($part, [$first, $flag, $second, $fixed], [], Purpose::Display)->markup;
+        $markup = \Taxmod\WordPress\Draw\Markup::of($this->rendering->nodeAsForm($part, [$first, $flag, $second, $fixed], [], Purpose::Display));
 
         $order = [];
 
@@ -1346,7 +1346,7 @@ final class RenderingTest extends TestCase
 
         $fresh = $this->relations->fieldRelationsOf([$part->id]);
 
-        self::assertSame('', $this->rendering->nodeAsForm($part, $fresh, [], Purpose::Display)->markup);
+        self::assertSame('', \Taxmod\WordPress\Draw\Markup::of($this->rendering->nodeAsForm($part, $fresh, [], Purpose::Display)));
     }
 
     // ------------------------------------------------------- the settings side
@@ -1436,7 +1436,7 @@ final class RenderingTest extends TestCase
         self::assertArrayHasKey('read_only', $rows);
         self::assertTrue($rows['read_only']->wasDrawn());
         self::assertTrue($rows['read_only']->setting->value->asBool());
-        self::assertStringContainsString('taxmod-toggle-track', $rows['read_only']->result->markup);
+        self::assertStringContainsString('taxmod-toggle-track', \Taxmod\WordPress\Draw\Markup::of($rows['read_only']->result));
         self::assertSame(ToggleRenderer::NAME, $rows['read_only']->rendererName);
         self::assertArrayHasKey('multiplicity', $rows, 'die zweite Spalte der Kante steht daneben');
     }
@@ -1475,7 +1475,7 @@ final class RenderingTest extends TestCase
         $rows = $this->drawnSettings($int);
 
         self::assertSame(SimpleType::Int, $rows['min']->type);
-        self::assertStringContainsString('3', $rows['min']->result->markup);
+        self::assertStringContainsString('3', \Taxmod\WordPress\Draw\Markup::of($rows['min']->result));
     }
 
     #[Test]
@@ -1519,9 +1519,9 @@ final class RenderingTest extends TestCase
 
         // The eligible renderers are the set, so the one that is set is in it and the plain field is
         // there beside it — a real control, because there is more than one outcome.
-        self::assertStringContainsString('<select', $row->result->markup);
-        self::assertStringContainsString(SpinnerRenderer::NAME, $row->result->markup);
-        self::assertStringNotContainsString('disabled', $row->result->markup);
+        self::assertStringContainsString('<select', \Taxmod\WordPress\Draw\Markup::of($row->result));
+        self::assertStringContainsString(SpinnerRenderer::NAME, \Taxmod\WordPress\Draw\Markup::of($row->result));
+        self::assertStringNotContainsString('disabled', \Taxmod\WordPress\Draw\Markup::of($row->result));
     }
 
     #[Test]
@@ -1546,7 +1546,7 @@ final class RenderingTest extends TestCase
         $row = $this->drawnSettings($text, Purpose::Edit)['converter'];
 
         self::assertTrue($row->wasDrawn());
-        self::assertStringContainsString('disabled', $row->result->markup);
+        self::assertStringContainsString('disabled', \Taxmod\WordPress\Draw\Markup::of($row->result));
     }
 
     #[Test]
@@ -1560,18 +1560,18 @@ final class RenderingTest extends TestCase
 
         $row = $this->drawnSettings($int, Purpose::Edit)['converter'];
 
-        self::assertStringNotContainsString('disabled', $row->result->markup);
+        self::assertStringNotContainsString('disabled', \Taxmod\WordPress\Draw\Markup::of($row->result));
 
         // ⚠️ **All four, because R34 named all four** — *binary, hexadecimal, octal or in Roman
         // numerals* ([D-523](../../docs/NewConcept/90-decision-log.md)). *A converter that is
         // registered but never offered is one nobody can choose, and nothing else would notice.*
         foreach (['binary', 'hexadecimal', 'octal', 'roman'] as $name) {
-            self::assertStringContainsString($name, $row->result->markup);
+            self::assertStringContainsString($name, \Taxmod\WordPress\Draw\Markup::of($row->result));
         }
 
         // ⚠️ **And *nothing* stays an outcome, unlike the renderer choice** (R33b): no converter means
         // the value is shown as it is stored, so there is no default to force.
-        self::assertStringContainsString('<option value="" selected>', $row->result->markup);
+        self::assertStringContainsString('<option value="" selected>', \Taxmod\WordPress\Draw\Markup::of($row->result));
     }
 
     #[Test]
@@ -1591,7 +1591,7 @@ final class RenderingTest extends TestCase
             )
         );
 
-        self::assertStringNotContainsString('disabled', $live->markup);
+        self::assertStringNotContainsString('disabled', \Taxmod\WordPress\Draw\Markup::of($live));
 
         // The same single entry where nothing is **not** an answer is genuinely decided — R30 —
         // so it is preselected and greyed rather than merely offered.
@@ -1604,8 +1604,8 @@ final class RenderingTest extends TestCase
             )
         );
 
-        self::assertStringContainsString('disabled', $decided->markup);
-        self::assertStringContainsString('selected', $decided->markup);
+        self::assertStringContainsString('disabled', \Taxmod\WordPress\Draw\Markup::of($decided));
+        self::assertStringContainsString('selected', \Taxmod\WordPress\Draw\Markup::of($decided));
     }
 
     /** Das gezeichnete Multiplizitäts-Steuerelement einer Feldkante. */
@@ -1619,7 +1619,7 @@ final class RenderingTest extends TestCase
 
         foreach ($drawn as $row) {
             if ($row->key === \Taxmod\Core\Model\EdgeColumn::MULTIPLICITY) {
-                return $row->result?->markup ?? '';
+                return \Taxmod\WordPress\Draw\Markup::of($row->result ?? null);
             }
         }
 
@@ -1694,7 +1694,7 @@ final class RenderingTest extends TestCase
 
         self::assertCount(1, $rows);
 
-        $markup = $rows[0]->result->markup;
+        $markup = \Taxmod\WordPress\Draw\Markup::of($rows[0]->result);
 
         self::assertStringContainsString('taxmod_node=' . $position->id, $markup);
         self::assertStringContainsString('class="taxmod-field-target-link taxmod-chosen"', $markup);
@@ -1712,7 +1712,7 @@ final class RenderingTest extends TestCase
 
         $rows = $this->rendering->fieldRowsFor([$relation], $part->id);
 
-        $markup = $rows[0]->result->markup;
+        $markup = \Taxmod\WordPress\Draw\Markup::of($rows[0]->result);
 
         self::assertStringNotContainsString('taxmod-field-target-link', $markup);
         self::assertStringNotContainsString('<a ', $markup);
@@ -1733,13 +1733,13 @@ final class RenderingTest extends TestCase
         $part = $this->thing('Posten');
         $one  = $this->editor->addField($part->id, $this->type('int')->id, 'menge');
 
-        $before = $this->rendering->nodeAsForm($part, [$one], [], Purpose::Edit, 'v')->markup;
+        $before = \Taxmod\WordPress\Draw\Markup::of($this->rendering->nodeAsForm($part, [$one], [], Purpose::Edit, 'v'));
 
         self::assertStringContainsString('taxmod-form', $before);
 
         $this->einstellung($part, 'renderer', TypedValue::ofText(CompactRenderer::NAME));
 
-        $after = $this->rendering->nodeAsForm($part, [$one], [], Purpose::Edit, 'v')->markup;
+        $after = \Taxmod\WordPress\Draw\Markup::of($this->rendering->nodeAsForm($part, [$one], [], Purpose::Edit, 'v'));
 
         self::assertStringContainsString('taxmod-compact', $after);
         // ⚠️ *Und die Gegenprobe zum Namen: es ist wirklich ein anderer Aufbau und nicht dieselbe
@@ -1775,7 +1775,7 @@ final class RenderingTest extends TestCase
         $mit  = $this->editor->addField($ding->id, $text->id, 'Bezeichnung');
         $ohne = $this->editor->addField($ding->id, $zahl->id, 'Menge');
 
-        $markup = $this->rendering->nodeAsForm($ding, [$mit, $ohne], [], Purpose::Edit, 'v')->markup;
+        $markup = \Taxmod\WordPress\Draw\Markup::of($this->rendering->nodeAsForm($ding, [$mit, $ohne], [], Purpose::Edit, 'v'));
 
         self::assertSame(1, substr_count($markup, 'taxmod-hint-icon'));
         // ⚠️ **Der Satz steht im Markup und nicht bloss im `title`**
@@ -1819,7 +1819,7 @@ final class RenderingTest extends TestCase
         // nicht auslegen kann, verliert sie — und die Felder eines Menschen zu verlieren ist
         // schlimmer, als sie schlicht auszulegen. [R14b](../../docs/NewConcept/30-renderer.md)s «der
         // Auffang meldet sich selbst» handelt von einem **Wert**, nicht von einem Rahmen.*
-        $markup = $this->rendering->nodeAsForm($part, [$one], [], Purpose::Edit, 'v')->markup;
+        $markup = \Taxmod\WordPress\Draw\Markup::of($this->rendering->nodeAsForm($part, [$one], [], Purpose::Edit, 'v'));
 
         self::assertStringContainsString('taxmod-form', $markup);
         self::assertStringContainsString('menge', $markup);
@@ -2061,8 +2061,8 @@ final class RenderingTest extends TestCase
         )[0];
 
         self::assertSame(UserRefRenderer::NAME, $gezeichnet->rendererName);
-        self::assertStringContainsString('Stefan F.', $gezeichnet->result->markup);
-        self::assertStringNotContainsString('>17<', $gezeichnet->result->markup, 'die rohe Id gehört nicht auf den Schirm');
+        self::assertStringContainsString('Stefan F.', \Taxmod\WordPress\Draw\Markup::of($gezeichnet->result));
+        self::assertStringNotContainsString('>17<', \Taxmod\WordPress\Draw\Markup::of($gezeichnet->result), 'die rohe Id gehört nicht auf den Schirm');
     }
 
     #[Test]
@@ -2079,7 +2079,7 @@ final class RenderingTest extends TestCase
             Purpose::Display
         )[0];
 
-        self::assertStringContainsString('taxmod-dangling', $gezeichnet->result->markup);
+        self::assertStringContainsString('taxmod-dangling', \Taxmod\WordPress\Draw\Markup::of($gezeichnet->result));
     }
 
     #[Test]
@@ -2098,14 +2098,14 @@ final class RenderingTest extends TestCase
             'taxmod_value'
         )[0];
 
-        self::assertStringContainsString('disabled', $gezeichnet->result->markup);
-        self::assertStringContainsString('taxmod-locked', $gezeichnet->result->markup);
-        self::assertStringContainsString('user-ref-picker-missing', $gezeichnet->result->markup);
+        self::assertStringContainsString('disabled', \Taxmod\WordPress\Draw\Markup::of($gezeichnet->result));
+        self::assertStringContainsString('taxmod-locked', \Taxmod\WordPress\Draw\Markup::of($gezeichnet->result));
+        self::assertStringContainsString('user-ref-picker-missing', \Taxmod\WordPress\Draw\Markup::of($gezeichnet->result));
 
         // ⚠️ *Und der gespeicherte Wert geht nicht verloren, weil das Steuerelement nichts schickt —
         // derselbe Verlust, den {@see \Taxmod\Core\Renderer\ColorRenderer} für den Farbwähler beschreibt.*
-        self::assertStringContainsString('type="hidden"', $gezeichnet->result->markup);
-        self::assertStringContainsString('value="17"', $gezeichnet->result->markup);
+        self::assertStringContainsString('type="hidden"', \Taxmod\WordPress\Draw\Markup::of($gezeichnet->result));
+        self::assertStringContainsString('value="17"', \Taxmod\WordPress\Draw\Markup::of($gezeichnet->result));
     }
     /**
      * ⚠️ **Hier stand «ein Renderer, den niemand registriert hat, ist ein sichtbarer Fehler»** — mit
@@ -2127,7 +2127,7 @@ final class RenderingTest extends TestCase
         $fields = $this->rendering->fieldsFor([$relation], [], Purpose::Display, 'v');
 
         self::assertNotSame(PlainRenderer::NAME, $fields[0]->rendererName);
-        self::assertStringNotContainsString('taxmod-no-renderer', $fields[0]->result->markup);
+        self::assertStringNotContainsString('taxmod-no-renderer', \Taxmod\WordPress\Draw\Markup::of($fields[0]->result));
     }
 
     /** ⚠️ *Seine Form (D-751): am Vater erklärt, am Kind die Kette «Vater → Kat 1 → …», ohne das Kind — mit Schalter auch mit ihm.* */
@@ -2139,13 +2139,13 @@ final class RenderingTest extends TestCase
         $dos      = $this->editor->createNode('DOS', $os->id);
         $weg      = $this->editor->addField($software->id, $this->type('Path')->id, 'weg');
 
-        $amKind = $this->rendering->nodeAsForm($dos, [$weg], [], Purpose::Edit, 'v')->markup;
+        $amKind = \Taxmod\WordPress\Draw\Markup::of($this->rendering->nodeAsForm($dos, [$weg], [], Purpose::Edit, 'v'));
 
         self::assertStringContainsString('Software → OS', $amKind);
         self::assertStringNotContainsString('Software → OS → DOS', $amKind, 'das Kind selbst steht nicht in der Kette');
         self::assertStringContainsString('taxmod-read-only', $amKind, 'nie eingebbar');
 
-        $amVater = $this->rendering->nodeAsForm($software, [$weg], [], Purpose::Display)->markup;
+        $amVater = \Taxmod\WordPress\Draw\Markup::of($this->rendering->nodeAsForm($software, [$weg], [], Purpose::Display));
 
         self::assertStringNotContainsString('→', $amVater, 'am erklärenden Knoten ist der Weg leer');
     }
@@ -2160,20 +2160,20 @@ final class RenderingTest extends TestCase
         $datei    = $this->editor->addField($quelle->id, $medium->id, 'Datei');
         $werte    = [$webseite->id => TypedValue::ofText('https://example.com/gerber.zip'), $datei->id => TypedValue::ofText('https://example.org/kopie.zip')];
 
-        $vorher = $this->rendering->nodeAsForm($quelle, [$webseite, $datei], $werte, Purpose::Display)->markup;
+        $vorher = \Taxmod\WordPress\Draw\Markup::of($this->rendering->nodeAsForm($quelle, [$webseite, $datei], $werte, Purpose::Display));
 
         self::assertStringContainsString('>gerber (ZIP)<', $vorher, 'ohne Einstellung die aus der Adresse gerechnete Beschreibung');
 
         $this->einstellung($webseite, \Taxmod\Core\Model\Type\MediaType::NAME_AS_LINK_TEXT, TypedValue::ofBool(true));
 
-        $nachher = $this->rendering->nodeAsForm($quelle, [$webseite, $datei], $werte, Purpose::Display)->markup;
+        $nachher = \Taxmod\WordPress\Draw\Markup::of($this->rendering->nodeAsForm($quelle, [$webseite, $datei], $werte, Purpose::Display));
 
         self::assertMatchesRegularExpression('~href="https://example\.com/gerber\.zip"[^>]*>Webseite</a>~', $nachher, 'der Feldname ist der Linktext');
         self::assertStringContainsString('>kopie (ZIP)<', $nachher, 'an der Verwendungsstelle eingestellt: das andere Feld bleibt, wie es war');
 
         $this->einstellung($datei, \Taxmod\Core\Model\Type\MediaType::NAME_AS_LINK_TEXT, TypedValue::ofBool(true));
 
-        self::assertMatchesRegularExpression('~href="https://example\.org/kopie\.zip"[^>]*>Datei</a>~', $this->rendering->nodeAsForm($quelle, [$webseite, $datei], $werte, Purpose::Display)->markup);
+        self::assertMatchesRegularExpression('~href="https://example\.org/kopie\.zip"[^>]*>Datei</a>~', \Taxmod\WordPress\Draw\Markup::of($this->rendering->nodeAsForm($quelle, [$webseite, $datei], $werte, Purpose::Display)));
     }
 
     #[Test]
@@ -2186,7 +2186,7 @@ final class RenderingTest extends TestCase
 
         $this->einstellung($weg, \Taxmod\Core\Model\Type\PathType::WITH_NODE, TypedValue::ofBool(true));
 
-        $amKind = $this->rendering->nodeAsForm($dos, [$weg], [], Purpose::Display)->markup;
+        $amKind = \Taxmod\WordPress\Draw\Markup::of($this->rendering->nodeAsForm($dos, [$weg], [], Purpose::Display));
 
         self::assertStringContainsString('Software → OS → DOS', $amKind);
     }
@@ -2210,7 +2210,7 @@ final class RenderingTest extends TestCase
         $editor->setMembers($hersteller, SummaryRenderer::FIELDS, [$name->id, $land->id]);
         $this->neuZeichnen();
 
-        $gezeigt = $this->rendering->nodeAsForm($os, [$wer], [$wer->id => TypedValue::ofRecordReference($satzId)], Purpose::Display)->markup;
+        $gezeigt = \Taxmod\WordPress\Draw\Markup::of($this->rendering->nodeAsForm($os, [$wer], [$wer->id => TypedValue::ofRecordReference($satzId)], Purpose::Display));
 
         self::assertStringContainsString('Microsoft · USA', $gezeigt, 'die Felder des Knotens, in ihrer Reihenfolge');
 
@@ -2218,7 +2218,7 @@ final class RenderingTest extends TestCase
         $editor->setMembers($hersteller, SummaryRenderer::FIELDS, [$land->id, $name->id]);
         $this->neuZeichnen();
 
-        self::assertStringContainsString('USA · Microsoft', $this->rendering->nodeAsForm($os, [$wer], [$wer->id => TypedValue::ofRecordReference($satzId)], Purpose::Display)->markup, 'die Reihenfolge der Wahl');
+        self::assertStringContainsString('USA · Microsoft', \Taxmod\WordPress\Draw\Markup::of($this->rendering->nodeAsForm($os, [$wer], [$wer->id => TypedValue::ofRecordReference($satzId)], Purpose::Display)), 'die Reihenfolge der Wahl');
         $editor->setMembers($hersteller, SummaryRenderer::FIELDS, [$name->id, $land->id]);
         $this->neuZeichnen();
 
@@ -2226,12 +2226,12 @@ final class RenderingTest extends TestCase
         $editor->setMembers($hersteller, SummaryRenderer::FIELDS, [$land->id], $wer);
         $this->neuZeichnen();
 
-        $anDerKante = $this->rendering->nodeAsForm($os, [$wer], [$wer->id => TypedValue::ofRecordReference($satzId)], Purpose::Display)->markup;
+        $anDerKante = \Taxmod\WordPress\Draw\Markup::of($this->rendering->nodeAsForm($os, [$wer], [$wer->id => TypedValue::ofRecordReference($satzId)], Purpose::Display));
 
         self::assertStringContainsString('>USA<', $anDerKante);
         self::assertStringNotContainsString('Microsoft', $anDerKante);
 
-        $bearbeiten = $this->rendering->nodeAsForm($os, [$wer], [$wer->id => TypedValue::ofRecordReference($satzId)], Purpose::Edit, 'v')->markup;
+        $bearbeiten = \Taxmod\WordPress\Draw\Markup::of($this->rendering->nodeAsForm($os, [$wer], [$wer->id => TypedValue::ofRecordReference($satzId)], Purpose::Edit, 'v'));
 
         // ⚠️ *Seit D-791 ein Dialog mit Baum und Auswahlknöpfen statt eines Auswahlfelds — geprüft wird derselbe gewählte Satz.*
         self::assertStringContainsString('<input type="radio" name="v[' . $wer->id . ']"', $bearbeiten, 'beim Bearbeiten eine Auswahl über die Sätze des Ziels');
@@ -2328,7 +2328,7 @@ final class RenderingTest extends TestCase
         $this->records->putValue(RelationRecord::direct($satz, $quellen->id, TypedValue::ofRecordReference($ohne), '', 0));
 
         $rendering = $this->rendering->withPartActs('Add row', 'Remove this row')->withDialogWords('OK', 'Cancel', 'Tree', search: 'Search');
-        $html      = $rendering->nodeAsForm($material, [$quellen], [], Purpose::Edit, 'v[' . $satz . ']', recordParts: $rendering->partsOfRecord($satz, [$quellen]), recordId: $satz)->markup;
+        $html      = \Taxmod\WordPress\Draw\Markup::of($rendering->nodeAsForm($material, [$quellen], [], Purpose::Edit, 'v[' . $satz . ']', recordParts: $rendering->partsOfRecord($satz, [$quellen]), recordId: $satz));
 
         self::assertStringContainsString('taxmod-ref-rows', $html);
         self::assertStringContainsString('>github.com: v1.1</option>', $html, 'ohne Kategorie der Name statt «#' . $ohne . '»');
@@ -2384,7 +2384,7 @@ final class RenderingTest extends TestCase
                 referenceCurrency: $bezug,
             );
 
-            return $rendering->nodeAsForm($liste, [$zeilen], [], Purpose::Display, '', '', $level, recordParts: $rendering->partsOfRecord($satz, [$zeilen]), recordId: $satz)->markup;
+            return \Taxmod\WordPress\Draw\Markup::of($rendering->nodeAsForm($liste, [$zeilen], [], Purpose::Display, '', '', $level, recordParts: $rendering->partsOfRecord($satz, [$zeilen]), recordId: $satz));
         };
 
         // ⚠️ *D-992, his word: «wenn jemand aus UK das liest, dass er das in Pfund liest zum Beispiel. Und bei US dann Dollar».*
@@ -2420,7 +2420,7 @@ final class RenderingTest extends TestCase
 
         // ⚠️ *Keine Wahl an der Kante: ein Satzverweis zeigt seine Zusammenfassung von selbst (D-753, berichtigt).*
 
-        $gezeigt = $this->rendering->nodeAsForm($os, [$wer], [$wer->id => TypedValue::ofRecordReference($satzId)], Purpose::Display)->markup;
+        $gezeigt = \Taxmod\WordPress\Draw\Markup::of($this->rendering->nodeAsForm($os, [$wer], [$wer->id => TypedValue::ofRecordReference($satzId)], Purpose::Display));
 
         self::assertStringContainsString('>IBM<', $gezeigt);
     }
@@ -2453,7 +2453,7 @@ final class RenderingTest extends TestCase
         $einsteller->putAddons($teil, $paar('sort'), $wahl);
         $this->neuZeichnen();
 
-        $zuerst = $this->rendering->nodeAsForm($platte, [$wahl], [$art->id => TypedValue::ofReference($smd->id)], Purpose::Edit, 'v')->markup;
+        $zuerst = \Taxmod\WordPress\Draw\Markup::of($this->rendering->nodeAsForm($platte, [$wahl], [$art->id => TypedValue::ofReference($smd->id)], Purpose::Edit, 'v'));
 
         self::assertStringContainsString('taxmod-record-match', $zuerst, 'der Treffer unter SMD ist gekennzeichnet');
         self::assertStringContainsString('> Brocken<', $zuerst, '«sort» lässt die übrigen wählbar');
@@ -2462,12 +2462,12 @@ final class RenderingTest extends TestCase
         $einsteller->putAddons($teil, $paar('filter'), $wahl);
         $this->neuZeichnen();
 
-        $gefiltert = $this->rendering->nodeAsForm($platte, [$wahl], [$art->id => TypedValue::ofReference($smd->id)], Purpose::Edit, 'v')->markup;
+        $gefiltert = \Taxmod\WordPress\Draw\Markup::of($this->rendering->nodeAsForm($platte, [$wahl], [$art->id => TypedValue::ofReference($smd->id)], Purpose::Edit, 'v'));
 
         self::assertStringContainsString('> Winzling<', $gefiltert);
         self::assertStringNotContainsString('> Brocken<', $gefiltert, '«filter» nimmt die THT-Form heraus');
 
-        $ohneWert = $this->rendering->nodeAsForm($platte, [$wahl], [], Purpose::Edit, 'v')->markup;
+        $ohneWert = \Taxmod\WordPress\Draw\Markup::of($this->rendering->nodeAsForm($platte, [$wahl], [], Purpose::Edit, 'v'));
 
         self::assertStringContainsString('> Brocken<', $ohneWert, 'ohne Wert keine Vorbelegung');
     }
@@ -2507,12 +2507,12 @@ final class RenderingTest extends TestCase
         $einsteller->put($this->nodes->byId($smd->id), \Taxmod\Core\Addon\PresetAddon::BEHAVIOUR, 'filter');
         $this->neuZeichnen();
 
-        $gefiltert = $this->rendering->nodeAsForm($platte, [$wahl], [$art->id => TypedValue::ofReference($smd->id)], Purpose::Edit, 'v')->markup;
+        $gefiltert = \Taxmod\WordPress\Draw\Markup::of($this->rendering->nodeAsForm($platte, [$wahl], [$art->id => TypedValue::ofReference($smd->id)], Purpose::Edit, 'v'));
 
         self::assertStringContainsString('> Winzling<', $gefiltert);
         self::assertStringNotContainsString('> Brocken<', $gefiltert, 'SMD sagt «filter», das gilt über dem «sort» des Paars');
 
-        $sortiert = $this->rendering->nodeAsForm($platte, [$wahl], [$art->id => TypedValue::ofReference($tht->id)], Purpose::Edit, 'v')->markup;
+        $sortiert = \Taxmod\WordPress\Draw\Markup::of($this->rendering->nodeAsForm($platte, [$wahl], [$art->id => TypedValue::ofReference($tht->id)], Purpose::Edit, 'v'));
 
         self::assertStringContainsString('> Winzling<', $sortiert, 'THT sagt nichts — das Paar sortiert');
     }
@@ -2553,7 +2553,7 @@ final class RenderingTest extends TestCase
         $editor->setMembers($bauteil, \Taxmod\Core\Renderer\TableRenderer::TARGET_COLUMNS, [$quellen->id], $welches);
         $this->neuZeichnen();
 
-        $gezeigt = $this->rendering->nodeAsForm($liste, [$zeilen], [], Purpose::Display, '', recordParts: $this->rendering->partsOfRecord($satz, [$zeilen]), recordId: $satz)->markup;
+        $gezeigt = \Taxmod\WordPress\Draw\Markup::of($this->rendering->nodeAsForm($liste, [$zeilen], [], Purpose::Display, '', recordParts: $this->rendering->partsOfRecord($satz, [$zeilen]), recordId: $satz));
 
         self::assertStringContainsString('LM7905', $gezeigt, 'der Verweis selbst');
         self::assertStringContainsString('>Quellen<', $gezeigt, 'eine Spalte mit dem Namen des Feldes');
@@ -2569,9 +2569,9 @@ final class RenderingTest extends TestCase
         $name   = $this->editor->addField($quelle->id, $this->type('Text')->id, 'name');
         $satz   = $this->records->add(new NodeRecord(0, $quelle->id, 1, '2026-10-21 10:00:00', RecordType::User));
 
-        $tabelle = $this->rendering->recordsAsTable($quelle, [$name], [
+        $tabelle = \Taxmod\WordPress\Draw\Markup::of($this->rendering->recordsAsTable($quelle, [$name], [
             ['id' => $satz, 'values' => [$name->id => TypedValue::ofText('Datenblatt LM7905')], 'lead' => [], 'acts' => [], 'submits' => new \Taxmod\Core\Renderer\Submission(''), 'editable' => false],
-        ], '', '', false, Purpose::Display, '', \Taxmod\Core\Renderer\Level::FrontEnd)->markup;
+        ], '', '', false, Purpose::Display, '', \Taxmod\Core\Renderer\Level::FrontEnd));
 
         self::assertStringContainsString('Datenblatt LM7905', $tabelle);
         self::assertStringNotContainsString('<form', $tabelle);
@@ -2610,9 +2610,9 @@ final class RenderingTest extends TestCase
 
         $this->einstellung($ast, \Taxmod\Core\Model\Type\PathType::ONLY_DIRECT_CHILD, TypedValue::ofBool(true));
 
-        self::assertStringContainsString('>Hardware<', $this->rendering->nodeAsForm($internal, [$ast], [], Purpose::Display)->markup, 'tief unten: der Ast');
-        self::assertStringContainsString('>Hardware<', $this->rendering->nodeAsForm($hardware, [$ast], [], Purpose::Display)->markup, 'am direkten Kind: es selbst');
-        self::assertStringNotContainsString('Hardware', $this->rendering->nodeAsForm($pc, [$ast], [], Purpose::Display)->markup, 'am erklärenden Knoten: nichts');
+        self::assertStringContainsString('>Hardware<', \Taxmod\WordPress\Draw\Markup::of($this->rendering->nodeAsForm($internal, [$ast], [], Purpose::Display)), 'tief unten: der Ast');
+        self::assertStringContainsString('>Hardware<', \Taxmod\WordPress\Draw\Markup::of($this->rendering->nodeAsForm($hardware, [$ast], [], Purpose::Display)), 'am direkten Kind: es selbst');
+        self::assertStringNotContainsString('Hardware', \Taxmod\WordPress\Draw\Markup::of($this->rendering->nodeAsForm($pc, [$ast], [], Purpose::Display)), 'am erklärenden Knoten: nichts');
         self::assertSame('Hardware', $this->rendering->pathTextFor($ast, $internal->id)->text, 'derselbe Wert für den Satz');
     }
 
@@ -2630,13 +2630,13 @@ final class RenderingTest extends TestCase
         $satzId = $this->records->add(new NodeRecord(0, $dos->id, 1, '2026-09-12 10:00:00', RecordType::User));
         $this->records->putValue(RelationRecord::direct($satzId, $version->id, TypedValue::ofText('6.22')));
 
-        $gezeigt = $this->rendering->nodeAsForm($eintrag, [$folger], [$folger->id => TypedValue::ofRecordReference($satzId)], Purpose::Display)->markup;
+        $gezeigt = \Taxmod\WordPress\Draw\Markup::of($this->rendering->nodeAsForm($eintrag, [$folger], [$folger->id => TypedValue::ofRecordReference($satzId)], Purpose::Display));
 
         self::assertStringContainsString('>6.22<', $gezeigt, 'das Textfeld des Satzknotens, geerbt von OS');
         self::assertStringNotContainsString('#' . $satzId, $gezeigt);
 
         // ⚠️ *Und beim Bearbeiten steht der Satz unter dem Ziel im Angebot — sein Befund: «angezeigt wird die Id».*
-        $bearbeiten = $this->rendering->nodeAsForm($eintrag, [$folger], [$folger->id => TypedValue::ofRecordReference($satzId)], Purpose::Edit, 'v')->markup;
+        $bearbeiten = \Taxmod\WordPress\Draw\Markup::of($this->rendering->nodeAsForm($eintrag, [$folger], [$folger->id => TypedValue::ofRecordReference($satzId)], Purpose::Edit, 'v'));
 
         self::assertMatchesRegularExpression('/value="' . $satzId . '" checked[^>]*> 6\.22</', $bearbeiten);
     }
@@ -2658,7 +2658,7 @@ final class RenderingTest extends TestCase
         $this->records->putValue(RelationRecord::direct($satzId, $bezeichnung->id, TypedValue::ofText('Rev 1.2')));
         $this->records->putValue(RelationRecord::direct($satzId, $hinweis->id, TypedValue::ofText('ein langer Hinweis')));
 
-        $gezeigt = $this->rendering->nodeAsForm($reihe, [$hat], [$hat->id => TypedValue::ofRecordReference($satzId)], Purpose::Display)->markup;
+        $gezeigt = \Taxmod\WordPress\Draw\Markup::of($this->rendering->nodeAsForm($reihe, [$hat], [$hat->id => TypedValue::ofRecordReference($satzId)], Purpose::Display));
 
         self::assertStringContainsString('>Rev 1.2<', $gezeigt, 'das erste Textfeld mit Wert in Erbfolge — nicht das leere «' . $pfad->name . '» davor, nicht der eigene Hinweis danach');
         self::assertStringNotContainsString('#' . $satzId, $gezeigt);
@@ -2691,7 +2691,7 @@ final class RenderingTest extends TestCase
         $editor->setMembers($software, SummaryRenderer::FIELDS, [$wer->id, $kategorie->id, $version->id]);
         $this->neuZeichnen();
 
-        $gezeigt = $this->rendering->nodeAsForm($eintrag, [$folger], [$folger->id => TypedValue::ofRecordReference($satz)], Purpose::Display)->markup;
+        $gezeigt = \Taxmod\WordPress\Draw\Markup::of($this->rendering->nodeAsForm($eintrag, [$folger], [$folger->id => TypedValue::ofRecordReference($satz)], Purpose::Display));
 
         self::assertStringContainsString('Microsoft Corp. · DOS · 4.0', $gezeigt);
     }
@@ -3116,7 +3116,7 @@ final class RenderingTest extends TestCase
                 records: $this->records,
             );
 
-            return $rendering->fieldsFor([$feld], [], Purpose::Edit, 'v')[0]->result->markup;
+            return \Taxmod\WordPress\Draw\Markup::of($rendering->fieldsFor([$feld], [], Purpose::Edit, 'v')[0]->result);
         };
 
         $selected = static fn (string $html, int $id): bool => (bool) preg_match('/<option[^>]*value="' . $id . '"[^>]*selected/', $html);
@@ -3157,7 +3157,7 @@ final class RenderingTest extends TestCase
                 records: $this->records,
             );
 
-            return $rendering->fieldsFor([$feld], [], Purpose::Edit, 'v', forNode: $knoten)[0]->result->markup;
+            return \Taxmod\WordPress\Draw\Markup::of($rendering->fieldsFor([$feld], [], Purpose::Edit, 'v', forNode: $knoten)[0]->result);
         };
         $bietet   = static fn (string $html, int $id): bool => (bool) preg_match('/<option[^>]*value="' . $id . '"/', $html);
         $gewaehlt = static fn (string $html, int $id): bool => (bool) preg_match('/<option[^>]*value="' . $id . '"[^>]*selected/', $html);
@@ -3238,12 +3238,12 @@ final class RenderingTest extends TestCase
         $rendering = new Rendering($this->nodes, new FixedFramework($this->wurzel, $this->nodes->byId($this->wurzel->id + 1), $this->branchRoot, self::INSTALLATION, self::ROLE_IDS, ['units' => $einheiten]), ShippedRenderers::registry(), $this->typeNodes, new Labels($this->labelStore, 'en_US'), ShippedConverters::registry(), resolver: $this->resolver, relations: $this->relations, records: $this->records, addons: \Taxmod\Core\Addon\ShippedAddons::registry());
         $felder = $this->editor->fieldsOf($display->id);
         $werte  = [$feld->id => TypedValue::ofRecordReference($teil)];
-        $html   = $rendering->nodeAsForm($display, $felder, $werte, Purpose::Display, '', '', \Taxmod\Core\Renderer\Level::FrontEnd, false, '', $rendering->partsOfRecord($satz, $felder), recordId: $satz)->markup;
+        $html   = \Taxmod\WordPress\Draw\Markup::of($rendering->nodeAsForm($display, $felder, $werte, Purpose::Display, '', '', \Taxmod\Core\Renderer\Level::FrontEnd, false, '', $rendering->partsOfRecord($satz, $felder), recordId: $satz));
 
         self::assertStringContainsString('3.3 … 5 V', $html, 'der Bereich mit Verbinder und Einheit, wie sein Name');
         self::assertStringNotContainsString('taxmod-compact', $html, 'nicht die drei nackten Teile nebeneinander');
 
-        $bearbeitet = $rendering->nodeAsForm($display, $felder, $werte, Purpose::Edit, 'v', '', \Taxmod\Core\Renderer\Level::Admin, true, '', $rendering->partsOfRecord($satz, $felder), recordId: $satz)->markup;
+        $bearbeitet = \Taxmod\WordPress\Draw\Markup::of($rendering->nodeAsForm($display, $felder, $werte, Purpose::Edit, 'v', '', \Taxmod\Core\Renderer\Level::Admin, true, '', $rendering->partsOfRecord($satz, $felder), recordId: $satz));
         self::assertStringContainsString('taxmod-compact', $bearbeitet, 'beim Bearbeiten bleiben die Teile eingebbar');
     }
 
@@ -3320,8 +3320,8 @@ final class RenderingTest extends TestCase
         $werte     = [$artikel->id => TypedValue::ofText('Der Satz selbst')];
         $teile     = $rendering->partsOfRecord($leer, [$positionen]);
 
-        $angezeigt  = $rendering->nodeAsForm($bestellung, [$positionen], $werte, Purpose::Display, '', recordParts: $teile, recordId: $leer)->markup;
-        $bearbeitet = $rendering->nodeAsForm($bestellung, [$positionen], $werte, Purpose::Edit, 'v[' . $leer . ']', recordParts: $teile, recordId: $leer)->markup;
+        $angezeigt  = \Taxmod\WordPress\Draw\Markup::of($rendering->nodeAsForm($bestellung, [$positionen], $werte, Purpose::Display, '', recordParts: $teile, recordId: $leer));
+        $bearbeitet = \Taxmod\WordPress\Draw\Markup::of($rendering->nodeAsForm($bestellung, [$positionen], $werte, Purpose::Edit, 'v[' . $leer . ']', recordParts: $teile, recordId: $leer));
 
         self::assertStringNotContainsString('Der Satz selbst', $angezeigt, 'nichts vom Satz unter der leeren Liste');
         self::assertStringNotContainsString('taxmod-table-row', $angezeigt, 'keine Zeile beim Anzeigen');
@@ -3336,7 +3336,7 @@ final class RenderingTest extends TestCase
 
         $rendering = $this->rendering->withPartActs('Add row', 'Remove this row', 'Add several', 'Insert', 'Unlink');
         $teile     = $rendering->partsOfRecord($satz, [$positionen]);
-        $bearbeitet = $rendering->nodeAsForm($bestellung, [$positionen], [], Purpose::Edit, 'v[' . $satz . ']', recordParts: $teile, recordId: $satz)->markup;
+        $bearbeitet = \Taxmod\WordPress\Draw\Markup::of($rendering->nodeAsForm($bestellung, [$positionen], [], Purpose::Edit, 'v[' . $satz . ']', recordParts: $teile, recordId: $satz));
 
         self::assertStringContainsString('<h4 class="taxmod-complex-heading">Positionen', $bearbeitet, 'eine Überschrift');
         self::assertSame(2, substr_count($bearbeitet, '<tr class="taxmod-table-row">'), 'je verwiesenem Satz eine Zeile');
@@ -3347,7 +3347,7 @@ final class RenderingTest extends TestCase
         self::assertStringContainsString('name="do[' . $satz . '-' . $positionen->id . ']" value="add_part"', $bearbeitet, '«Add row» unter der Tabelle');
         self::assertStringNotContainsString('taxmod-ref-rows', $bearbeitet, 'nicht mehr die Auswahlzeilen aus D-859');
 
-        $gezeigt = $rendering->nodeAsForm($bestellung, [$positionen], [], Purpose::Display, '', recordParts: $teile, recordId: $satz)->markup;
+        $gezeigt = \Taxmod\WordPress\Draw\Markup::of($rendering->nodeAsForm($bestellung, [$positionen], [], Purpose::Display, '', recordParts: $teile, recordId: $satz));
 
         self::assertSame(2, substr_count($gezeigt, '<tr class="taxmod-table-row">'), 'angezeigt dieselbe Tabelle');
         self::assertStringContainsString('Kondensator', $gezeigt);
@@ -3360,7 +3360,7 @@ final class RenderingTest extends TestCase
         [$bestellung, $positionen, , $satz] = $this->bestellungMitPositionen();
         $rendering = $this->rendering->withPartActs('Add row', 'Remove this row');
 
-        $alsFormular = $rendering->nodeAsForm($bestellung, [$positionen], [], Purpose::Edit, 'v[' . $satz . ']', recordParts: $rendering->partsOfRecord($satz, [$positionen]), recordId: $satz)->markup;
+        $alsFormular = \Taxmod\WordPress\Draw\Markup::of($rendering->nodeAsForm($bestellung, [$positionen], [], Purpose::Edit, 'v[' . $satz . ']', recordParts: $rendering->partsOfRecord($satz, [$positionen]), recordId: $satz));
 
         self::assertStringContainsString('taxmod-ref-rows', $alsFormular, 'unter form bleiben es die Auswahlzeilen (D-859)');
         self::assertStringNotContainsString('unlink_part', $alsFormular);
@@ -3370,7 +3370,7 @@ final class RenderingTest extends TestCase
         $this->einstellung($positionen, 'renderer', TypedValue::ofText(SummaryRenderer::NAME));
         $rendering = $this->rendering->withPartActs('Add row', 'Remove this row');
 
-        $mitWahl = $rendering->nodeAsForm($bestellung, [$positionen], [], Purpose::Edit, 'v[' . $satz . ']', recordParts: $rendering->partsOfRecord($satz, [$positionen]), recordId: $satz)->markup;
+        $mitWahl = \Taxmod\WordPress\Draw\Markup::of($rendering->nodeAsForm($bestellung, [$positionen], [], Purpose::Edit, 'v[' . $satz . ']', recordParts: $rendering->partsOfRecord($satz, [$positionen]), recordId: $satz));
 
         self::assertStringNotContainsString('unlink_part', $mitWahl);
     }

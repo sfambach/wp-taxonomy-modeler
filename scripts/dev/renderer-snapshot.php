@@ -72,7 +72,7 @@ foreach ($klassen as $kurz => $renderer) {
                 $schluessel = sprintf('%s|%s|%s|%s', $kurz, $wortname, $zweck->value, $typ?->value ?? 'kein-typ');
 
                 try {
-                    $abdruck[$schluessel] = $renderer->render($node, $ctx)->markup;
+                    $abdruck[$schluessel] = \Taxmod\WordPress\Draw\Markup::of($renderer->render($node, $ctx));
                 } catch (Throwable $e) {
                     $abdruck[$schluessel] = 'AUSNAHME: ' . $e::class;
                 }

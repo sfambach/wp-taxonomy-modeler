@@ -19,7 +19,7 @@ final class ColorChoiceRendererTest extends TestCase
 {
     private function drawn(Purpose $purpose, TypedValue $value, array $swatches, array $options = [], ?string $refersTo = null): string
     {
-        return (new ColorChoiceRenderer())->render(
+        return \Taxmod\WordPress\Draw\Markup::of((new ColorChoiceRenderer())->render(
             Node::create(1, 'Farbe', null),
             new RenderContext(
                 purpose: $purpose,
@@ -28,7 +28,7 @@ final class ColorChoiceRendererTest extends TestCase
                 fieldName: 'f[7]',
                 surroundings: new Surroundings(options: $options, refersTo: $refersTo, swatches: $swatches),
             )
-        )->markup;
+        ));
     }
 
     #[Test]

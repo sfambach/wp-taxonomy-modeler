@@ -92,13 +92,13 @@ final class RenderedField
     /**
      * Whether the model asked for this not to appear at all.
      *
-     * ⚠️ **Empty markup is the answer, not a flag beside it.** `hide` is resolved in the renderer
+     * ⚠️ **Showing nothing is the answer, not a flag beside it** (asked of the edge, A20). `hide` is resolved in the renderer
      * (R11), and a second boolean saying the same thing would be the same fact twice — and the
      * two would eventually disagree.
      */
     public function isHidden(): bool
     {
-        return $this->result->markup === '';
+        return ! Shows::anything($this->result->piece);
     }
 
     /** Drawn by the fallback: nobody chose, and the type has no default either (R14b). */

@@ -26,4 +26,10 @@ final class Section
         public readonly ?\Taxmod\Core\Description\Describes $piece = null,
     ) {
     }
+
+    /** Whether the section shows anything — its piece, asked of the edge (A20), or the markup the edge handed in (A21). */
+    public function shows(): bool
+    {
+        return $this->piece !== null ? Shows::anything($this->piece) : trim($this->body) !== '';
+    }
 }

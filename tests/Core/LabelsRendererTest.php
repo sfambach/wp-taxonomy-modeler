@@ -25,7 +25,7 @@ final class LabelsRendererTest extends TestCase
 {
     private function drawn(array $slots, Purpose $purpose = Purpose::Edit, string $formId = ''): string
     {
-        return ShippedRenderers::registry()->byName(LabelsRenderer::NAME)->render(
+        return \Taxmod\WordPress\Draw\Markup::of(ShippedRenderers::registry()->byName(LabelsRenderer::NAME)->render(
             Node::create(7, 'Condensator', null),
             new RenderContext(
                 purpose: $purpose,
@@ -38,7 +38,7 @@ final class LabelsRendererTest extends TestCase
                     formId: $formId
                 )
             )
-        )->markup;
+        ));
     }
 
     private function slot(string $role, bool $isLong = false, ?string $stored = null, string $note = ''): LabelSlot

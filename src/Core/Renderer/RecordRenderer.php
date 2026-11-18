@@ -77,8 +77,8 @@ final class RecordRenderer extends RendererNode
     {
         $form = $context->surroundings->sections[self::FORM] ?? null;
 
-        if ($form === null || $form->body === '') {
-            return RenderResult::of('');
+        if ($form === null || ! $form->shows()) {
+            return RenderResult::nothing();
         }
 
         // ⚠️ *A table for readers has no title (D-916, D-955); an empty head drew a blank bold line above it in the post.*
@@ -92,7 +92,7 @@ final class RecordRenderer extends RendererNode
         return RenderResult::described(new RecordView(
             $form->title,
             $form->piece ?? $form->body,
-            $context->developerMode && $diagnostic !== null && $diagnostic->body !== '' ? ($diagnostic->piece ?? $diagnostic->body) : null,
+            $context->developerMode && $diagnostic !== null && $diagnostic->shows() ? ($diagnostic->piece ?? $diagnostic->body) : null,
             $edit ? $submits->action : null,
             $edit ? $submits->hidden : [],
             array_values(array_filter($context->surroundings->actions, static fn (Control $c): bool => ! $c->isAWord()))

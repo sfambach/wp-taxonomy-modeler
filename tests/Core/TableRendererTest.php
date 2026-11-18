@@ -46,7 +46,7 @@ final class TableRendererTest extends TestCase
 
     private function feld(Relation $kante, string $markup): RenderedField
     {
-        return new RenderedField($kante, SimpleType::Text, FieldRenderer::NAME, new RenderResult($markup, [$kante->id]));
+        return new RenderedField($kante, SimpleType::Text, FieldRenderer::NAME, \Taxmod\Tests\Support\Fixture::result($markup, $kante->id));
     }
 
     /**
@@ -55,7 +55,7 @@ final class TableRendererTest extends TestCase
      */
     private function gezeichnet(array $records, array $settings = [], array $parts = []): string
     {
-        return $this->renderer->render(
+        return \Taxmod\WordPress\Draw\Markup::of($this->renderer->render(
             Node::create(1, 'Zutat', null),
             new RenderContext(
                 purpose: Purpose::Display,
@@ -64,7 +64,7 @@ final class TableRendererTest extends TestCase
                 settings: $settings,
                 surroundings: new Surroundings(parts: $parts, records: $records),
             )
-        )->markup;
+        ));
     }
 
     #[Test]

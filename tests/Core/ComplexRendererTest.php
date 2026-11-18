@@ -33,39 +33,39 @@ final class ComplexRendererTest extends TestCase
     {
         $kante = Relation::attribute($id, 1, $id + 1000, RelationKind::Composition, $name, $id)->withMultiplicity($wieOft);
 
-        return new RenderedField($kante, $rows === [] ? SimpleType::Text : null, $rows === [] ? FieldRenderer::NAME : FormRenderer::NAME, new RenderResult($markup, [$id]), rows: $rows, summary: $summary);
+        return new RenderedField($kante, $rows === [] ? SimpleType::Text : null, $rows === [] ? FieldRenderer::NAME : FormRenderer::NAME, \Taxmod\Tests\Support\Fixture::result($markup, $id), rows: $rows, summary: $summary);
     }
 
     /** @param list<RenderedField> $parts */
     private function gezeichnet(array $parts, array $lead = [], Purpose $purpose = Purpose::Edit): string
     {
-        return (new ComplexRenderer())->render(
+        return \Taxmod\WordPress\Draw\Markup::of((new ComplexRenderer())->render(
             Node::create(1, 'Kontakt', null),
             new RenderContext(
                 purpose: $purpose,
                 value: TypedValue::nothing(),
                 surroundings: new Surroundings(parts: $parts, rowLead: $lead === [] ? [] : [$lead]),
             )
-        )->markup;
+        ));
     }
 
     #[Test]
     public function the_order_is_fixed_simple_single_many(): void
     {
-        $strasse = $this->feld(21, 'Street', '<input name="s">', 'Hauptstr.');
-        $ort     = $this->feld(22, 'City', '<input name="c">', 'Bonn');
+        $strasse = $this->feld(21, 'Street', '«input s»', 'Hauptstr.');
+        $ort     = $this->feld(22, 'City', '«input c»', 'Bonn');
 
         $markup = $this->gezeichnet(
             [
                 $this->feld(30, 'Phones', 'MEHRERE', '', [[$this->feld(31, 'Number', 'N1', '0228')], [$this->feld(31, 'Number', 'N2', '0221')]], Multiplicity::ZeroToMany),
                 $this->feld(20, 'Address', 'EINZELN', '', [[$strasse, $ort]]),
-                $this->feld(10, 'Name', '<input name="n">', 'Meier'),
+                $this->feld(10, 'Name', '«input n»', 'Meier'),
             ],
             ['Record' => '#12']
         );
 
         $fest    = strpos($markup, 'taxmod-complex-fixed');
-        $name    = strpos($markup, 'name="n"');
+        $name    = strpos($markup, '«input n»');
         $address = strpos($markup, '>Address');
         $phones  = strpos($markup, '>Phones');
 
@@ -80,10 +80,10 @@ final class ComplexRendererTest extends TestCase
     #[Test]
     public function a_part_below_a_part_is_its_summary_on_display(): void
     {
-        $innen   = $this->feld(41, 'Street', '<input name="s">', 'Hauptstr.');
-        $adresse = $this->feld(40, 'Address', 'ADRESSE', '', [[$innen, $this->feld(42, 'City', '<input>', 'Bonn')]]);
+        $innen   = $this->feld(41, 'Street', '«input s»', 'Hauptstr.');
+        $adresse = $this->feld(40, 'Address', 'ADRESSE', '', [[$innen, $this->feld(42, 'City', '«input»', 'Bonn')]]);
 
-        $markup = $this->gezeichnet([$this->feld(50, 'Supplier', 'X', '', [[$this->feld(51, 'Name', '<input>', 'ACME'), $adresse]])], [], Purpose::Display);
+        $markup = $this->gezeichnet([$this->feld(50, 'Supplier', 'X', '', [[$this->feld(51, 'Name', '«input»', 'ACME'), $adresse]])], [], Purpose::Display);
 
         self::assertStringContainsString('<details class="taxmod-complex-link"><summary>Hauptstr., Bonn</summary>', $markup);
     }
@@ -92,10 +92,10 @@ final class ComplexRendererTest extends TestCase
     #[Test]
     public function a_part_below_a_part_shows_its_fields_when_editing(): void
     {
-        $innen   = $this->feld(41, 'Street', '<input name="s">', 'Hauptstr.');
-        $adresse = $this->feld(40, 'Address', 'ADRESSE', '', [[$innen, $this->feld(42, 'City', '<input>', 'Bonn')]]);
+        $innen   = $this->feld(41, 'Street', '«input s»', 'Hauptstr.');
+        $adresse = $this->feld(40, 'Address', 'ADRESSE', '', [[$innen, $this->feld(42, 'City', '«input»', 'Bonn')]]);
 
-        $markup = $this->gezeichnet([$this->feld(50, 'Supplier', 'X', '', [[$this->feld(51, 'Name', '<input>', 'ACME'), $adresse]])]);
+        $markup = $this->gezeichnet([$this->feld(50, 'Supplier', 'X', '', [[$this->feld(51, 'Name', '«input»', 'ACME'), $adresse]])]);
 
         self::assertStringNotContainsString('taxmod-complex-link', $markup, 'nichts zugeklappt');
         self::assertStringContainsString('ADRESSE', $markup, 'die Felder des Teils stehen da');

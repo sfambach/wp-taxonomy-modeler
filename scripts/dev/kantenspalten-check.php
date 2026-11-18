@@ -193,12 +193,12 @@ $rows = [];
 foreach ($zeichner->settingsFor($zahl, $zeichner->settingsForUseSites([$zahl])[$zahl->id], Purpose::Edit, 'taxmod_field_setting[' . $zahl->id . ']') as $row) {
     $rows[$row->key] = $row;
 }
-check('die Feldzeile zeichnet read_only als Schiebeschalter, aus der Spalte', isset($rows['read_only']) && $rows['read_only']->wasDrawn() && str_contains($rows['read_only']->result->markup, 'taxmod-toggle-track') && $rows['read_only']->setting->value->asBool());
+check('die Feldzeile zeichnet read_only als Schiebeschalter, aus der Spalte', isset($rows['read_only']) && $rows['read_only']->wasDrawn() && str_contains(\Taxmod\WordPress\Draw\Markup::of($rows['read_only']->result), 'taxmod-toggle-track') && $rows['read_only']->setting->value->asBool());
 check('und «wie oft» daneben', isset($rows['multiplicity']) && $rows['multiplicity']->wasDrawn());
 
 $feld = $zeichner->fieldsFor([$zahl], [], Purpose::Edit, 'taxmod_value');
 // ⚠️ *Seit D-739 (2026-09-12) bleibt das Feld, ausgegraut und gefüllt: «feld ausgegraut und falls wert da ist gefüllt».*
-check('ein nur lesbares Feld bietet beim Bearbeiten ein gesperrtes Eingabefeld an (D-739)', $feld !== [] && str_starts_with($feld[0]->result->markup, '<fieldset disabled class="taxmod-read-only">') && str_contains($feld[0]->result->markup, '<input'));
+check('ein nur lesbares Feld bietet beim Bearbeiten ein gesperrtes Eingabefeld an (D-739)', $feld !== [] && str_starts_with(\Taxmod\WordPress\Draw\Markup::of($feld[0]->result), '<fieldset disabled class="taxmod-read-only">') && str_contains(\Taxmod\WordPress\Draw\Markup::of($feld[0]->result), '<input'));
 
 abschicken(['do' => 'put_setting', 'id' => (string) $wiese->id, '_taxmod_nonce' => wp_create_nonce('taxmod_node_' . $wiese->id), 'taxmod_field_setting' => [(string) $zahl->id => ['read_only' => '0']]]);
 check('das Formular schaltet die Spalte aus', $kanten->byId($zahl->id)->readOnly === false);
@@ -218,7 +218,7 @@ $flagRows = [];
 foreach ($zeichner->settingsFor($flag, $zeichner->settingsForUseSites([$flag])[$flag->id], Purpose::Edit, 'taxmod_field_setting[' . $flag->id . ']') as $row) {
     $flagRows[$row->key] = $row;
 }
-$wahl = $flagRows['multiplicity']->result->markup ?? '';
+$wahl = \Taxmod\WordPress\Draw\Markup::of($flagRows['multiplicity']->result ?? null);
 check('ein Feld auf Boolean bekommt nur 1..1 angeboten', str_contains($wahl, 'value="1..1"') && ! str_contains($wahl, 'value="0..1"') && ! str_contains($wahl, 'value="0..*"') && ! str_contains($wahl, 'value="1..*"'), $wahl === '' ? 'kein Wähler' : '');
 
 $abgewiesen = false;
@@ -233,7 +233,7 @@ $zahlRows = [];
 foreach ($zeichner->settingsFor($zahl, $zeichner->settingsForUseSites([$zahl])[$zahl->id], Purpose::Edit, 'taxmod_field_setting[' . $zahl->id . ']') as $row) {
     $zahlRows[$row->key] = $row;
 }
-$wahlZahl = $zahlRows['multiplicity']->result->markup ?? '';
+$wahlZahl = \Taxmod\WordPress\Draw\Markup::of($zahlRows['multiplicity']->result ?? null);
 check('ein Feld auf Integer bekommt alle vier', str_contains($wahlZahl, 'value="0..1"') && str_contains($wahlZahl, 'value="1..1"') && str_contains($wahlZahl, 'value="0..*"') && str_contains($wahlZahl, 'value="1..*"'));
 check('und der Kern nimmt 0..* an einem Integer', $editor->setMultiplicity($wiese->id, $zahl->id, Multiplicity::ZeroToMany)->multiplicity === Multiplicity::ZeroToMany);
 

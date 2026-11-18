@@ -39,12 +39,12 @@ final class RepeatableRendererTest extends TestCase
 
     private function eintrag(string $pfad, string $markup): RenderedField
     {
-        return new RenderedField($this->feld, SimpleType::Int, FieldRenderer::NAME, new RenderResult($markup, [4654]), false, $pfad);
+        return new RenderedField($this->feld, SimpleType::Int, FieldRenderer::NAME, \Taxmod\Tests\Support\Fixture::result($markup, 4654), false, $pfad);
     }
 
     private function gezeichnet(array $parts, array $actions): string
     {
-        return $this->renderer->render(
+        return \Taxmod\WordPress\Draw\Markup::of($this->renderer->render(
             $this->feld,
             new RenderContext(
                 purpose: Purpose::Edit,
@@ -52,7 +52,7 @@ final class RepeatableRendererTest extends TestCase
                 level: Level::Admin,
                 surroundings: new Surroundings(parts: $parts, actions: $actions),
             )
-        )->markup;
+        ));
     }
 
     #[Test]

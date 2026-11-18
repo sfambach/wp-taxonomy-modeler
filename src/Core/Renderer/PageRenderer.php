@@ -77,7 +77,7 @@ final class PageRenderer extends RendererNode
         foreach (PageSlot::cases() as $slot) {
             $section = $sections[$slot->value] ?? null;
 
-            if ($section === null || $section->body === '') {
+            if ($section === null || ! $section->shows()) {
                 continue;
             }
 

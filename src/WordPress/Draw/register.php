@@ -1,14 +1,11 @@
 <?php declare(strict_types=1);
 
 /**
- * Hands the core its drawer as soon as the autoloader is there — in the plugin, in every check and in the core run alike.
- *
- * ⚠️ *Scaffolding of renderer step 6c (D-635): while composite renderers still build markup, they need the drawn piece of a
- * renderer that already only describes. When the last of them describes too, the page is drawn once at the edge and this
- * part goes (umsetzung-2026-11.md, A15).*
+ * Hands the core the edge's answer to «does this show anything» (A20) as soon as the autoloader is there — in the plugin, in every
+ * check and in the core run alike. The core draws nothing with it.
  */
 
-Taxmod\Core\Renderer\RenderResult::drawWith(new Taxmod\WordPress\Draw\EdgeDrawer());
+Taxmod\Core\Renderer\Shows::measureWith(new Taxmod\WordPress\Draw\EdgeMeasures(new Taxmod\WordPress\Draw\EdgeDrawer()));
 
 /**
  * ⚠️ *The modules (Lager, Fertigung, eBay, Etiketten …) name the drawing classes by their old place in the core. Until each

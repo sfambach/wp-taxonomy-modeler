@@ -329,7 +329,7 @@ function gezeichnet(Rendering $zeichner, int $relationId): array
 
     $felder = $zeichner->fieldsFor([$relation], [], Purpose::Edit, 'taxmod_value');
 
-    return $felder === [] ? ['', ''] : [$felder[0]->rendererName, $felder[0]->result->markup];
+    return $felder === [] ? ['', ''] : [$felder[0]->rendererName, \Taxmod\WordPress\Draw\Markup::of($felder[0]->result)];
 }
 
 /** Die Zeilen einer Tabelle unter einer Überschrift, je Zelle der Klartext (ein gewählter Eintrag zählt als Text). */
@@ -454,7 +454,7 @@ foreach ($wpdb->get_results("SELECT DISTINCT node_id FROM {$p}settings_value WHE
     if (! in_array($name, $erlaubt, true)) {
         $unerlaubt[] = $knoten->name . ' → ' . $name;
     }
-    if (isset($merkmal[$name]) && ($zeichnung = $bestandZeichnen->valueOfType($knoten, Purpose::Edit)) !== null && ! str_contains($zeichnung->markup, $merkmal[$name])) {
+    if (isset($merkmal[$name]) && ($zeichnung = $bestandZeichnen->valueOfType($knoten, Purpose::Edit)) !== null && ! str_contains(\Taxmod\WordPress\Draw\Markup::of($zeichnung), $merkmal[$name])) {
         $daneben[] = "{$knoten->name}: sagt «{$name}», zeichnet ohne «{$merkmal[$name]}»";
     }
 }
@@ -495,13 +495,13 @@ check('und ein int wird gezeichnet, wie seine Kette es sagt', $fields[$count->id
 check('ein bool bekommt den Schiebeschalter', $fields[$stock->id]->rendererName === ToggleRenderer::NAME, $fields[$stock->id]->rendererName);
 check('ein datetime den Datumsrenderer', $fields[$when->id]->rendererName === DateTimeRenderer::NAME, $fields[$when->id]->rendererName);
 check('und keines fällt auf den Rückfall', count(array_filter($fields, static fn ($f): bool => $f->hasNoRenderer())) === 0);
-check('der Schalter ist ein Kästchen, das ungehakt «falsch» schickt', str_contains($fields[$stock->id]->result->markup, 'type="checkbox"') && str_contains($fields[$stock->id]->result->markup, 'type="hidden"'));
-check('das Datum ist ein Datumsfeld', str_contains($fields[$when->id]->result->markup, 'type="datetime-local"'));
-check('die Adresse ein Adressfeld, die Farbe ein Wähler', str_contains($fields[$mail->id]->result->markup, 'type="email"') && str_contains($fields[$colour->id]->result->markup, 'type="color"'));
-check('jedes Feld ist über seine Kante benannt, nie über die Stelle', str_contains($fields[$label->id]->result->markup, 'name="taxmod_value[' . $label->id . ']"'));
-$intMarkup = $fields[$count->id]->result->markup;
+check('der Schalter ist ein Kästchen, das ungehakt «falsch» schickt', str_contains(\Taxmod\WordPress\Draw\Markup::of($fields[$stock->id]->result), 'type="checkbox"') && str_contains(\Taxmod\WordPress\Draw\Markup::of($fields[$stock->id]->result), 'type="hidden"'));
+check('das Datum ist ein Datumsfeld', str_contains(\Taxmod\WordPress\Draw\Markup::of($fields[$when->id]->result), 'type="datetime-local"'));
+check('die Adresse ein Adressfeld, die Farbe ein Wähler', str_contains(\Taxmod\WordPress\Draw\Markup::of($fields[$mail->id]->result), 'type="email"') && str_contains(\Taxmod\WordPress\Draw\Markup::of($fields[$colour->id]->result), 'type="color"'));
+check('jedes Feld ist über seine Kante benannt, nie über die Stelle', str_contains(\Taxmod\WordPress\Draw\Markup::of($fields[$label->id]->result), 'name="taxmod_value[' . $label->id . ']"'));
+$intMarkup = \Taxmod\WordPress\Draw\Markup::of($fields[$count->id]->result);
 check('ein Zahlfeld bietet keine Buchstaben an, die es dann verweigert', str_contains($intMarkup, 'pattern="' . SimpleType::Int->pattern() . '"') || (str_contains($intMarkup, 'type="number"') && str_contains($intMarkup, 'step=')) || (str_contains($intMarkup, 'type="range"') && str_contains($intMarkup, 'step=')));
-check('und ein Textfeld bekommt kein Muster, das es nichts angeht', ! str_contains($fields[$label->id]->result->markup, 'pattern'));
+check('und ein Textfeld bekommt kein Muster, das es nichts angeht', ! str_contains(\Taxmod\WordPress\Draw\Markup::of($fields[$label->id]->result), 'pattern'));
 
 $description = $editor->createNode('__es Description', $seeded['text']->id);
 $notes       = $editor->addField($modellKnoten->id, $description->id, '__es notes');
@@ -869,7 +869,7 @@ $row = $wpdb->get_row($wpdb->prepare('SELECT value_int, value_text FROM ' . Sche
 check('ein bool landet in value_int als 1 (D-315)', (int) $row['value_int'] === 1 && $row['value_text'] === null);
 $reloaded = [];
 foreach ($rendering->fieldsFor($every, $back, Purpose::Edit, 'taxmod_value') as $field) {
-    $reloaded[$field->relation->id] = $field->result->markup;
+    $reloaded[$field->relation->id] = \Taxmod\WordPress\Draw\Markup::of($field->result);
 }
 check('was gespeichert ist, zeigt das Steuerelement wieder: Haken, Datum, Adresse, Farbe', str_contains($reloaded[$stock->id], 'checked') && str_contains($reloaded[$when->id], 'value="2026-08-25T14:32"') && str_contains($reloaded[$mail->id], 'value="a@b.example"') && str_contains($reloaded[$colour->id], 'value="#663399"'));
 $verweigert = 0;
@@ -885,9 +885,9 @@ check('nichts wird zurechtgebogen: ein Wort ist keine Null, ein fremdes Datum wi
 $gram = $editor->createNode('__es Gramm', $framework->rootOf(Branch::Constants)->id);
 $unit = $editor->addField($modellKnoten->id, $gram->id, '__es unit');
 $named = $rendering->fieldsFor([$unit], [$unit->id => TypedValue::ofReference($gram->id)], Purpose::Display, '')[0];
-check('eine Konstante wird als ihr Name gezeichnet, nicht als Nummer (D-105, D-232)', $named->type === SimpleType::NodeRef && $named->rendererName === 'reference' && str_contains($named->result->markup, '__es Gramm') && ! str_contains($named->result->markup, (string) $gram->id));
+check('eine Konstante wird als ihr Name gezeichnet, nicht als Nummer (D-105, D-232)', $named->type === SimpleType::NodeRef && $named->rendererName === 'reference' && str_contains(\Taxmod\WordPress\Draw\Markup::of($named->result), '__es Gramm') && ! str_contains(\Taxmod\WordPress\Draw\Markup::of($named->result), (string) $gram->id));
 $editing = $rendering->fieldsFor([$unit], [$unit->id => TypedValue::ofReference($gram->id)], Purpose::Edit, 'taxmod_value')[0];
-check('bearbeiten ist eine Wahl, mit sichtbarem Wert, und ein einziger Ausgang ist keine Entscheidung (R30)', ! $editing->hasNoRenderer() && str_contains($editing->result->markup, 'taxmod-choice') && str_contains($editing->result->markup, '__es Gramm') && str_contains($editing->result->markup, 'disabled'));
+check('bearbeiten ist eine Wahl, mit sichtbarem Wert, und ein einziger Ausgang ist keine Entscheidung (R30)', ! $editing->hasNoRenderer() && str_contains(\Taxmod\WordPress\Draw\Markup::of($editing->result), 'taxmod-choice') && str_contains(\Taxmod\WordPress\Draw\Markup::of($editing->result), '__es Gramm') && str_contains(\Taxmod\WordPress\Draw\Markup::of($editing->result), 'disabled'));
 
 $relations->save($label->withHide(true), $label->version);
 $frisch = [];
@@ -906,7 +906,7 @@ foreach ($rendering->fieldsFor([$label, $mail], $back, Purpose::Edit, 'taxmod_va
 }
 check('ein verborgenes Feld wird gar nicht aufgezählt, die anderen bleiben', ! isset($closed[$label->id]) && count($closed) === 1);
 // ⚠️ *Seit D-739 (2026-09-12): das Feld bleibt beim Bearbeiten, gesperrt und gefüllt — der Link gehört der Anzeige.*
-check('eine nur lesbare Adresse wird beim Bearbeiten als gesperrtes Feld gezeigt (D-739)', str_starts_with($closed[$mail->id]->result->markup, '<fieldset disabled class="taxmod-read-only">'));
+check('eine nur lesbare Adresse wird beim Bearbeiten als gesperrtes Feld gezeigt (D-739)', str_starts_with(\Taxmod\WordPress\Draw\Markup::of($closed[$mail->id]->result), '<fieldset disabled class="taxmod-read-only">'));
 check('kein Feld wird zur Suche angeboten (D-217), und beim Anzeigen fällt keines weg', $rendering->fieldsFor($every, [], Purpose::Search, 'q') === [] && count($rendering->fieldsFor($every, [], Purpose::Display, '')) === count($every) - 1);
 
 $before = $wpdb->num_queries;
@@ -929,14 +929,14 @@ $krows = [];
 foreach ($rendering->settingsFor($count, $rendering->settingsForUseSites([$count])[$count->id]) as $r) {
     $krows[$r->key] = $r;
 }
-check('die Spalte read_only wird an der Feldzeile als Schiebeschalter gezeichnet (R20a, D-714)', isset($krows['read_only']) && $krows['read_only']->wasDrawn() && str_contains($krows['read_only']->result->markup, 'taxmod-toggle-track'));
+check('die Spalte read_only wird an der Feldzeile als Schiebeschalter gezeichnet (R20a, D-714)', isset($krows['read_only']) && $krows['read_only']->wasDrawn() && str_contains(\Taxmod\WordPress\Draw\Markup::of($krows['read_only']->result), 'taxmod-toggle-track'));
 check('am Knoten gibt es keinen Schalter read_only mehr', ! isset($srows['read_only']));
 check('ein leihender Schlüssel nimmt den Typ des Knotens', isset($srows['step']) ? $srows['step']->type === SimpleType::Int : true);
 $editRows = [];
 foreach ($rendering->settingsFor($intNode, $rendering->settingsForNode($intNode), Purpose::Edit) as $r) {
     $editRows[$r->key] = $r;
 }
-check('eine Wahl wird als Liste echter Möglichkeiten gezeichnet', isset($editRows['renderer']) && $editRows['renderer']->wasDrawn() && str_contains($editRows['renderer']->result->markup, '<select'));
+check('eine Wahl wird als Liste echter Möglichkeiten gezeichnet', isset($editRows['renderer']) && $editRows['renderer']->wasDrawn() && str_contains(\Taxmod\WordPress\Draw\Markup::of($editRows['renderer']->result), '<select'));
 // ⚠️ *Ein Text kennt keinen Konverter — der Vertrag erklärt die Zeile, die Registratur bietet nichts an (Schritt 7).*
 $intLeer = $editor->createNode('__es Text leer', $seeded['text']->id);
 // ⚠️ *Ein Zeichner ohne Konverter-Registratur: dann hat die Wahl nichts anzubieten — und genau das soll sie zeigen.*
@@ -945,17 +945,17 @@ $eigeneZeilen = [];
 foreach ($rendering->settingsFor($nodes->byId($intLeer->id), $rendering->settingsForNode($nodes->byId($intLeer->id)), Purpose::Edit) as $r) {
     $eigeneZeilen[$r->key] = $r;
 }
-check('eine Wahl ohne Inhalt ist ein totes Steuerelement, kein leeres', isset($eigeneZeilen['converter']) && str_contains($eigeneZeilen['converter']->result->markup ?? '', 'disabled'));
+check('eine Wahl ohne Inhalt ist ein totes Steuerelement, kein leeres', isset($eigeneZeilen['converter']) && str_contains(\Taxmod\WordPress\Draw\Markup::of($eigeneZeilen['converter']->result ?? null), 'disabled'));
 $editor->setReadOnly($modellKnoten->id, $count->id, true);
 check('ein Schalter liest sich als Wahrheitswert zurück, nicht als die Zahl eins', ($zeichner()->settingsForUseSites([$relations->byId($count->id)])[$count->id]['read_only'] ?? null)?->value->asBool() === true);
 $editor->setReadOnly($modellKnoten->id, $count->id, false);
 $count = $relations->byId($count->id);
 
 $formed = $zeichner()->nodeAsForm($nodes->byId($modellKnoten->id), $every, $back, Purpose::Edit, 'taxmod_value');
-$readOnlyAt = strpos($formed->markup, '__es contact');
-$ordinaryAt = strpos($formed->markup, '__es count');
-$boolAt     = strpos($formed->markup, '__es in stock');
-check('ein Knoten wird von einem Behälter gezeichnet, nicht von einem Bildschirm (D-098): das Formular steht, nennt seine Kanten', str_contains($formed->markup, 'taxmod-form') && $formed->usedRelations !== []);
+$readOnlyAt = strpos(\Taxmod\WordPress\Draw\Markup::of($formed), '__es contact');
+$ordinaryAt = strpos(\Taxmod\WordPress\Draw\Markup::of($formed), '__es count');
+$boolAt     = strpos(\Taxmod\WordPress\Draw\Markup::of($formed), '__es in stock');
+check('ein Knoten wird von einem Behälter gezeichnet, nicht von einem Bildschirm (D-098): das Formular steht, nennt seine Kanten', str_contains(\Taxmod\WordPress\Draw\Markup::of($formed), 'taxmod-form') && $formed->usedRelations !== []);
 check('nur lesbare Felder vorn, gewöhnliche danach, Schalter zuletzt', $readOnlyAt !== false && $ordinaryAt !== false && $boolAt !== false && $readOnlyAt < $ordinaryAt && $boolAt > $ordinaryAt, "{$readOnlyAt} / {$ordinaryAt} / {$boolAt}");
 $mail = $editor->setReadOnly($mail->fromNodeId, $mail->id, false);
 
@@ -972,21 +972,21 @@ foreach ($zeichner()->settingsFor($eins, $zeichner()->settingsForUseSites([$eins
         $konverterZeile = $one;
     }
 }
-check('die Zeile `converter` ist lebendig und bietet binary, hexadecimal, octal, roman an', $konverterZeile !== null && ! str_contains($konverterZeile->result->markup, 'disabled') && count(array_filter(['binary', 'hexadecimal', 'octal', 'roman'], static fn (string $n): bool => str_contains($konverterZeile->result->markup, $n))) === 4);
+check('die Zeile `converter` ist lebendig und bietet binary, hexadecimal, octal, roman an', $konverterZeile !== null && ! str_contains(\Taxmod\WordPress\Draw\Markup::of($konverterZeile->result), 'disabled') && count(array_filter(['binary', 'hexadecimal', 'octal', 'roman'], static fn (string $n): bool => str_contains(\Taxmod\WordPress\Draw\Markup::of($konverterZeile->result), $n))) === 4);
 $vorherFeld = $zeichner()->fieldsFor([$eins], [$eins->id => TypedValue::ofInt(12)], Purpose::Display)[0];
-check('ohne Konverter steht die 12 als 12 da', str_contains($vorherFeld->result->markup, '12'));
+check('ohne Konverter steht die 12 als 12 da', str_contains(\Taxmod\WordPress\Draw\Markup::of($vorherFeld->result), '12'));
 $umschreiben = static function (string $name) use ($modellKnoten, $eins): void {
     speichern($modellKnoten->id, ['taxmod_field_setting' => [(string) $eins->id => ['converter' => $name]], 'taxmod_field_setting_override' => [(string) $eins->id => ['converter' => '1']]]);
 };
 $umschreiben('roman');
 $nachher = $zeichner()->fieldsFor([$eins], [$eins->id => TypedValue::ofInt(12)], Purpose::Display)[0];
-check('mit roman wird sie XII, ohne den Renderer zu wechseln', str_contains($nachher->result->markup, 'XII') && $nachher->rendererName === $vorherFeld->rendererName);
+check('mit roman wird sie XII, ohne den Renderer zu wechseln', str_contains(\Taxmod\WordPress\Draw\Markup::of($nachher->result), 'XII') && $nachher->rendererName === $vorherFeld->rendererName);
 check('und XII kommt als 12 zurück, auch klein geschrieben', ($zeichner()->valuesFrom([$eins], [$eins->id => 'XII'])[$eins->id]->int ?? null) === 12 && ($zeichner()->valuesFrom([$eins], [$eins->id => 'xii'])[$eins->id]->int ?? null) === 12);
 $hinUndZurueck = [];
 foreach ([['hexadecimal', 255, 'FF'], ['binary', 12, '1100'], ['octal', 493, '755']] as [$k, $zahlWert, $zeichen]) {
     $umschreiben($k);
     $g = $zeichner()->fieldsFor([$eins], [$eins->id => TypedValue::ofInt($zahlWert)], Purpose::Display)[0];
-    if (! str_contains($g->result->markup, $zeichen) || ($zeichner()->valuesFrom([$eins], [$eins->id => $zeichen])[$eins->id]->int ?? null) !== $zahlWert) {
+    if (! str_contains(\Taxmod\WordPress\Draw\Markup::of($g->result), $zeichen) || ($zeichner()->valuesFrom([$eins], [$eins->id => $zeichen])[$eins->id]->int ?? null) !== $zahlWert) {
         $hinUndZurueck[] = $k;
     }
 }
@@ -1006,12 +1006,12 @@ try {
 }
 check('eine Ziffer, die es in der Basis nicht gibt, und Unlesbares werden verweigert — nicht als 0 gespeichert', $abgelehnt === 2);
 $umschreiben('gibt-es-nicht');
-check('ein Konvertername, den es nicht gibt, wird abgewiesen — der vorige bleibt, und das Formular zeichnet weiter', ! gelungen() && (($zeichner()->settingsForUseSites([$eins])[$eins->id]['converter'] ?? null)?->value->text ?? '') === 'hexadecimal' && str_contains($zeichner()->fieldsFor([$eins], [$eins->id => TypedValue::ofInt(255)], Purpose::Display)[0]->result->markup, 'FF'), letzteMeldung());
+check('ein Konvertername, den es nicht gibt, wird abgewiesen — der vorige bleibt, und das Formular zeichnet weiter', ! gelungen() && (($zeichner()->settingsForUseSites([$eins])[$eins->id]['converter'] ?? null)?->value->text ?? '') === 'hexadecimal' && str_contains(\Taxmod\WordPress\Draw\Markup::of($zeichner()->fieldsFor([$eins], [$eins->id => TypedValue::ofInt(255)], Purpose::Display)[0]->result), 'FF'), letzteMeldung());
 $umschreiben('');
-check('leer an der Kante: kein Konverter mehr, die 12 ist wieder 12', ! isset($zeichner()->settingsForUseSites([$eins])[$eins->id]['converter']) && str_contains($zeichner()->fieldsFor([$eins], [$eins->id => TypedValue::ofInt(12)], Purpose::Display)[0]->result->markup, '12'));
+check('leer an der Kante: kein Konverter mehr, die 12 ist wieder 12', ! isset($zeichner()->settingsForUseSites([$eins])[$eins->id]['converter']) && str_contains(\Taxmod\WordPress\Draw\Markup::of($zeichner()->fieldsFor([$eins], [$eins->id => TypedValue::ofInt(12)], Purpose::Display)[0]->result), '12'));
 speichern($zahl->id, ['taxmod_setting' => ['converter' => 'roman']]);
 $beide = $zeichner()->fieldsFor([$eins, $zwei], [$eins->id => TypedValue::ofInt(12), $zwei->id => TypedValue::ofInt(4)], Purpose::Display);
-check('am Knoten gesetzt gilt der Konverter an jeder Verwendung: XII und IV', str_contains($beide[0]->result->markup, 'XII') && str_contains($beide[1]->result->markup, 'IV'));
+check('am Knoten gesetzt gilt der Konverter an jeder Verwendung: XII und IV', str_contains(\Taxmod\WordPress\Draw\Markup::of($beide[0]->result), 'XII') && str_contains(\Taxmod\WordPress\Draw\Markup::of($beide[1]->result), 'IV'));
 speichern($zahl->id, ['taxmod_setting' => ['converter' => '']]);
 
 // ---------------------------------------------------------------------------------------------------
@@ -1672,7 +1672,7 @@ $t63Links  = $editor->addField($t63Wiese->id, $seeded['text']->id, '__es links')
 $t63Rechts = $editor->addField($t63Wiese->id, $seeded['text']->id, '__es rechts');
 speichern($t63Wiese->id, ['taxmod_setting' => ['renderer' => TableRenderer::NAME]]);
 check('das Ding wählt `table`, und die Maske zeichnet dazu die Zeile `orientation`', gelungen() && (bool) preg_match('/name="taxmod_setting\\[orientation\\]"/', seite($t63Wiese->id)), letzteMeldung());
-$t63Zeichnen = static fn (): string => $zeichner()->recordsAsTable($nodes->byId($t63Wiese->id), [$t63Links, $t63Rechts], [['id' => 1, 'values' => [$t63Links->id => TypedValue::ofText('__es A'), $t63Rechts->id => TypedValue::ofText('__es B')], 'lead' => [], 'acts' => [], 'submits' => new Submission('', [])]], 'taxmod_value')->markup;
+$t63Zeichnen = static fn (): string => \Taxmod\WordPress\Draw\Markup::of($zeichner()->recordsAsTable($nodes->byId($t63Wiese->id), [$t63Links, $t63Rechts], [['id' => 1, 'values' => [$t63Links->id => TypedValue::ofText('__es A'), $t63Rechts->id => TypedValue::ofText('__es B')], 'lead' => [], 'acts' => [], 'submits' => new Submission('', [])]], 'taxmod_value'));
 $waagerecht = $t63Zeichnen();
 speichern($t63Wiese->id, ['taxmod_setting' => ['orientation' => 'vertical']]);
 $senkrecht = $t63Zeichnen();
