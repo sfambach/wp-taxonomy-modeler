@@ -347,10 +347,10 @@ vermutlich im Fliesstext und sollte eine eigene Zeile bekommen.
 
 | Regel | Was sie sagt | Steht in | Zitiert |
 |---|---|---|---|
-| **K1** | Switching a prefix — gram to kilogram — has to change the value with it. An internal conversion, handled differently again in the interface. | [60-calculation.md:28](60-calculation.md) | 6 |
-| **K2** | There are computed values assembled from other fields. Hidden fields may be added up and the result shown in another field. | [60-calculation.md:29](60-calculation.md) | 7 |
+| **K1** | Switching a prefix — gram to kilogram — has to change the value with it. An internal conversion, handled differently again in the interface. | [60-calculation.md:28](60-calculation.md) | 7 |
+| **K2** | There are computed values assembled from other fields. Hidden fields may be added up and the result shown in another field. | [60-calculation.md:29](60-calculation.md) | 8 |
 | **K3** | A parts list has a total price, which comes from the prices of its positions, each of which comes from quantity × unit price. | [60-calculation.md:30](60-calculation.md) | 17 |
-| **K4** | Elsewhere, averages or sums are wanted. | [60-calculation.md:31](60-calculation.md) | 1 |
+| **K4** | Elsewhere, averages or sums are wanted. | [60-calculation.md:31](60-calculation.md) | 2 |
 | **K5** | In the old concept a calculation could also be a transformation — a text transformation, say. The owner asks for this to be questioned. | [60-calculation.md:32](60-calculation.md) | 4 |
 | **K6** | There is a difference between calculations in the model and calculations for display. A parts list may get a frontend footer that sums quantity and… | [60-calculation.md:33](60-calculation.md) | 6 |
 | **K7** | If a parts list should always show the average price, it is recalculated each time rather than snapshotted — and the calculation feeds from another… | [60-calculation.md:440](60-calculation.md) | 1 |
