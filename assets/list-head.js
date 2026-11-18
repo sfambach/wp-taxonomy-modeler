@@ -374,7 +374,13 @@
 			search.setAttribute( 'aria-label', word( 'search', 'Filter the whole table …' ) );
 			search.addEventListener( 'input', draw );
 			box.appendChild( search );
-			( nav || table ).before( box );
+
+			if ( nav ) {
+				// In the bar's row, on the right, before the count (D-1462).
+				( nav.querySelector( '.tablenav-pages' ) || nav.lastElementChild ).before( box );
+			} else {
+				table.before( box );
+			}
 		}
 
 		// A filter row of its own where the server draws none.

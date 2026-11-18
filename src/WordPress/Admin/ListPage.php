@@ -348,7 +348,8 @@ final class ListPage
                 . ' style="width:100%;min-width:4em"></td>';
         }
 
-        return $html . '<td style="text-align:right">' . get_submit_button(__('Filter', 'taxmod'), 'small', '', false, ['form' => $searchFormId]) . '</td></tr>';
+        // D-1462: a box asks after a pause, Enter at once — the button stays for Enter and the screen reader, unseen.
+        return $html . '<td><button type="submit" class="screen-reader-text" form="' . esc_attr($searchFormId) . '">' . esc_html__('Filter', 'taxmod') . '</button></td></tr>';
     }
 
     /**
@@ -381,7 +382,8 @@ final class ListPage
     {
         return '<div class="alignleft actions"><button type="button" class="button" onclick="'
             . esc_attr("this.closest('.wrap').querySelectorAll('.taxmod-filter-row').forEach(function(r){r.hidden=!r.hidden})") . '">'
-            . esc_html__('Filter row', 'taxmod') . '</button></div>';
+            // D-1462: an icon, so the bar keeps one row beside a navigation; the word stays as tooltip and for the screen reader.
+            . self::icon('filter', __('Filter row', 'taxmod')) . '</button></div>';
     }
 
     /**
@@ -758,8 +760,9 @@ final class ListPage
      * @param array<string, array{0: string, 1: string, 2?: bool}> $asking dialog switch → choice label, the dialog ({@see self::dialogAction()} joining
      *                                                     `$formId`): chosen and run, the dialog opens for the rows ticked; with `true` third
      *                                                     the dialog opens at once and its own form counts its rows (D-1403)
+     * @param string $search from {@see self::searchBox()}: the list's search, on the right of the same row (D-1462)
      */
-    public static function bulkBar(string $formId, string $nonceAction, array $actions, string $count, string $filters = '', bool $expandable = true, array $asking = []): string
+    public static function bulkBar(string $formId, string $nonceAction, array $actions, string $count, string $filters = '', bool $expandable = true, array $asking = [], string $search = ''): string
     {
         // His word 2026-11-06: «-- , drucken ... und was wir noch für aktionen haben in das selekt und dann bulk ation asuführen
         // button (nimmt nur selektierte einträge» — every action of the list stands in the one choice (D-1202).
@@ -778,16 +781,19 @@ final class ListPage
         }
 
         // WordPress's own words, untranslated here, so the bar reads like every other admin list (D-1433 G).
-        return '<div class="tablenav top"><form method="post" id="' . esc_attr($formId) . '" action="' . esc_url(admin_url('admin-post.php')) . '" class="alignleft actions bulkactions" onsubmit="' . esc_attr(self::confirmBulk($formId)) . '">'
+        // D-1462: one row — bulk actions, the page's filters, «Filter row», «Columns», expand and collapse as icons, the search on
+        // the right, the count last. Architecture gate 18.11.: «Gefordert sind eine Zeile und das Suchfeld rechts darin.»
+        return '<div class="tablenav top taxmod-list-bar"><form method="post" id="' . esc_attr($formId) . '" action="' . esc_url(admin_url('admin-post.php')) . '" class="alignleft actions bulkactions" onsubmit="' . esc_attr(self::confirmBulk($formId)) . '">'
             . wp_nonce_field($nonceAction, '_wpnonce', true, false)
             . '<label class="screen-reader-text" for="' . esc_attr($formId) . '-action">' . esc_html__('Select bulk action') . '</label>'
             . '<select name="action" id="' . esc_attr($formId) . '-action">' . $options . '</select> '
             . get_submit_button(__('Apply'), 'action', '', false) . '</form>'
             . ($dialogs === '' ? '' : '<div class="taxmod-bulk-asks">' . $dialogs . '</div>')
             . $filters
-            . (! $expandable ? '' : '<div class="alignleft actions">'
-            . '<button type="button" class="button" onclick="' . esc_attr(self::toggleAll(false)) . '">' . esc_html__('Expand all', 'taxmod') . '</button> '
-            . '<button type="button" class="button" onclick="' . esc_attr(self::toggleAll(true)) . '">' . esc_html__('Collapse all', 'taxmod') . '</button></div>')
+            . (! $expandable ? '' : '<div class="alignleft actions taxmod-list-fold">'
+            . '<button type="button" class="button" onclick="' . esc_attr(self::toggleAll(false)) . '">' . self::icon('arrow-down-alt2', __('Expand all', 'taxmod')) . '</button> '
+            . '<button type="button" class="button" onclick="' . esc_attr(self::toggleAll(true)) . '">' . self::icon('arrow-up-alt2', __('Collapse all', 'taxmod')) . '</button></div>')
+            . $search
             . '<div class="tablenav-pages one-page"><span class="displaying-num">' . esc_html($count) . '</span></div><br class="clear"></div>';
     }
 
@@ -905,7 +911,8 @@ final class ListPage
     }
 
     /**
-     * The search box on the right; a GET form of its own that the filters join through `form=`.
+     * The search box on the right; a GET form of its own that the filters join through `form=`. Given to {@see self::bulkBar()}
+     * as `$search` it stands in the bar's row (D-1462).
      *
      * @param array<string, string> $hidden query arguments to keep (page, tab, orderby …)
      */
@@ -919,23 +926,25 @@ final class ListPage
         }
 
         return $html . '<p class="search-box"><label class="screen-reader-text" for="' . esc_attr($formId) . '-s">' . esc_html($label) . '</label>'
-            . '<input type="search" id="' . esc_attr($formId) . '-s" name="s" value="' . esc_attr($value) . '" placeholder="' . esc_attr($placeholder) . '"> '
-            . get_submit_button($label, '', '', false, ['id' => $formId . '-submit']) . '</p></form>';
+            . '<input type="search" id="' . esc_attr($formId) . '-s" name="s" value="' . esc_attr($value) . '" placeholder="' . esc_attr($placeholder) . '">'
+            // D-1462: one meaning, no button of its own — typing asks after a pause, Enter at once; the button stays for Enter and the
+            // screen reader, unseen.
+            . '<button type="submit" class="screen-reader-text" id="' . esc_attr($formId) . '-submit">' . esc_html($label) . '</button></p></form>';
     }
 
     /**
-     * Filter drop-downs with their button, for {@see self::bulkBar()}; they submit the search form.
+     * Filter drop-downs for {@see self::bulkBar()}; a change submits the search form (D-1462).
      *
      * @param list<array{0: string, 1: array<string, string>, 2: string, 3?: string}> $filters name, value => text, current, label
      */
     public static function filters(string $searchFormId, array $filters): string
     {
-        $html = '<div class="alignleft actions">';
+        $html = '<div class="alignleft actions taxmod-list-choices">';
 
         foreach ($filters as $filter) {
             $id = $searchFormId . '-' . $filter[0];
             $html .= '<label class="screen-reader-text" for="' . esc_attr($id) . '">' . esc_html($filter[3] ?? $filter[0]) . '</label>'
-                . '<select name="' . esc_attr($filter[0]) . '" id="' . esc_attr($id) . '" form="' . esc_attr($searchFormId) . '">';
+                . '<select name="' . esc_attr($filter[0]) . '" id="' . esc_attr($id) . '" form="' . esc_attr($searchFormId) . '" onchange="' . esc_attr('this.form&&this.form.requestSubmit?this.form.requestSubmit():this.form.submit()') . '">';
 
             foreach ($filter[1] as $value => $text) {
                 $html .= '<option value="' . esc_attr((string) $value) . '"' . ((string) $value === $filter[2] ? ' selected' : '') . '>' . esc_html($text) . '</option>';
@@ -944,7 +953,8 @@ final class ListPage
             $html .= '</select> ';
         }
 
-        return $html . get_submit_button(__('Filter', 'taxmod'), '', 'filter_action', false, ['form' => $searchFormId]) . '</div>';
+        // D-1462: a choice asks at once, like the search — no second button beside «Search».
+        return $html . '</div>';
     }
 
     /**
@@ -1210,6 +1220,13 @@ final class ListPage
             . '.taxmod-list-lazy[data-state="done"]{display:block;min-height:0}'
             . '.taxmod-list-prompt>td{padding:28px 12px!important;text-align:center;color:#50575e;font-size:14px}.taxmod-list-prompt .dashicons{vertical-align:middle;color:#8c8f94}'
             . '.taxmod-list-prompt .button{margin-left:8px}'
+            // D-1462: the bar is one row — nothing floats, nothing wraps; the search takes what is left, on the right.
+            . '.tablenav.taxmod-list-bar{display:flex;flex-wrap:nowrap;align-items:center;gap:6px;height:auto;margin:6px 0;padding:0}'
+            . '.tablenav.taxmod-list-bar>*,.tablenav.taxmod-list-bar>.actions,.tablenav.taxmod-list-bar>.bulkactions,.tablenav.taxmod-list-bar>.tablenav-pages{float:none;margin:0;padding:0;display:flex;align-items:center;gap:4px;flex:none;overflow:visible}'
+            . '.tablenav.taxmod-list-bar>.taxmod-list-choices{flex:0 1 auto;min-width:0}.wp-core-ui .tablenav.taxmod-list-bar .actions select{flex:0 1 auto;min-width:5.5em}.tablenav.taxmod-list-bar>.tablenav-pages{flex:0 1 auto;white-space:normal;line-height:1.2;min-width:6em;text-align:right}.taxmod-list-bar>br.clear{display:none}.wp-core-ui .tablenav.taxmod-list-bar select{max-width:10em}.wp-core-ui .tablenav.taxmod-list-bar .bulkactions select{max-width:8.5em}.tablenav.taxmod-list-bar .displaying-num{margin:0}.taxmod-list-bar .taxmod-list-fold .button{padding:0 4px}'
+            . '.taxmod-list-bar>form[method="get"]{flex:1 1 10em;min-width:8em;justify-content:flex-end}.taxmod-list-bar .search-box{float:none;margin:0;display:flex;width:100%;max-width:18em;position:static}'
+            . '.taxmod-list-bar>p.search-box{flex:1 1 10em;min-width:8em;max-width:none;justify-content:flex-end}.taxmod-list-bar>p.search-box input{max-width:18em}'
+            . '.taxmod-list-bar .search-box input[type="search"]{width:100%;margin:0}.taxmod-list-bar>.tablenav-pages{color:#50575e}'
             // D-1227: the bar above every list, and the group rows.
             . '.taxmod-list-head{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:6px 0}.taxmod-list-head-search{min-width:16em}'
             . '.taxmod-list-head-count:empty{display:none}.taxmod-list-head-count{color:#50575e}.taxmod-list-head-total{margin-left:auto;color:#50575e}'
