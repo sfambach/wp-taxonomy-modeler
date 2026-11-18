@@ -11,7 +11,10 @@
         "psr-4": {
             "Taxmod\\Core\\": "src/Core/",
             "Taxmod\\WordPress\\": "src/WordPress/"
-        }
+        },
+        "files": [
+            "src/WordPress/Draw/register.php"
+        ]
     },
     "config": {
         "optimize-autoloader": true,

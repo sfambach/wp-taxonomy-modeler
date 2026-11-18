@@ -2,6 +2,10 @@
 
 namespace Taxmod\Core\Renderer;
 
+use Taxmod\Core\Description\InputKind;
+use Taxmod\Core\Description\ShownValue;
+use Taxmod\Core\Description\ValueInput;
+use Taxmod\Core\Description\ValueKind;
 use Taxmod\Core\Model\SimpleType;
 
 /**
@@ -29,56 +33,13 @@ final class ColorRenderer extends TypedFieldRenderer
         return [SimpleType::Color];
     }
 
-    protected function display(RenderContext $context): string
+    protected function display(RenderContext $context): ShownValue
     {
-        $outputValue = $this->outputValue($context);
-
-        if ($outputValue === '') {
-            return $this->createHtmlValueSpan('');
-        }
-
-        return $this->createHtmlValueSpan(
-            $this->patch($outputValue) . RenderResult::escape($outputValue)
-        );
+        return new ShownValue($this->outputValue($context), ValueKind::Colour);
     }
 
-    protected function input(RenderContext $context): string
+    protected function input(RenderContext $context): ValueInput
     {
-        $outputValue = $this->outputValue($context);
-
-        if ($outputValue !== '' && ! $this->pickerCanHold($outputValue)) {
-            return RenderResult::htmlTag('input', [
-                'type'  => 'text',
-                'name'  => $context->fieldName,
-                // ⚠️ *Ohne dies schickt die Eingabe nichts, wenn sie ausserhalb ihres Formulars steht.*
-                'form'  => $context->surroundings->formId,
-                'value' => $outputValue,
-            ]) . $this->patch($outputValue);
-        }
-
-        return RenderResult::htmlTag('input', [
-            'type'  => 'color',
-            'name'  => $context->fieldName,
-            // ⚠️ *Ohne dies schickt die Eingabe nichts, wenn sie ausserhalb ihres Formulars steht.*
-            'form'  => $context->surroundings->formId,
-            'value' => $outputValue,
-        ]);
-    }
-
-    private function pickerCanHold(string $outputValue): bool
-    {
-        return preg_match('/^#[0-9a-fA-F]{6}$/', $outputValue) === 1;
-    }
-
-    /** A swatch of whatever was stored — inline, because a renderer ships no stylesheet. */
-    private function patch(string $outputValue): string
-    {
-        if (! $this->pickerCanHold($outputValue)) {
-            return '';
-        }
-
-        return '<span class="taxmod-swatch" style="display:inline-block;width:1em;height:1em;'
-            . 'vertical-align:middle;margin-right:.3em;border:1px solid #8c8f94;background:'
-            . RenderResult::escape($outputValue) . '"></span>';
+        return new ValueInput(InputKind::Colour, $context->fieldName, $this->outputValue($context), $context->surroundings->formId);
     }
 }

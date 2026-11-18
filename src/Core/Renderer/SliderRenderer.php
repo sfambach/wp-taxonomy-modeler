@@ -2,6 +2,9 @@
 
 namespace Taxmod\Core\Renderer;
 
+use Taxmod\Core\Description\InputKind;
+use Taxmod\Core\Description\ShownValue;
+use Taxmod\Core\Description\ValueInput;
 use Taxmod\Core\Model\SimpleType;
 
 /**
@@ -29,30 +32,22 @@ final class SliderRenderer extends TypedFieldRenderer
         return [SimpleType::Int, SimpleType::Decimal];
     }
 
-    protected function display(RenderContext $context): string
+    protected function display(RenderContext $context): ShownValue
     {
-        return $this->createHtmlValueSpan(RenderResult::escape($this->outputValue($context)));
+        return new ShownValue($this->outputValue($context));
     }
 
-    protected function input(RenderContext $context): string
+    protected function input(RenderContext $context): ValueInput
     {
-        // ⚠️ **Zwei Werte, und vorher war es einer.** *In der Bahn steht der **gespeicherte** Wert, denn
-        // der Browser deutet ihn; neben der Bahn steht, was ein Mensch **liest** — mit Konverter also
-        // `XII` statt `12`. Vorher stand die Notation in `value`, und `<input type="range" value="XII">`
-        // ist kein Wert: der Griff sprang in die Mitte, und das nächste Speichern hätte die Mitte
-        // geschrieben. {@see TypedFieldRenderer::controlValue()} trägt die Messung.*
-        return RenderResult::htmlTag('input', [
-            'type'  => 'range',
-            'name'  => $context->fieldName,
-            // ⚠️ *Ohne dies schickt die Eingabe nichts, wenn sie ausserhalb ihres Formulars steht.*
-            'form'  => $context->surroundings->formId,
-            'value' => $this->controlValue($context),
-            'min'   => $this->numberSetting($context, 'min'),
-            'max'   => $this->numberSetting($context, 'max'),
-            // ⚠️ *`any` for a decimal, because a slider with an integer step cannot reach 2.5.*
-            'step'  => $this->numberSetting($context, 'step')
-                ?? ($context->type === SimpleType::Decimal ? 'any' : '1'),
-        ])
-            . $this->createHtmlValueSpan(RenderResult::escape($this->outputValue($context)));
+        return new ValueInput(
+            InputKind::Range,
+            $context->fieldName,
+            $this->controlValue($context),
+            $context->surroundings->formId,
+            min: $this->numberSetting($context, 'min'),
+            max: $this->numberSetting($context, 'max'),
+            step: $this->numberSetting($context, 'step') ?? ($context->type === SimpleType::Decimal ? 'any' : '1'),
+            shown: $this->outputValue($context),
+        );
     }
 }

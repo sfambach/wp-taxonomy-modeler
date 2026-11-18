@@ -11,10 +11,10 @@
 const ROOT = __DIR__ . '/../..';
 
 /** Measured 2026-11-17 on main 7b92449f; the dispatcher arms fell to 0 with plan step 4 the same day; 2026-11-18 the comments
- * stopped counting (D-1429 O1: 54 → 43, 249 → 247) and the starter pattern drew its block markup at the edge (→ 42). */
+ * stopped counting (D-1429 O1: 54 → 43, 249 → 247) and the starter pattern drew its block markup at the edge (→ 42); the typed values describe and the edge draws them (→ 34, 228). */
 const CEILINGS = [
-    'core files with HTML tags'          => 42,
-    'RenderResult::escape() in the core' => 247,
+    'core files with HTML tags'          => 34,
+    'RenderResult::escape() in the core' => 228,
     'hook calls in the core'             => 0,
     'arms of the node page dispatcher'   => 0,
     'modeller pages without the template' => 9,

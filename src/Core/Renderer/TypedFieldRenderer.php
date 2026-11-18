@@ -2,6 +2,8 @@
 
 namespace Taxmod\Core\Renderer;
 
+use Taxmod\Core\Description\Describes;
+use Taxmod\Core\Description\Locked;
 use Taxmod\Core\Model\Identity;
 use Taxmod\Core\Model\Node;
 use Taxmod\Core\Model\Relation;
@@ -75,21 +77,37 @@ abstract class TypedFieldRenderer extends RendererNode
     private function control(RenderContext $context): string
     {
         if ($context->mayEdit()) {
-            return $this->input($context);
+            return self::drawn($this->input($context));
         }
 
         if ($context->editable && $context->purpose === Purpose::Edit) {
-            return '<fieldset disabled class="taxmod-read-only">' . $this->input($context) . '</fieldset>';
+            $input = $this->input($context);
+
+            return $input instanceof Describes
+                ? RenderResult::draw(new Locked($input))
+                : '<fieldset disabled class="taxmod-read-only">' . $input . '</fieldset>';
         }
 
-        return $this->display($context);
+        return self::drawn($this->display($context));
+    }
+
+    /** ⚠️ *Markup only while a renderer still draws itself (6c, A15).* */
+    private static function drawn(Describes|string $piece): string
+    {
+        return $piece instanceof Describes ? RenderResult::draw($piece) : $piece;
     }
 
     /** The value as a reader sees it. */
-    abstract protected function display(RenderContext $context): string;
+    abstract protected function display(RenderContext $context): Describes|string;
 
     /** A control to change it by. */
-    abstract protected function input(RenderContext $context): string;
+    abstract protected function input(RenderContext $context): Describes|string;
+
+    /** Whether the field must hold a value — `1..1` (R32). */
+    final protected function required(RenderContext $context): bool
+    {
+        return ! $context->surroundings->mayBeNothing;
+    }
 
     /**
      * The stored value as characters, or an empty string for *nothing*.

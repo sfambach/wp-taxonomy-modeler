@@ -2,6 +2,10 @@
 
 namespace Taxmod\Core\Renderer;
 
+use Taxmod\Core\Description\InputKind;
+use Taxmod\Core\Description\ShownValue;
+use Taxmod\Core\Description\ValueInput;
+use Taxmod\Core\Description\ValueKind;
 use Taxmod\Core\Model\SimpleType;
 
 /**
@@ -64,28 +68,17 @@ final class UserRefRenderer extends TypedFieldRenderer
      * antwortet dort «nein» — und gesperrt heisst bei diesem Typ «der angemeldete Benutzer»
      * ([D-650](../../../docs/NewConcept/90-decision-log.md)).*
      */
-    protected function display(RenderContext $context): string
+    protected function display(RenderContext $context): ShownValue
     {
         if ($context->value->isNothing()) {
-            // ⚠️ *Nichts wird als nichts gezeichnet — nie als Strich, nie als `0`
-            // ([D-232](../../../docs/NewConcept/90-decision-log.md)).*
-            return $this->createHtmlValueSpan('');
+            return new ShownValue('');
         }
 
         $name = $context->surroundings->refersTo;
 
-        if ($name === null || $name === '') {
-            // ⚠️ **Eine Id, zu der kein Name kam, wird als Fehlstelle gezeichnet und nicht als Zahl**
-            // — dieselbe Entscheidung wie bei einem hängenden Knotenverweis
-            // ([D-363](../../../docs/NewConcept/90-decision-log.md), {@see ReferenceRenderer::display()}).
-            // *Ein roher Schlüssel auf dem Bildschirm ist das, was jemand in eine Tabelle kopiert, als
-            // bedeutete er etwas.*
-            return '<span class="taxmod-value taxmod-dangling">'
-                . RenderResult::escape('#' . $this->storedId($context))
-                . '</span>';
-        }
-
-        return $this->createHtmlValueSpan(RenderResult::escape($name));
+        return $name === null || $name === ''
+            ? new ShownValue('#' . $this->storedId($context), ValueKind::Dangling)
+            : new ShownValue($name);
     }
 
     /**
@@ -100,24 +93,18 @@ final class UserRefRenderer extends TypedFieldRenderer
      * und ein Feld, das beim nächsten Speichern leer zurückkommt, hätte den Wert verloren — derselbe
      * Verlust, den {@see ColorRenderer} für den Farbwähler beschreibt.*
      */
-    protected function input(RenderContext $context): string
+    protected function input(RenderContext $context): ValueInput
     {
         $stored = $this->storedId($context);
 
-        return RenderResult::htmlTag('input', [
-            'type'     => 'text',
-            'class'    => 'taxmod-locked',
-            'value'    => $context->surroundings->refersTo ?? ($stored === '' ? '' : '#' . $stored),
-            'disabled' => true,
-            // ⚠️ *Das Wort kommt vom Rand (`AR-2`, [OQ-087](../../../docs/NewConcept/91-open-questions.md));
-            // bis es das tut, steht der Schlüssel selbst da — sichtbar falsch schlägt geraten.*
-            'title'    => $this->reason($context),
-        ]) . RenderResult::htmlTag('input', [
-            'type'  => 'hidden',
-            'name'  => $context->fieldName,
-            'form'  => $context->surroundings->formId,
-            'value' => $stored,
-        ]);
+        return new ValueInput(
+            InputKind::Fixed,
+            $context->fieldName,
+            $stored,
+            $context->surroundings->formId,
+            note: $this->reason($context),
+            shown: $context->surroundings->refersTo ?? ($stored === '' ? '' : '#' . $stored),
+        );
     }
 
     /**

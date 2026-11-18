@@ -2,6 +2,10 @@
 
 namespace Taxmod\Core\Renderer;
 
+use Taxmod\Core\Description\InputKind;
+use Taxmod\Core\Description\ShownValue;
+use Taxmod\Core\Description\ValueInput;
+use Taxmod\Core\Description\ValueKind;
 use Taxmod\Core\Model\SimpleType;
 
 /**
@@ -33,42 +37,18 @@ final class CheckboxRenderer extends TypedFieldRenderer
         return [SimpleType::Bool];
     }
 
-    protected function display(RenderContext $context): string
+    protected function display(RenderContext $context): ShownValue
     {
-        if ($context->value->isNothing()) {
-            return $this->createHtmlValueSpan('');
-        }
-
-        return $this->createHtmlValueSpan(
-            // ⚠️ *`true` schreibt das Attribut bar, `false` laesst es weg — genau wie `disabled`
-            // und `checked` in HTML gemeint sind ([D-463]).*
-            RenderResult::htmlTag('input', [
-                'type'     => 'checkbox',
-                'disabled' => true,
-                'checked'  => $context->value->asBool(),
-            ])
-        );
+        return new ShownValue($context->value->isNothing() ? '' : ($context->value->asBool() ? '1' : '0'), ValueKind::Flag);
     }
 
-    protected function input(RenderContext $context): string
+    protected function input(RenderContext $context): ValueInput
     {
-        $name = $this->createHtmlAttribute('name', $context->fieldName);
-
-        // The hidden field is what makes *unticked* mean false rather than absent. PHP keeps the
-        // last of two equal names, so the box overrides it when it is ticked.
-        return RenderResult::htmlTag('input', [
-            'type'  => 'hidden',
-            'name'  => $context->fieldName,
-            // ⚠️ *Ohne dies schickt die Eingabe nichts, wenn sie ausserhalb ihres Formulars steht.*
-            'form'  => $context->surroundings->formId,
-            'value' => '0',
-        ]) . RenderResult::htmlTag('input', [
-            'type'    => 'checkbox',
-            'name'    => $context->fieldName,
-            // ⚠️ *Ohne dies schickt die Eingabe nichts, wenn sie ausserhalb ihres Formulars steht.*
-            'form'    => $context->surroundings->formId,
-            'value'   => '1',
-            'checked' => ! $context->value->isNothing() && $context->value->asBool(),
-        ]);
+        return new ValueInput(
+            InputKind::Flag,
+            $context->fieldName,
+            ! $context->value->isNothing() && $context->value->asBool() ? '1' : '0',
+            $context->surroundings->formId,
+        );
     }
 }

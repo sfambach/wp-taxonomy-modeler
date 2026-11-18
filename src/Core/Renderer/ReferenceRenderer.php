@@ -2,6 +2,8 @@
 
 namespace Taxmod\Core\Renderer;
 
+use Taxmod\Core\Description\ShownValue;
+use Taxmod\Core\Description\ValueKind;
 use Taxmod\Core\Model\SimpleType;
 
 /**
@@ -79,28 +81,19 @@ final class ReferenceRenderer extends TypedFieldRenderer
         return [Purpose::Display, Purpose::Edit];
     }
 
-    protected function display(RenderContext $context): string
+    protected function display(RenderContext $context): ShownValue
     {
         if ($context->value->isNothing()) {
-            return $this->createHtmlValueSpan('');
+            return new ShownValue('');
         }
 
-        // ⚠️ **A reference whose label never arrived is drawn as a fault, not as an id.** It means
-        // the target is gone, or the descent did not resolve it — and a bare number on screen is
-        // the sort of thing that gets copied into a spreadsheet as if it meant something.
-        if ($context->surroundings->refersTo === null) {
-            return '<span class="taxmod-value taxmod-dangling">'
-                . RenderResult::escape('#' . (string) $context->value->reference)
-                . '</span>';
-        }
-
-        return $this->createHtmlValueSpan(RenderResult::escape($context->surroundings->refersTo));
+        return $context->surroundings->refersTo === null
+            ? new ShownValue('#' . (string) $context->value->reference, ValueKind::Dangling)
+            : new ShownValue($context->surroundings->refersTo);
     }
 
-    protected function input(RenderContext $context): string
+    protected function input(RenderContext $context): ShownValue
     {
-        // ⚠️ *Erreichbar seit dem 2026-09-06, und absichtlich dasselbe: eine Konstante wird nicht
-        // getippt. Gewählt wird sie an der Verwendungsstelle, hier steht ihre Beschriftung.*
         return $this->display($context);
     }
 }

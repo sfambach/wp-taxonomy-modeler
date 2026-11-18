@@ -58,7 +58,7 @@ vermutlich im Fliesstext und sollte eine eigene Zeile bekommen.
 
 | Regel | Was sie sagt | Steht in | Zitiert |
 |---|---|---|---|
-| **CD1** | ). Declares the interfaces it needs; the boundary fulfils them (D-170). | [01-glossary.md:104](01-glossary.md) | 92 |
+| **CD1** | ). Declares the interfaces it needs; the boundary fulfils them (D-170). | [01-glossary.md:104](01-glossary.md) | 93 |
 | **CD2** | Every PHP file starts with <?php declare(strict_types=1); as the first line. No closing ?> in pure-PHP files. | [CLAUDE.md:63](../../CLAUDE.md) | 1 |
 | **CD3** | Class loading via Composer PSR-4. No require_once for classes. | [CLAUDE.md:64](../../CLAUDE.md) | 2 |
 | **CD4** | Type everything that can be typed: properties, parameters, returns. mixed needs a reason in a comment. | [CLAUDE.md:65](../../CLAUDE.md) | 1 |
@@ -76,7 +76,7 @@ vermutlich im Fliesstext und sollte eine eigene Zeile bekommen.
 | Regel | Was sie sagt | Steht in | Zitiert |
 |---|---|---|---|
 | **AR1** | The model is stored in tables owned by this plugin, not in WordPress posts, postmeta, terms or CPTs. Measured 2026-09-01: wp_insert_post, get_post_… | [CLAUDE.md:94](../../CLAUDE.md) | 22 |
-| **AR2** | Nothing user-visible is hard-coded. Software strings go through the WordPress text domain; the names of user-created nodes are labels stored in the… | [CLAUDE.md:95](../../CLAUDE.md) | 100 |
+| **AR2** | Nothing user-visible is hard-coded. Software strings go through the WordPress text domain; the names of user-created nodes are labels stored in the… | [CLAUDE.md:95](../../CLAUDE.md) | 99 |
 
 ## DC — Dokumentation im Code
 
@@ -282,7 +282,7 @@ vermutlich im Fliesstext und sollte eine eigene Zeile bekommen.
 | **R29** | Whether nothing is allowed follows from the multiplicity: 0..1 and 0.. may be empty; 1 and 1.. must always have a selection. | [30-renderer.md:861](30-renderer.md) | 14 |
 | **R30** | So with multiplicity 1 or 1.. and exactly one available entry, that entry is selected and the field greyed out. | [30-renderer.md:862](30-renderer.md) | 12 |
 | **R31** | With no available entry there is nothing to choose and the control is disabled. | [30-renderer.md:863](30-renderer.md) | 7 |
-| **R32** | This principle is to be held for all inputs, not only this one. | [30-renderer.md:864](30-renderer.md) | 38 |
+| **R32** | This principle is to be held for all inputs, not only this one. | [30-renderer.md:864](30-renderer.md) | 36 |
 | **R33** | A node can have several converters. | [30-renderer.md:958](30-renderer.md) | 7 |
 | **R34** | One thing they could do: show a number as binary, hexadecimal, octal or in Roman numerals. | [30-renderer.md:959](30-renderer.md) | 10 |
 | **R35** | "Whether this form is really hung on as a converter, I am not sure — but we should keep it in mind. Storing the twelve is one thing, showing it as … | [30-renderer.md:960](30-renderer.md) | 2 |
@@ -396,7 +396,7 @@ vermutlich im Fliesstext und sollte eine eigene Zeile bekommen.
 | **A3** | Basiseinheiten splits into With prefix and Without prefix; Kelvin, Celsius and Stück sit under the latter. Children inherit Praefix and Kuerzel fro… | [01-standard-tree.md:45](01-standard-tree.md) | 4 |
 | **A4** | Attributes appear as children of their owning node (Bauteilliste › Name, Bauart, Position). | [01-standard-tree.md:46](01-standard-tree.md) | 5 |
 | **A5** | Eigene Datentypen exists as a branch beside Simple/Complex. | [01-standard-tree.md:47](01-standard-tree.md) | 2 |
-| **A14** | (same gate, 18.11.) — the renderer classes keep their names and place in the core, because the model stores them (settings_value.klasse, nodes.klas… | [90-decision-log.md:1716](90-decision-log.md) | **nie** |
+| **A14** | (same gate, 18.11.) — the renderer classes keep their names and place in the core, because the model stores them (settings_value.klasse, nodes.klas… | [90-decision-log.md:1716](90-decision-log.md) | 4 |
 
 ## B — Standardbaum — Inhalt
 

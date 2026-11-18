@@ -2,6 +2,9 @@
 
 namespace Taxmod\Core\Renderer;
 
+use Taxmod\Core\Description\InputKind;
+use Taxmod\Core\Description\ShownValue;
+use Taxmod\Core\Description\ValueInput;
 use Taxmod\Core\Model\SimpleType;
 
 /**
@@ -23,34 +26,23 @@ final class SpinnerRenderer extends TypedFieldRenderer
         return [SimpleType::Int, SimpleType::Decimal];
     }
 
-    protected function display(RenderContext $context): string
+    protected function display(RenderContext $context): ShownValue
     {
-        return $this->createHtmlValueSpan(RenderResult::escape($this->outputValue($context)));
+        return new ShownValue($this->outputValue($context));
     }
 
-    protected function input(RenderContext $context): string
+    protected function input(RenderContext $context): ValueInput
     {
-        // ⚠️ *One call where there were six pieces of string* ([D-463](../../../docs/NewConcept/90-decision-log.md)):
-        // `'<input type="number"'` was written by hand and **went past the escaping**, while the rest
-        // came through the helper. {@see RenderResult::htmlTag()} is now the one place that knows how an
-        // element is spelled.
-        return RenderResult::htmlTag('input', [
-            'type'  => 'number',
-            'name'  => $context->fieldName,
-            // ⚠️ *Ohne dies schickt die Eingabe nichts, wenn sie ausserhalb ihres Formulars steht.*
-            'form'  => $context->surroundings->formId,
-            // ⚠️ *[R32](../../../docs/NewConcept/30-renderer.md#r28r32--the-rule-complete), auf sein Wort: ein
-            // Eingabefeld muss sich immer gleich verhalten, und bei `1..1` muss ein Wert gesetzt sein.*
-            'aria-required' => $context->surroundings->mayBeNothing ? null : 'true',
-            // ⚠️ **Der gespeicherte Wert und nicht die Notation** ({@see TypedFieldRenderer::controlValue()}).
-            // *`<input type="number" value="XII">` ist für den Browser kein Wert — das Feld kommt leer
-            // heraus, und das nächste Speichern schreibt leer. Dieselbe Messung wie am Schieber, und
-            // dieselben Typen: `roman`, `binary`, `hexadecimal`, `octal` gelten alle für `Int`.*
-            'value' => $this->controlValue($context),
-            'min'   => $this->numberSetting($context, 'min'),
-            'max'   => $this->numberSetting($context, 'max'),
-            'step'  => $this->step($context),
-        ]);
+        return new ValueInput(
+            InputKind::Number,
+            $context->fieldName,
+            $this->controlValue($context),
+            $context->surroundings->formId,
+            $this->required($context),
+            min: $this->numberSetting($context, 'min'),
+            max: $this->numberSetting($context, 'max'),
+            step: $this->step($context),
+        );
     }
 
     /**

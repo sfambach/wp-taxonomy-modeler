@@ -2,6 +2,10 @@
 
 namespace Taxmod\Core\Renderer;
 
+use Taxmod\Core\Description\InputKind;
+use Taxmod\Core\Description\ShownValue;
+use Taxmod\Core\Description\ValueInput;
+use Taxmod\Core\Description\ValueKind;
 use Taxmod\Core\Model\SimpleType;
 
 /**
@@ -34,21 +38,21 @@ final class CodeRenderer extends TypedFieldRenderer
         return [SimpleType::Text];
     }
 
-    protected function display(RenderContext $context): string
+    protected function display(RenderContext $context): ShownValue
     {
-        return '<pre class="taxmod-value taxmod-code" data-taxmod-code="' . CodeLanguage::fromContext($context)->value . '">'
-            . RenderResult::escape($this->outputValue($context))
-            . '</pre>';
+        return new ShownValue($this->outputValue($context), ValueKind::Code, CodeLanguage::fromContext($context)->value);
     }
 
-    protected function input(RenderContext $context): string
+    protected function input(RenderContext $context): ValueInput
     {
-        return '<textarea class="large-text code taxmod-code" spellcheck="false"'
-            . $this->createHtmlAttribute('data-taxmod-code', CodeLanguage::fromContext($context)->value)
-            . $this->createHtmlAttribute('name', $context->fieldName)
-            . $this->createHtmlAttribute('form', $context->surroundings->formId)
-            . ($context->surroundings->mayBeNothing ? '' : ' aria-required="true"')
-            . $this->createHtmlAttribute('rows', $this->numberSetting($context, 'rows') ?? self::DEFAULT_ROWS)
-            . '>' . RenderResult::escape($this->controlValue($context)) . '</textarea>';
+        return new ValueInput(
+            InputKind::Code,
+            $context->fieldName,
+            $this->controlValue($context),
+            $context->surroundings->formId,
+            $this->required($context),
+            rows: $this->numberSetting($context, 'rows') ?? self::DEFAULT_ROWS,
+            note: CodeLanguage::fromContext($context)->value,
+        );
     }
 }

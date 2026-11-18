@@ -52,6 +52,31 @@ final class RenderResult
         );
     }
 
+    private static ?\Taxmod\Core\Description\Drawer $drawer = null;
+
+    /**
+     * ⚠️ *Scaffolding of renderer step 6c (A15): the edge hands its drawer over once, so a renderer that only describes still
+     * gives the composites around it markup. Goes when the last composite describes.*
+     */
+    public static function drawWith(\Taxmod\Core\Description\Drawer $drawer): void
+    {
+        self::$drawer = $drawer;
+    }
+
+    /** A described piece, drawn by the edge's drawer. */
+    public static function described(\Taxmod\Core\Description\Describes $piece, int ...$usedRelations): self
+    {
+        return new self(
+            (self::$drawer ?? throw new \LogicException('No drawer: the edge registers one with the autoloader.'))->draw($piece),
+            array_values($usedRelations)
+        );
+    }
+
+    public static function draw(\Taxmod\Core\Description\Describes $piece): string
+    {
+        return self::described($piece)->markup;
+    }
+
     /** Escape text for HTML. Plain PHP, because the core may not reach for `esc_html()`. */
     public static function escape(string $text): string
     {

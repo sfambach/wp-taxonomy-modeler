@@ -2,6 +2,10 @@
 
 namespace Taxmod\Core\Renderer;
 
+use Taxmod\Core\Description\InputKind;
+use Taxmod\Core\Description\ShownValue;
+use Taxmod\Core\Description\ValueInput;
+use Taxmod\Core\Description\ValueKind;
 use Taxmod\Core\Model\SimpleType;
 
 /**
@@ -27,34 +31,13 @@ final class MailtoRenderer extends TypedFieldRenderer
         return [SimpleType::Email];
     }
 
-    protected function display(RenderContext $context): string
+    protected function display(RenderContext $context): ShownValue
     {
-        $address = $this->outputValue($context);
-
-        if ($address === '') {
-            return $this->createHtmlValueSpan('');
-        }
-
-        // `rawurlencode` would eat the `@`; the address goes in escaped as an attribute, which is
-        // what stops a `"` in it from breaking out of the href.
-        return $this->createHtmlValueSpan(
-            '<a href="mailto:' . RenderResult::escape($address) . '">'
-            . RenderResult::escape($address)
-            . '</a>'
-        );
+        return new ShownValue($this->outputValue($context), ValueKind::Email);
     }
 
-    protected function input(RenderContext $context): string
+    protected function input(RenderContext $context): ValueInput
     {
-        return RenderResult::htmlTag('input', [
-            'type'  => 'email',
-            'name'  => $context->fieldName,
-            // ⚠️ *Ohne dies schickt die Eingabe nichts, wenn sie ausserhalb ihres Formulars steht.*
-            'form'  => $context->surroundings->formId,
-            // ⚠️ *[R32](../../../docs/NewConcept/30-renderer.md#r28r32--the-rule-complete), auf sein Wort: ein
-            // Eingabefeld muss sich immer gleich verhalten, und bei `1..1` muss ein Wert gesetzt sein.*
-            'aria-required' => $context->surroundings->mayBeNothing ? null : 'true',
-            'value' => $this->outputValue($context),
-        ]);
+        return new ValueInput(InputKind::Email, $context->fieldName, $this->outputValue($context), $context->surroundings->formId, $this->required($context));
     }
 }

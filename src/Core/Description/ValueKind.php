@@ -1,0 +1,28 @@
+<?php declare(strict_types=1);
+
+namespace Taxmod\Core\Description;
+
+/**
+ * What a shown value is, so a drawer knows how to show it — the matter, never a tag (D-1429 A14).
+ *
+ * @see docs/pakete/renderer-ereignisse/umsetzung-2026-11.md
+ */
+enum ValueKind: string
+{
+    /** No renderer was chosen; the bare value, or why nothing can be shown. */
+    case Unchosen = 'unchosen';
+    case Text = 'text';
+    /** Text whose line breaks are part of it. */
+    case LongText = 'long_text';
+    /** Source text in a language (`language`). */
+    case Code = 'code';
+    /** A colour; a drawer may show a patch of it beside the text. */
+    case Colour = 'colour';
+    case Email = 'email';
+    /** A way to somewhere else (`target`), its text is the hint. */
+    case Jump = 'jump';
+    /** A yes/no: `1`, `0`, or empty for nothing. */
+    case Flag = 'flag';
+    /** Points at something that is gone: the text is its number. */
+    case Dangling = 'dangling';
+}

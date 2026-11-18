@@ -2,6 +2,10 @@
 
 namespace Taxmod\Core\Renderer;
 
+use Taxmod\Core\Description\InputKind;
+use Taxmod\Core\Description\ShownValue;
+use Taxmod\Core\Description\ValueInput;
+use Taxmod\Core\Description\ValueKind;
 use Taxmod\Core\Model\Identity;
 use Taxmod\Core\Model\Node;
 use Taxmod\Core\Model\Relation;
@@ -59,14 +63,8 @@ final class PlainRenderer extends RendererNode
         // registered for surfaces only, the descent could not use it, and this ran instead. **A
         // silent fallback that invents a value is worse than one that says it cannot draw.***
         if ($context->value->isAReference()) {
-            return RenderResult::of(
-                // ⚠️ **The same class the rest of this renderer uses.** A test caught me inventing a
-                // second one: *`taxmod-no-renderer`* is how a missing renderer already reads on this
-                // screen, and a fault that styles itself differently reads as a different kind of
-                // problem. *The class is the vocabulary; a new word needs a reason.*
-                '<span class="taxmod-value taxmod-no-renderer">'
-                . RenderResult::escape($this->cannotDraw($context)) . '</span>'
-            );
+            // ⚠️ *A fault that looks different reads as a different kind of problem: it is shown as every missing renderer is.*
+            return RenderResult::described(new ShownValue($this->cannotDraw($context), ValueKind::Unchosen));
         }
 
         $shown = $context->value->isNothing() ? '' : $context->value->describe();
@@ -79,26 +77,13 @@ final class PlainRenderer extends RendererNode
         if (! $context->mayEdit()) {
             // ⚠️ Nothing is drawn as nothing, not as a dash or a zero. A missing value means
             // *not answered*, and inventing a placeholder here would hide that from the reader.
-            return RenderResult::of(
-                '<span class="taxmod-value taxmod-no-renderer">'
-                . RenderResult::escape($shown) . '</span>'
-            );
+            return RenderResult::described(new ShownValue($shown, ValueKind::Unchosen));
         }
 
-        return RenderResult::of(
-            // ⚠️ *Diese Stelle escapte `name` und `value` **von Hand** — eine von vier, die es so
-            // machten. Genau darum gibt es {@see RenderResult::htmlTag()} ([D-463]).*
-            RenderResult::htmlTag('input', [
-                'type'  => 'text',
-                'class' => 'taxmod-no-renderer',
-                'name'  => $context->fieldName,
-                // ⚠️ *Ohne dies schickt die Eingabe nichts, wenn sie ausserhalb ihres Formulars steht.*
-                'form'  => $context->surroundings->formId,
-                // ⚠️ *[R32](../../../docs/NewConcept/30-renderer.md#r28r32--the-rule-complete), auf sein Wort: ein
-                // Eingabefeld muss sich immer gleich verhalten, und bei `1..1` muss ein Wert gesetzt sein.*
-                'aria-required' => $context->surroundings->mayBeNothing ? null : 'true',
-                'value' => $shown,
-            ])
+        // ⚠️ *[R32](../../../docs/NewConcept/30-renderer.md#r28r32--the-rule-complete), auf sein Wort: ein Eingabefeld muss sich
+        // immer gleich verhalten, und bei `1..1` muss ein Wert gesetzt sein.*
+        return RenderResult::described(
+            new ValueInput(InputKind::Unchosen, $context->fieldName, $shown, $context->surroundings->formId, ! $context->surroundings->mayBeNothing)
         );
     }
     /**

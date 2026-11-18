@@ -171,3 +171,13 @@ Am Gate bestätigt (18.11., D-1429 A14), mit Bedingung: eine neue Art nur, wenn 
 - Der Name eines Eingabefelds bleibt Kern-Sache: `Submission` liest ihn zurück, er ist ein Vertrag, kein Aussehen.
 
 **Bau-Reihenfolge innerhalb von 6c** (jeder Commit: Kern + Grenzlauf beide DBs grün, PR-9): Wortschatz-Klassen + Mini-Zeichner + Inventar erweitern → Rand-Zeichner je Art → Renderer einer Art nach der anderen umstellen (alte Zeichnung derselben Art fällt im selben Commit) → Rendering → Seiten → Decken 0.
+
+### Schritt 6c · Stand des Baus
+
+| Teil | Stand | Ratsche (Dateien / Escapes) |
+|---|---|---|
+| 1 Ratsche ohne Kommentare, Startmuster am Rand | gebaut 18.11. | 54/249 → 42/247 |
+| 2 Getippte Werte beschreiben: Plain, Field, Textarea, Code, Spinner, Slider, Color, Mailto, Jump, Reference, UserRef, Checkbox → `ShownValue`, `ValueInput`, `Locked`, `Sequence`; Rand: `Taxmod\WordPress\Draw\EdgeDrawer` | gebaut 18.11. | → 34/228 |
+
+- **A15** — *Gerüst, nicht Ziel:* solange zusammengesetzte Renderer noch Markup bauen, brauchen sie das gezeichnete Stück eines Renderers, der schon nur beschreibt. Dafür reicht der Rand seinen Zeichner einmal über den Autoloader herein (`src/WordPress/Draw/register.php`, `RenderResult::drawWith()`). Es fällt, wenn der letzte zusammengesetzte Renderer beschreibt; vor dem Merge prüft das die Ratsche mit (Ziel 0).
+- **A16** — *Gleiches Markup:* der Rand-Zeichner zeichnet Zeichen für Zeichen, was der Kern vorher zeichnete. Damit bleiben alle Prüfungen und Bildschirme gleich, und eine Abweichung ist ein Fehler, keine Absicht. Escapen dort mit `htmlspecialchars`, weil der Kernlauf ohne WordPress den Zeichner auch ruft.

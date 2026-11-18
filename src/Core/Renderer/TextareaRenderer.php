@@ -2,6 +2,10 @@
 
 namespace Taxmod\Core\Renderer;
 
+use Taxmod\Core\Description\InputKind;
+use Taxmod\Core\Description\ShownValue;
+use Taxmod\Core\Description\ValueInput;
+use Taxmod\Core\Description\ValueKind;
 use Taxmod\Core\Model\SimpleType;
 
 /**
@@ -36,36 +40,21 @@ final class TextareaRenderer extends TypedFieldRenderer
         return [SimpleType::Text];
     }
 
-    protected function display(RenderContext $context): string
+    protected function display(RenderContext $context): ShownValue
     {
-        // ⚠️ Newlines survive as newlines. Turning them into `<br>` would be the renderer
-        // rewriting the value on the way out, and the same text would read differently
-        // depending on which renderer drew it.
-        return '<span class="taxmod-value" style="white-space:pre-wrap">'
-            . RenderResult::escape($this->outputValue($context))
-            . '</span>';
+        return new ShownValue($this->outputValue($context), ValueKind::LongText);
     }
 
-    protected function input(RenderContext $context): string
+    protected function input(RenderContext $context): ValueInput
     {
-        return '<textarea'
-            . $this->createHtmlAttribute('name', $context->fieldName)
-            // ⚠️ *Ohne dies schickt die Eingabe nichts, wenn sie ausserhalb ihres Formulars steht.*
-            . $this->createHtmlAttribute('form', $context->surroundings->formId)
-            // ⚠️ *[R32](../../../docs/NewConcept/30-renderer.md#r28r32--the-rule-complete), auf sein Wort: ein
-            // Eingabefeld muss sich immer gleich verhalten, und bei `1..1` muss ein Wert gesetzt sein.*
-            . ($context->surroundings->mayBeNothing ? '' : ' aria-required="true"')
-            // ⚠️ **`cols` zuerst, `display_size` als Rückfall** ([D-659](../../../docs/NewConcept/90-decision-log.md)).
-            // *Beide sagen dasselbe in derselben Einheit — eine Breite in Zeichen —, und `cols` ist die
-            // Angabe, die **diesen** Rand meint. **Die Anzeigebreite ist der Wunsch, den jeder Rand
-            // berücksichtigt, der kann**; ihn hier zu übergehen hiesse, dass die Breite eines Feldes
-            // davon abhinge, welchen Renderer der Knoten gewählt hat.*
-            . $this->createHtmlAttribute(
-                'cols',
-                $this->numberSetting($context, 'cols')
-                    ?? $this->numberSetting($context, 'display_size')
-            )
-            . $this->createHtmlAttribute('rows', $this->numberSetting($context, 'rows'))
-            . '>' . RenderResult::escape($this->outputValue($context)) . '</textarea>';
+        return new ValueInput(
+            InputKind::LongText,
+            $context->fieldName,
+            $this->outputValue($context),
+            $context->surroundings->formId,
+            $this->required($context),
+            rows: $this->numberSetting($context, 'rows'),
+            columns: $this->numberSetting($context, 'cols') ?? $this->numberSetting($context, 'display_size'),
+        );
     }
 }

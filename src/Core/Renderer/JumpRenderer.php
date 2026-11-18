@@ -2,6 +2,8 @@
 
 namespace Taxmod\Core\Renderer;
 
+use Taxmod\Core\Description\ShownValue;
+use Taxmod\Core\Description\ValueKind;
 use Taxmod\Core\Model\SimpleType;
 
 /**
@@ -21,28 +23,22 @@ final class JumpRenderer extends TypedFieldRenderer
         return [SimpleType::Jump];
     }
 
-    protected function display(RenderContext $context): string
+    protected function display(RenderContext $context): ShownValue
     {
         return $this->link($context);
     }
 
-    protected function input(RenderContext $context): string
+    protected function input(RenderContext $context): ShownValue
     {
         return $this->link($context);
     }
 
-    private function link(RenderContext $context): string
+    private function link(RenderContext $context): ShownValue
     {
-        $adresse = $context->value->isNothing() ? '' : (string) $context->value->text;
-
-        if ($adresse === '') {
-            return $this->createHtmlValueSpan('');
-        }
-
-        return $this->createHtmlValueSpan(
-            '<a class="taxmod-jump" href="' . RenderResult::escape($adresse) . '">'
-            . IconMarkup::dashicon('external', (string) ($context->shown ?? ''))
-            . '</a>'
+        return new ShownValue(
+            (string) ($context->shown ?? ''),
+            ValueKind::Jump,
+            $context->value->isNothing() ? '' : (string) $context->value->text
         );
     }
 }

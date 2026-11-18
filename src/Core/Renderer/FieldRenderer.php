@@ -2,6 +2,9 @@
 
 namespace Taxmod\Core\Renderer;
 
+use Taxmod\Core\Description\InputKind;
+use Taxmod\Core\Description\ShownValue;
+use Taxmod\Core\Description\ValueInput;
 use Taxmod\Core\Model\SimpleType;
 
 /**
@@ -30,9 +33,9 @@ final class FieldRenderer extends TypedFieldRenderer
         ];
     }
 
-    protected function display(RenderContext $context): string
+    protected function display(RenderContext $context): ShownValue
     {
-        return $this->createHtmlValueSpan(RenderResult::escape($this->outputValue($context)));
+        return new ShownValue($this->outputValue($context));
     }
 
     /**
@@ -49,14 +52,15 @@ final class FieldRenderer extends TypedFieldRenderer
      * **When converters arrive the pattern comes from the converter in effect** (D-356), because
      * `4k7` in a numeric field is a notation to be converted, not a typo to be blocked.
      */
-    protected function input(RenderContext $context): string
+    protected function input(RenderContext $context): ValueInput
     {
-        return RenderResult::htmlTag('input', [
-            'type'      => 'text',
-            'name'      => $context->fieldName,
+        return new ValueInput(
+            InputKind::Line,
+            $context->fieldName,
+            $this->outputValue($context),
             // ⚠️ *Ohne dies schickt die Eingabe nichts, wenn sie ausserhalb ihres Formulars steht —
             // eine Tabellenzelle neben der Zelle mit dem `<form>`. Leer wird das Attribut weggelassen.*
-            'form'      => $context->surroundings->formId,
+            $context->surroundings->formId,
             // ⚠️ **[R32](../../../docs/NewConcept/30-renderer.md#r28r32--the-rule-complete), auf sein
             // Wort:** *«damit ist gemeint, dass sich ein Eingabefeld immer gleich verhalten muss — und
             // ja, wenn `1..1` steht, muss ein Wert gesetzt sein».* *Die Regel steht seit dem 2026-08-22
@@ -66,8 +70,7 @@ final class FieldRenderer extends TypedFieldRenderer
             //
             // ⚠️ *`mayBeNothing` trägt die Angabe schon: sie kommt aus der Multiplizität der Kante. Die
             // Vorgabe ist `true`, also bleibt jede Zeichnung ohne diese Angabe unverändert.*
-            'aria-required'  => $context->surroundings->mayBeNothing ? null : 'true',
-            'value'     => $this->outputValue($context),
+            $this->required($context),
             // ⚠️ **Die Anzeigebreite in Zeichen** ([D-659](../../../docs/NewConcept/90-decision-log.md)),
             // *und `size` ist genau das: die Breite in Zeichen, nicht `maxlength`. **Die Verwechslung
             // wäre der Fehler, vor dem die Entscheidung ausdrücklich warnt** — sie beschneidet nichts
@@ -76,9 +79,9 @@ final class FieldRenderer extends TypedFieldRenderer
             // ⚠️ *Fehlt die Angabe, fehlt das Attribut, und der Rand nimmt seine eigene Vorgabe — genau
             // wie bisher. **Das ist die andere Hälfte des Beschlusses**: sie ist ein Wunsch, kein
             // Befehl.*
-            'size'      => $this->numberSetting($context, 'display_size'),
-            'pattern'   => $context->type?->pattern(),
-            'inputmode' => $context->type?->inputMode(),
-        ]);
+            size: $this->numberSetting($context, 'display_size'),
+            pattern: $context->type?->pattern(),
+            inputMode: $context->type?->inputMode(),
+        );
     }
 }
