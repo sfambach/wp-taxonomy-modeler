@@ -25,3 +25,4 @@ scripts/_tmp-*/
 
 # Sicherungen des Nachfuellens (D-423) — Daten, nie Quellcode.
 .backup-settings-*.sql
+/vendor
