@@ -2,6 +2,10 @@
 
 namespace Taxmod\Core\Renderer;
 
+use Taxmod\Core\Description\Carried;
+use Taxmod\Core\Description\SettingOrigin;
+use Taxmod\Core\Description\SettingRow;
+use Taxmod\Core\Description\SettingsPanel;
 use Taxmod\Core\Model\Identity;
 use Taxmod\Core\Model\Node;
 use Taxmod\Core\Model\Relation;
@@ -102,7 +106,7 @@ final class SettingsRenderer extends RendererNode
             $grouped[$drawn->group()][(string) $key] = $drawn;
         }
 
-        $markup = '';
+        $gruppen = [];
 
         // ⚠️ **The group whose name is a **type** goes first, then display, then the rules.** A
         // person opens an `int` node to see what an integer can be told, so its own settings lead;
@@ -143,56 +147,40 @@ final class SettingsRenderer extends RendererNode
                 $abschnitte[$drawn->section][(string) $key] = $drawn;
             }
 
-            $innen = '';
+            $abschnittsListe = [];
 
             foreach ($abschnitte as $abschnitt => $zeilen) {
-                $narrow = '';
-                $wide   = '';
-                $band   = null;
+                $narrow = [];
+                $wide   = [];
 
                 foreach ($zeilen as $key => $drawn) {
-                    $row = $this->row($key, $drawn, $context);
-
-                    if ($drawn->shape === SettingShape::Switch) {
-                        $narrow .= $row;
-
-                        continue;
-                    }
-
                     // ⚠️ *Nachbarn mit demselben Band stehen in einer Gruppe — `min`, `max`, `step` nebeneinander (D-736).*
-                    if ($drawn->band !== $band) {
-                        $wide .= $band === null ? '' : '</div>';
-                        $wide .= $drawn->band === null ? '' : '<div class="taxmod-setting-band"><code class="taxmod-setting-band-name">' . RenderResult::escape($drawn->band) . '</code>';
-                        $band  = $drawn->band;
+                    if ($drawn->shape === SettingShape::Switch) {
+                        $narrow[] = $this->row($key, $drawn, $context);
+                    } else {
+                        $wide[] = $this->row($key, $drawn, $context);
                     }
-
-                    $wide .= $row;
                 }
 
-                $wide .= $band === null ? '' : '</div>';
-
-                if ($narrow === '' && $wide === '') {
+                if ($narrow === [] && $wide === []) {
                     continue;
                 }
 
-                $innen .= ($abschnitt === '' ? '' : '<div class="taxmod-settings-subheading">' . RenderResult::escape($this->word($context, 'section:' . $abschnitt)) . '</div>')
-                    . ($narrow === '' ? '' : '<div class="taxmod-settings-switches">' . $narrow . '</div>')
-                    . ($wide === '' ? '' : '<div class="taxmod-settings-fields">' . $wide . '</div>');
+                $abschnittsListe[] = [
+                    'heading'  => $abschnitt === '' ? null : $this->word($context, 'section:' . $abschnitt),
+                    'switches' => $narrow,
+                    'fields'   => $wide,
+                ];
             }
 
-            if ($innen === '') {
+            if ($abschnittsListe === []) {
                 continue;
             }
 
-            $markup .= '<div class="taxmod-settings-group taxmod-settings-' . RenderResult::escape($group) . '">'
-                . '<div class="taxmod-settings-heading description">'
-                . RenderResult::escape($this->word($context, $group))
-                . '</div>'
-                . $innen
-                . '</div>';
+            $gruppen[] = ['group' => $group, 'heading' => $this->word($context, $group), 'sections' => $abschnittsListe];
         }
 
-        if ($markup === '') {
+        if ($gruppen === []) {
             return RenderResult::of('');
         }
 
@@ -203,14 +191,10 @@ final class SettingsRenderer extends RendererNode
         $submits = $context->surroundings->submits;
 
         if ($context->purpose !== Purpose::Edit || $submits === null) {
-            return RenderResult::of('<div class="taxmod-settings">' . $markup . '</div>');
+            return RenderResult::described(new SettingsPanel($gruppen));
         }
 
-        return RenderResult::of(
-            '<form method="post" id="' . RenderResult::escape(self::formFor($subject))
-            . '" action="' . RenderResult::escape($submits->action) . '" class="taxmod-settings">'
-            . RenderResult::draw(\Taxmod\Core\Description\Carried::of($submits)) . $markup . '</form>'
-        );
+        return RenderResult::described(new SettingsPanel($gruppen, self::formFor($subject), $submits->action, Carried::of($submits)));
     }
 
     /**
@@ -222,49 +206,41 @@ final class SettingsRenderer extends RendererNode
      * all. *Collapsing the third into the second would make an empty control look like a deliberate
      * blank.*
      */
-    private function row(string $key, RenderedSetting $drawn, RenderContext $context): string
+    private function row(string $key, RenderedSetting $drawn, RenderContext $context): SettingRow
     {
         // ⚠️ **No form of its own any more** ([D-392](../../../docs/NewConcept/90-decision-log.md)):
         // the owner moved saving to the page head — *the save button goes in the page header* — so the
-        // whole panel is **one** form and a row is a row. *Every row carrying its own form was what
-        // made a page-level save impossible, and it went the moment he asked for the toolbar.*
+        // whole panel is **one** form and a row is a row.
         // ⚠️ **Geerbt heisst gesperrt, bis jemand «hier überschreibe ich» sagt — und im Konflikt sagt
         // es das System selbst** ([D-689](../../../docs/NewConcept/90-decision-log.md)). *Sein Wort:
         // «sperren finde ich gut, aktiv sagen hier überschreibe ich, muss automatisch gemacht werden
         // wenn der renderer (oder anderes) für kind nicht mehr zulässig ist». Der Haken ist das
         // Sagen; ohne ihn schreibt der Rand die Zeile nicht, was auch immer im Steuerelement steht.
-        // **Kein Skript und kein zweiter Seitenaufruf**: das Stilblatt sperrt, solange der Haken fehlt,
-        // und ein Rand, der den Haken verlangt, sperrt auch ohne Stilblatt.*
+        // **Kein Skript und kein zweiter Seitenaufruf**: das Stilblatt sperrt, solange der Haken fehlt.*
+        // ⚠️ *Der Haken zuerst, als eigene Spalte (sein Wort am 2026-09-10); nur der Haken, das Wort im Titel und für den Vorleser — «There
+        // are two overlapped texts» (D-782).* ⚠️ **Ein Fragezeichen, das sagt, was die Einstellung tut** ([D-795](../../../docs/NewConcept/90-decision-log.md)),
+        // über dem Wert (D-796).
         $gesperrt    = $drawn->overrideName !== '' && $drawn->setting->isLocked();
         $automatisch = $drawn->overrideName !== '' && $drawn->setting->automatic;
-        $haken       = ! ($gesperrt || $automatisch) ? '' : $this->overrideAct($drawn, $context);
+        [$herkunft, $text] = $this->whereFrom($drawn, $context);
 
-        return '<div class="taxmod-setting'
-            . ($gesperrt ? ' taxmod-setting-locked' : '')
-            . ($automatisch ? ' taxmod-setting-automatic' : '')
-            . '">'
-            // ⚠️ *Der Haken «hier überschreibe ich» zuerst, als eigene Spalte — sein Wort am 2026-09-10: «das
-            // override tickfeld mal an den anfang der setting zeile und als richtige spalte». Die Spalte
-            // steht in jeder Zeile, damit die Schlüssel untereinander bleiben; leer, wo nichts zu überschreiben ist.*
-            . '<span class="taxmod-setting-override">' . $haken . '</span>'
-            // ⚠️ **Ein Fragezeichen, das sagt, was die Einstellung tut** ([D-795](../../../docs/NewConcept/90-decision-log.md)) — *sein Wort:
-            // «question mark explaining what this area does». Der Satz kommt vom Rand als `hint:<schlüssel>` (`AR-2`); ohne Satz kein Zeichen.*
-            // ⚠️ *Name und Fragezeichen in einem Element, oben; der Wert darunter — sein Wort: «label/ question mark on top, value beneath» (D-796).*
-            . '<span class="taxmod-setting-name"><code class="taxmod-setting-key">' . RenderResult::escape($key) . '</code>' . RenderResult::draw(new \Taxmod\Core\Description\Hint($this->hintFor($context, $key))) . '</span>'
-            . '<span class="taxmod-setting-value">'
-            . ($gesperrt ? '<span class="taxmod-setting-locked-control">' . $this->control($drawn) . '</span>' : $this->control($drawn))
-            . '</span>'
-            // ⚠️ **The origin is a mark and no longer a sentence.** *not defined* stood on every
-            // unset row — which is most of them — and said what an empty control already says. The
-            // owner: *«not defined» gone.* What is left is the one case a mark is needed for:
-            // **inherited**, because overwriting an ancestor's value believing a field was blank is
-            // the mistake this column exists to prevent.
-            . '<span class="taxmod-setting-from description">'
-            . $this->whereFrom($drawn, $context) . '</span>'
-            . ($context->purpose === Purpose::Edit
-                ? '<span class="taxmod-setting-acts">' . $this->acts($key, $drawn, $context) . '</span>'
-                : '')
-            . '</div>';
+        return new SettingRow(
+            $key,
+            // ⚠️ **Three reasons a row is undrawn and they are different things** — a `default` on a node that is not a simple data type
+            // has **no type to borrow**, which is a fact about the model and not a missing feature ([D-354](../../../docs/NewConcept/90-decision-log.md)).
+            $drawn->wasDrawn() ? $drawn->result->piece() : null,
+            $drawn->setting->value->describe(),
+            $this->hintFor($context, $key),
+            $herkunft,
+            $text,
+            $gesperrt,
+            $automatisch,
+            $gesperrt || $automatisch ? $drawn->overrideName : '',
+            $this->word($context, 'override'),
+            $context->surroundings->formId,
+            $context->purpose === Purpose::Edit ? $this->acts($key, $drawn, $context) : null,
+            $drawn->shape === SettingShape::Switch ? null : $drawn->band
+        );
     }
 
     /**
@@ -274,10 +250,12 @@ final class SettingsRenderer extends RendererNode
      * owner's rule for button rows, and it applies here for the same reason: *at three controls in
      * fixed places the eye learns a position*, while omission slides `Reset` left on every row that
      * was inherited.
+     *
+     * @return list<Control>
      */
-    private function acts(string $key, RenderedSetting $drawn, RenderContext $context): string
+    private function acts(string $key, RenderedSetting $drawn, RenderContext $context): array
     {
-        $buttons = '';
+        $buttons = [];
 
         foreach ($context->surroundings->actions as $control) {
             if (($control)->isAWord()) {
@@ -328,7 +306,7 @@ final class SettingsRenderer extends RendererNode
             // rode in a hidden field; in one form a button has to say **which** setting it means, so
             // it submits as `empty[<key>]`. *That is also what lets the page-head save coexist with
             // them: three different acts, three different field names, one form.*
-            $buttons .= RenderResult::draw(new Control(
+            $buttons[] = new Control(
                     $control->name . '[' . $key . ']',
                     $control->value,
                     $control->label,
@@ -336,53 +314,10 @@ final class SettingsRenderer extends RendererNode
                     $available,
                     $control->destroys,
                     $control->icon
-                ));
+                );
         }
 
         return $buttons;
-    }
-
-    /**
-     * The control, or an honest statement of why there is none.
-     *
-     * ⚠️ **Three reasons a row is undrawn and they are different things** — saying *raw* for all
-     * three would hide which one applies, and the interesting one is the last: a `default` on a node
-     * that is not a simple data type has **no type to borrow**, which is a fact about the model and
-     * not a missing feature ([D-354](../../../docs/NewConcept/90-decision-log.md)).
-     */
-    private function control(RenderedSetting $drawn): string
-    {
-        if ($drawn->wasDrawn()) {
-            return $drawn->result->markup;
-        }
-
-        return '<code class="taxmod-no-renderer">'
-            . RenderResult::escape($drawn->setting->value->describe()) . '</code>';
-    }
-
-    /**
-     * Where the winning value came from.
-     *
-     * ⚠️ **The words are the boundary's** (`AR-2`, [OQ-087](../../../docs/NewConcept/91-open-questions.md)),
-     * so they travel as controls named `word:here` and `word:undefined`. An id is not a word and is
-     * printed as one — *from #418* is diagnostic and stays legible without translation.
-     */
-    /**
-     * Der Haken «hier überschreibe ich» — vorgesetzt, wo das System ihn gesetzt hat.
-     *
-     * ⚠️ *Das Wort kommt vom Rand (`AR-2`), als `word:override`; fehlt es, steht der Schlüssel.*
-     */
-    private function overrideAct(RenderedSetting $drawn, RenderContext $context): string
-    {
-        // ⚠️ **Nur der Haken in der schmalen Spalte, das Wort im Titel und für den Screenreader** (D-782) — *sein Befund am
-        // 2026-09-13: «There are two overlapped texts». Die Spalte ist 1.6em breit; «override» lief in den Schlüssel daneben.*
-        $wort = RenderResult::escape($this->word($context, 'override'));
-
-        return '<label class="taxmod-override-act" title="' . $wort . '">'
-            . '<input type="checkbox" class="taxmod-override" name="' . RenderResult::escape($drawn->overrideName) . '" value="1"'
-            . ($drawn->setting->automatic ? ' checked' : '')
-            . ($context->surroundings->formId === '' ? '' : ' form="' . RenderResult::escape($context->surroundings->formId) . '"')
-            . '><span class="screen-reader-text">' . $wort . '</span></label>';
     }
 
     /**
@@ -395,69 +330,39 @@ final class SettingsRenderer extends RendererNode
         return str_contains($vorlage, '%s') ? sprintf($vorlage, $name) : trim($vorlage . ' ' . $name);
     }
 
-    private function whereFrom(RenderedSetting $drawn, RenderContext $context): string
+    /**
+     * Where the winning value came from.
+     *
+     * ⚠️ **The words are the boundary's** (`AR-2`, [OQ-087](../../../docs/NewConcept/91-open-questions.md)).
+     *
+     * @return array{0: SettingOrigin, 1: string}
+     */
+    private function whereFrom(RenderedSetting $drawn, RenderContext $context): array
     {
         // ⚠️ **In Worten, wo der Name da ist** ([D-689](../../../docs/NewConcept/90-decision-log.md)):
         // *«geerbt von Integer» statt eines Pfeils mit Tooltip, und bei einer automatischen Wahl der
         // Grund — was ersetzt wurde und dass es hier nicht zulässig ist ([D-688](../../../docs/NewConcept/90-decision-log.md)).
         // Der Pfeil bleibt nur dort, wo der Abstieg keinen Namen mitgeben konnte.*
         if ($drawn->setting->automatic) {
-            return '<em class="taxmod-automatic">'
-                . RenderResult::escape($this->sentence($context, 'automatic', $drawn->setting->insteadOf))
-                . '</em>';
+            return [SettingOrigin::Automatic, $this->sentence($context, 'automatic', $drawn->setting->insteadOf)];
         }
 
         if ($drawn->fromOwnerName !== '' && $drawn->setting->isLocked()) {
-            return '<em class="taxmod-inherited">'
-                . RenderResult::escape($this->sentence($context, 'inherited_from', $drawn->fromOwnerName))
-                . '</em>';
+            return [SettingOrigin::InheritedFrom, $this->sentence($context, 'inherited_from', $drawn->fromOwnerName)];
         }
 
-        // ⚠️ **Nothing where nothing was said**, on the owner's ask: *«not defined» gone.* It stood
-        // on almost every row and repeated what an empty control already says. *What stays is the one
-        // case a mark prevents a mistake in — **inherited** — because overwriting an ancestor's value
-        // believing the field was blank is exactly what this column is for.*
-        if ($drawn->setting->fromOwnerId === 0) {
-            return '';
+        // ⚠️ **Nothing where nothing was said**, on the owner's ask: *«not defined» gone.* And **`here` is gone, because materialising
+        // made it the answer for every row** ([D-423](../../../docs/NewConcept/90-decision-log.md)) — *measured: 344 rows set here against
+        // 3 inherited.* What stays is the one case a mark prevents a mistake in: **inherited**, because overwriting an ancestor's value
+        // believing the field was blank is what this column is for.
+        if ($drawn->setting->fromOwnerId === 0 || $drawn->setting->setHere) {
+            return [SettingOrigin::Unmarked, ''];
         }
 
-        // ⚠️ **`here` is gone, because materialising made it the answer for every row.** The owner:
-        // *why does «here» stand behind the fields?* **Because since [D-423](../../../docs/NewConcept/90-decision-log.md)
-        // it stands behind all of them** — every owner carries its own rows, so `setHere` is true
-        // almost everywhere and the word marks nothing.
-        //
-        // ⚠️ *This column exists for the opposite case, and its own docblock says so: the one thing a
-        // mark prevents a mistake in is **inherited**, because overwriting an ancestor's value
-        // believing the field was blank is what it is there to stop. `here` is the ordinary state and
-        // the ordinary state needs no label.* **Measured: 344 rows set here against 3 inherited.**
-        if ($drawn->setting->setHere) {
-            return '';
-        }
-
-        // ⚠️ **The id is gone, and it was a bare number on screen** ([D-363](../../../docs/NewConcept/90-decision-log.md)
-        // forbids exactly that: *a bare number is the sort of thing that gets copied into a
-        // spreadsheet as if it meant something*). The owner found it: *a strange override arrow? An
-        // arrow up and `#641`.* **`#641` is the installation identity and `#4030` is `Base units`** —
-        // both have names, and this drew neither.
-        //
-        // ⚠️ *This docblock used to defend the id as **diagnostic**. It is diagnostic to me and to
-        // nobody else, which is the same mistake `→ 285` made one row up the working list.*
-        //
-        // ⚠️ **What replaces it is the arrow alone, carrying the word in its title** — *inherited*,
-        // which is the whole of what a reader needs to not overwrite an ancestor's value believing
-        // the field was blank. **Showing the owner's *name* instead needs it handed in**
-        // ([D-159](../../../docs/NewConcept/90-decision-log.md): a renderer fetches nothing), and
-        // that is a separate piece of wiring rather than a reason to keep printing a number.
-        //
-        // ⚠️ *And it is about to be rare: once settings are materialised
-        // ([D-423](../../../docs/NewConcept/90-decision-log.md)) every owner carries its own row, so
-        // `setHere` is true and this branch is reached only by nodes that predate the change.*
-        // ⚠️ **Dieselbe Marke wie im Abstieg** — *`taxmod-inherited` stand bisher nur an der geliehenen
-        // Zeile eines Teils ({@see \Taxmod\Core\Service\Rendering}); **seit die Teile gefallen sind**
-        // ([D-684](../../../docs/NewConcept/90-decision-log.md)) ist dies die einzige Stelle, die
-        // «geerbt» zeigt. **Zwei Marken für eine Aussage wären zwei Orte zum Vergessen** (`CD`).*
-        return '<em class="taxmod-inherited" title="'
-            . RenderResult::escape($this->word($context, 'inherited')) . '">↑</em>';
+        // ⚠️ **The arrow alone, carrying the word in its title** — the id it showed was a bare number on screen, which
+        // [D-363](../../../docs/NewConcept/90-decision-log.md) forbids; naming the owner needs it handed in (D-159). ⚠️ **Dieselbe Marke wie
+        // im Abstieg**: seit die Teile gefallen sind ([D-684](../../../docs/NewConcept/90-decision-log.md)) die einzige Stelle, die «geerbt» zeigt.
+        return [SettingOrigin::Inherited, $this->word($context, 'inherited')];
     }
 
     /** Die Erklärung einer Einstellung, wie der Rand sie schickt — leer, wo er keine hat (dann steht kein Fragezeichen). */

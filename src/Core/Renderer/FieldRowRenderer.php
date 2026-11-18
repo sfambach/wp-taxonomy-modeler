@@ -2,6 +2,8 @@
 
 namespace Taxmod\Core\Renderer;
 
+use Taxmod\Core\Description\Describes;
+use Taxmod\Core\Description\FieldRow;
 use Taxmod\Core\Model\Identity;
 use Taxmod\Core\Model\Node;
 use Taxmod\Core\Model\Relation;
@@ -162,297 +164,68 @@ final class FieldRowRenderer extends RendererNode
             return RenderResult::of('');
         }
 
-        $haken   = $context->surroundings->sections[self::OVERRIDE] ?? null;
-        // ⚠️ *Acht seit D-735 (nur lesen, eindeutig) — sein Befund: die Klappleiste rutschte nach links.*
-        $spalten = 8 + (isset($context->surroundings->sections[self::VALUE]) ? 1 : 0) + ($haken === null ? 0 : 1);
+        $u       = $context->surroundings;
+        $haken   = $u->sections[self::OVERRIDE] ?? null;
+        $wert    = $u->sections[self::VALUE] ?? null;
+        $bereich = $u->sections[self::SETTINGS] ?? null;
+        $teil    = static fn (?Section $s): Describes|string|null => $s === null ? null : ($s->piece ?? $s->body);
+        $gemalt  = static fn (?RenderedSetting $d): ?Describes => $d !== null && $d->wasDrawn() ? $d->result->piece() : null;
+        $art     = $u->configured['kind'] ?? null;
 
-        // ⚠️ *Der Haken «hier überschreibe ich» zuerst, als eigene Spalte — sein Wort (siehe {@see self::OVERRIDE}).*
-        $cells = ($haken === null ? '' : $this->cell($haken->body, 'taxmod-field-override', false, true))
-            . $this->nameCell($subject, $context)
-            // ⚠️ **The target arrives as a name, not as an id to look up** — resolving it is a
-            // query and one per row is `CD-7`'s loop, which is why `refersTo` exists at all.
-            . $this->cell($this->targetCell($context), 'taxmod-field-target', false, true)
-            . $this->kindCell($subject, $context)
-            . $this->origin($context)
-            . $this->cell($this->multiplicity($context), 'taxmod-field-many', false, true)
-            // ⚠️ *«unique (eindeutig) und readonly direkt an der kante» — je ein Schalter in der Zeile (D-735).*
-            . $this->cell($this->edgeSwitch($context, \Taxmod\Core\Model\EdgeColumn::READ_ONLY), 'taxmod-field-switch', false, true)
-            . $this->cell($this->edgeSwitch($context, \Taxmod\Core\Model\EdgeColumn::UNIQUE), 'taxmod-field-switch', false, true)
-            . $this->valueCell($context)
-            . $this->cell($this->controls($context->surroundings, self::formFor($subject)), 'taxmod-field-acts', false, true);
+        // ⚠️ *Acht Spalten seit D-735 (nur lesen, eindeutig — «unique (eindeutig) und readonly direkt an der kante», je ein Schalter in
+        // der Zeile); sein Befund: die Klappleiste rutschte nach links.* ⚠️ *Der Name des Ziels kommt aufgelöst (`refersTo`): eine Abfrage
+        // je Zeile wäre die Schleife von `CD-7`.* ⚠️ **Gesperrt heisst nicht bedienbar, und die Zeile bleibt stehen** ([D-608](../../../docs/NewConcept/90-decision-log.md),
+        // [D-604](../../../docs/NewConcept/90-decision-log.md)): kein Wert, und das Schloss sagt warum. ⚠️ *Eigen oder geerbt
+        // ([D-607](../../../docs/NewConcept/90-decision-log.md)); ein Behälter fasst keinen Wert an ([D-366](../../../docs/NewConcept/90-decision-log.md)).*
+        // ⚠️ *Die Klappleiste: nur das Zeichen, links, ohne Rahmen ([D-782](../../../docs/NewConcept/90-decision-log.md)).* ⚠️ *Knöpfe
+        // ausgegraut statt weg (D-370); die Adresse des Ziels kommt vom Rand (`CD-1`, [D-465](../../../docs/NewConcept/90-decision-log.md)),
+        // und das Formular der Zeile heisst nach ihrem Feld ([D-627](../../../docs/NewConcept/90-decision-log.md)).*
+        $fold = null;
+        $acts = [];
 
-        $klasse = 'taxmod-field' . ($context->surroundings->locked ? ' taxmod-field-locked' : '');
-
-        // ⚠️ **Die Kanten-Id am `<tr>`, und sie ist kein Schmuck.** *Ohne sie kann der Weg mit Skript
-        // den nachgeholten Bereich nicht einhängen; der skriptfreie Weg zeichnet die Seite neu und
-        // käme ohne aus. **Eine Angabe für beide Wege ist billiger als zwei Wege mit je eigener
-        // Adressierung** — und der zweite Fall aus [D-627](../../../docs/NewConcept/90-decision-log.md)
-        // findet hier schon eine Adresse vor.*
-        $zeile = '<tr class="' . $klasse . '" data-taxmod-relation="' . $subject->id . '">' . $cells . '</tr>';
-
-        $bereich = $context->surroundings->sections[self::SETTINGS] ?? null;
-        $leiste  = $this->fold($context, $spalten);
-
-        if ($bereich === null || trim($bereich->body) === '') {
-            return RenderResult::of($zeile . $leiste);
-        }
-
-        // ⚠️ *Eine eigene Zeile über die volle Breite und **unter** der ersten — sein Wort: «die
-        // Einstellungen sollten unter der ersten Zeile angezeigt werden». Ein `<tr>` kann nicht in
-        // einem `<td>` stecken, also ist es eine Schwesterzeile und keine Verschachtelung.*
-        return RenderResult::of(
-            $zeile
-            . $leiste
-            . '<tr class="taxmod-field-settings-row" id="' . RenderResult::escape(self::settingsRowFor($subject)) . '">'
-            . '<td colspan="' . $spalten . '">' . $bereich->body . '</td>'
-            . '</tr>'
-        );
-    }
-
-    /**
-     * Die Kennzeichnung «gesperrt» samt Grund — [D-608](../../../docs/NewConcept/90-decision-log.md).
-     *
-     * ⚠️ **Beides ist verlangt und keins genügt allein.** *Sein Wort: «muss aber ne Tooltip-Begründung
-     * da sein, und ‹gesperrt› muss sichtbar sein.» **«Gesperrt» sichtbar** sagt, dass die Zeile nicht
-     * bedienbar ist; **der Hinweistext** sagt warum. Ohne den Text wäre es eine Sperre ohne Grund.*
-     *
-     * ⚠️ **Weggelassen wird die Zeile ausdrücklich nicht.** *Das war der Mangel, den D-608 behebt: wer
-     * fragt «warum hat `read_only` kein `read_only`», fand keine Antwort im Modell — nur in einer
-     * Entscheidung, die er suchen muss. Dieselbe Haltung wie in
-     * [D-604](../../../docs/NewConcept/90-decision-log.md): was der Benutzer wissen muss, steht dort,
-     * wo er hinschaut.*
-     *
-     * ⚠️ **Die zwei Worte kommen vom Rand** (`AR-2`, [OQ-087](../../../docs/NewConcept/91-open-questions.md)),
-     * wie «own» und «inherited» — *bis der Rand sie mitgibt, steht der Schlüssel selbst da, sichtbar.
-     * Ein bemerktes falsches Wort schlägt ein geratenes.*
-     */
-    private function lockMark(RenderContext $context): string
-    {
-        if (! $context->surroundings->locked) {
-            return '';
-        }
-
-        return ' ' . RenderResult::htmlTag('span', [
-            'class' => 'taxmod-locked',
-            'title' => $this->plainWord($context, 'locked-reason'),
-        ]) . '&#128274; ' . $this->word($context, 'locked') . '</span>';
-    }
-
-    
-
-    /**
-     * The name — a field where it may be changed, text where it may not.
-     *
-     * ⚠️ **The rename travels in the same form as the acts.** A separate form per name would give
-     * every row two submit targets and no way to tell which one Enter reaches; one form, and the
-     * save button is simply one of the controls the boundary handed in.
-     */
-    private function nameCell(Relation $subject, RenderContext $context): string
-    {
-        if ($context->purpose !== Purpose::Edit || ! $context->editable) {
-            return $this->cell(
-                '<strong>' . RenderResult::escape($subject->name) . '</strong>',
-                'taxmod-field-name',
-                false,
-                true
-            );
-        }
-
-        // ⚠️ **Die Regel ist die des Modells** — *ein Feld kann nicht namenlos sein
-        // (`Relation::renamedTo()` verweigert es), also sagt der Browser dasselbe wie der Kern und
-        // nicht eine zweite, weichere Regel.*
-        //
-        // ⚠️ **Aber `aria-required` und nicht `required`, seit die Zeile im Seitenformular hängt.**
-        // *Genau diese Blockade hat er schon einmal gefunden: «habe die Multiplizität auf `0..1`
-        // gesetzt und wollte dann die Seite speichern — da kam dieser Fehler.» **Ein `required` in
-        // einer von sechzig Zeilen sperrt das Speichern der ganzen Seite**, und der Kern verweigert
-        // einen leeren Namen ohnehin — dort, wo die Regel wohnt.*
-        $field = RenderResult::htmlTag('input', [
-            'type'     => 'text',
-            'class'    => 'taxmod-field-rename',
-            'name'     => $context->fieldName,
-            'value'    => $subject->name,
-            'aria-required' => 'true',
-            'style'    => 'width:100%',
-            // ⚠️ **Ohne dies schickt das Feld nichts** — derselbe Fehler, den {@see self::formFor()}
-            // für den Auswahlkasten beschreibt, eine Zelle weiter und ungeheilt geblieben. *Der
-            // Eigentümer hat ihn zum zweiten Mal gefunden: «Änderungen in Namen … werden nicht mehr
-            // übernommen.» **Gemessen: `attribute renamed` stand 0 mal im ganzen Changelog**, während
-            // «wie oft» längst ankam — die Umbenennung hat nie gegriffen, nicht seit heute.*
-            //
-            // ⚠️ **Das Formular der Seite, wo es eines gibt** — *«Save in Fields sollte eigentlich auch
-            // über die Seite gehen». Leer heisst «keins» (die Vorschau hat keines), und dann bleibt es
-            // beim Formular der Zeile.*
-            'form'     => $context->surroundings->formId === '' ? self::formFor($subject) : $context->surroundings->formId,
-        ]);
-
-        return $this->cell($field, 'taxmod-field-name', false, true);
-    }
-
-    /**
-     * Die Klappleiste unter der Feldzeile — eine schmale Zeile über die volle Breite.
-     *
-     * ⚠️ **So wollte er es, und er hat ein Bild davon mitgeschickt** *(2026-09-06, aus einer früheren
-     * Oberfläche): «zum Ausklappen von Settings — das fand ich ganz gut, wie es aussehen sollte.» **Ein
-     * Balken unter der Zeile, der Knopf am rechten Ende**, zugeklappt nur das Zeichen, aufgeklappt das
-     * Wort daneben.*
-     *
-     * ⚠️ **Ein Dreieck in der Namenszelle war der Versuch davor und hatte einen messbaren Nachteil:**
-     * *es stand **im** Namen. `page-blocks-check` las die Namensspalte und bekam `▸with_label` statt
-     * `with_label` — ein Zeichen, das die Gestaltung setzt, wanderte in die Angabe. **Die Leiste hat
-     * eine eigene Zeile und berührt keine Spalte.***
-     *
-     * ⚠️ *Gezeichnet wird der Knopf, den der Rand geliefert hat — hier wird nur entschieden, **wo** er
-     * steht. Ihn hier zu bauen hiesse, seine Beschriftung ein zweites Mal zu erfinden (`AR-2`).*
-     */
-    private function fold(RenderContext $context, int $spalten): string
-    {
-        foreach ($context->surroundings->actions as $control) {
-            if ($control->value !== self::FOLD) {
-                continue;
+        foreach ($u->actions as $control) {
+            if ($control->value === self::FOLD) {
+                $fold ??= $control;
+            } elseif (! $control->isAWord()) {
+                $acts[] = $control;
             }
-
-            // ⚠️ **Nur das Zeichen, links, ohne Rahmen** ([D-782](../../../docs/NewConcept/90-decision-log.md)) — sein Wort am 2026-09-13:
-            // *«should be displayed at the left side and without the settings text and without the rectangle around it … looks
-            // better and is more the standard».* *Das nimmt «settings dazu schreiben» vom 2026-09-12 zurück. Das Wort bleibt der
-            // Name des Knopfes für den Screenreader; ein Knopf mit Zeichen bekommt von {@see ControlMarkup} keinen Kasten.*
-            return '<tr class="taxmod-field-fold"><td colspan="' . $spalten . '">'
-                . RenderResult::draw($control)
-                . '</td></tr>';
         }
 
-        return '';
+        return RenderResult::described(new FieldRow(
+            $subject->id,
+            $subject->name,
+            $context->purpose === Purpose::Edit && $context->editable ? $context->fieldName : null,
+            $u->formId === '' ? self::formFor($subject) : $u->formId,
+            $u->refersTo ?? '—',
+            $u->href,
+            $teil($u->sections['target-chooser'] ?? null) ?? '',
+            $gemalt($art),
+            $subject->kind->value,
+            $context->editable,
+            $this->word($context, 'own'),
+            $this->word($context, 'inherited'),
+            $u->locked,
+            $this->word($context, 'locked'),
+            $this->word($context, 'locked-reason'),
+            $gemalt($u->configured[\Taxmod\Core\Model\EdgeColumn::MULTIPLICITY] ?? null),
+            $gemalt($u->configured[\Taxmod\Core\Model\EdgeColumn::READ_ONLY] ?? null),
+            $gemalt($u->configured[\Taxmod\Core\Model\EdgeColumn::UNIQUE] ?? null),
+            $teil($haken),
+            $wert !== null,
+            $wert === null || $u->locked || trim($wert->body) === '' ? null : $teil($wert),
+            $u->submits === null ? '' : self::formFor($subject),
+            $u->submits?->action ?? '',
+            $u->submits?->hidden ?? [],
+            $acts,
+            $fold,
+            8 + ($wert === null ? 0 : 1) + ($haken === null ? 0 : 1),
+            self::settingsRowFor($subject),
+            $bereich === null || trim($bereich->body) === '' ? null : $teil($bereich)
+        ));
     }
 
-    /**
-     * Where the attribute comes from — declared here, or inherited.
-     *
-     * ⚠️ **Read off `editable` rather than handed in separately.** They are the same fact seen
-     * twice: an attribute is editable here exactly when this node declares it. Two fields carrying
-     * one truth is the duplication `CD` forbids, and they would drift.
-     */
-    private function origin(RenderContext $context): string
-    {
-        return $this->cell(
-            ($context->editable
-                ? $this->word($context, 'own')
-                : '<em>' . $this->word($context, 'inherited') . '</em>')
-            // ⚠️ *Hier und nicht in einer eigenen Spalte: die Sperre **ist** eine Aussage über die
-            // Herkunft — die Kante kommt von oben und hält an diesem Knoten an
-            // ([D-607](../../../docs/NewConcept/90-decision-log.md)).*
-            . $this->lockMark($context),
-            'taxmod-field-from',
-            false,
-            true
-        );
-    }
-
-    /**
-     * The multiplicity, as the settings side already drew it.
-     *
-     * ⚠️ **Not built here.** It is an ordinary setting on the relation
-     * ([D-351](../../../docs/NewConcept/90-decision-log.md)) and the descent draws settings; a
-     * second select built in this class would be the same control twice, and the two would come
-     * apart the moment R28–R32's greying lands in one of them.
-     *
-     * ⚠️ *It is the one key kept **out** of the panel below and shown in the row instead, because it
-     * is the only relation-only key there is (D-351) — the thing that makes a use site a use site.*
-     */
-    /**
-     * Der **Wert** der Angabe — die Spalte, ohne die eine Einstellung nicht einzustellen ist.
-     *
-     * ⚠️ **Auf sein Wort, und das Konzept sagt es wörtlich:** *«der Eingabemechanismus existiert
-     * bereits: **die Einstellungsseite**. Was sich ändert, ist nur, wie sie zu verstehen ist — hier
-     * schreibt der Autor Feldwerte am Modell»* ([02-field-and-setting.md](../../../docs/NewConcept/02-field-and-setting.md)).
-     *
-     * ⚠️ **Und er hat mich dabei zu Recht gestellt.** *Ich hatte einen eigenen Renderer-Wähler oben auf
-     * die Seite gesetzt; er: «ich verstehe nicht, warum es nicht im Setting Display Option angezeigt
-     * wird, das ist genau dafür da, und das ist glaube ich das, was du am Konzept vorbei machst».
-     * **Ein zweites Steuerelement für dieselbe Angabe ist genau das, was `R1` verbietet** — und die
-     * Zeile, die es hätte tragen sollen, hatte einfach keine Wertspalte.*
-     *
-     * ⚠️ *Gezeichnet hat es der gewöhnliche Abstieg, nicht diese Klasse: bei `Display Option` steigt er
-     * in den Teil hinein und liefert dessen Felder (`render`, `converter`), bei `read_only` einen
-     * Schalter. **Ein Behälter fasst keinen Wert an** ([D-366](../../../docs/NewConcept/90-decision-log.md)).*
-     */
-    // WICHTIG: Die Zelle fehlt ganz, wenn die Spalte fehlt -- auf sein Wort: "die ganze Spalte
-    // Value muss weg". `isset()` statt `??` unterscheidet «kein Wert zu zeigen» (Gedankenstrich,
-    // die Spalte gibt es) von «diese Zeilen haben gar keine Wertspalte» (kein `<td>` ueberhaupt),
-    // sonst wuerde jede Feldzeile eine leere Zelle in eine Tabelle ohne den Kopf dazu schreiben.
-    private function valueCell(RenderContext $context): string
-    {
-        if (! isset($context->surroundings->sections[self::VALUE])) {
-            return '';
-        }
-
-        // ⚠️ **Gesperrt heisst nicht bedienbar** ([D-608](../../../docs/NewConcept/90-decision-log.md)):
-        // *ein Eingabefeld in einer Zeile, die «gesperrt» sagt, wäre die Sperre nur behauptet. Die
-        // Zeile bleibt stehen, ihr Wert ist keiner — der Gedankenstrich, den die Spalte schon kennt.*
-        if ($context->surroundings->locked) {
-            return $this->cell('<span class="taxmod-nothing">—</span>', 'taxmod-field-value', false, true);
-        }
-
-        $gezeichnet = $context->surroundings->sections[self::VALUE];
-
-        if (trim($gezeichnet->body) === '') {
-            // ⚠️ *Ein Gedankenstrich und keine leere Zelle — sonst liest die Spalte nicht als Spalte.*
-            return $this->cell('<span class="taxmod-nothing">—</span>', 'taxmod-field-value', false, true);
-        }
-
-        return $this->cell($gezeichnet->body, 'taxmod-field-value', false, true);
-    }
-
-    /** Der Schalter einer Kantenspalte, wie er für die Zeile gezeichnet wurde — oder nichts, wo die Zeile geerbt ist. */
-    private function edgeSwitch(RenderContext $context, string $column): string
-    {
-        $drawn = $context->surroundings->configured[$column] ?? null;
-
-        if ($drawn === null || ! $drawn->wasDrawn()) {
-            return '<span class="taxmod-nothing">—</span>';
-        }
-
-        return $drawn->result->markup;
-    }
-
-    private function multiplicity(RenderContext $context): string
-    {
-        $drawn = $context->surroundings->configured[\Taxmod\Core\Model\EdgeColumn::MULTIPLICITY] ?? null;
-
-        if ($drawn === null || ! $drawn->wasDrawn()) {
-            // ⚠️ *Nothing is nothing* — an em dash rather than an empty cell, so the column still
-            // reads as a column.
-            return '<span class="taxmod-nothing">—</span>';
-        }
-
-        return $drawn->result->markup;
-    }
-
-    /**
-     * A word the boundary translated, or the key itself.
-     *
-     * ⚠️ **The core cannot make a word** ([OQ-087](../../../docs/NewConcept/91-open-questions.md)):
-     * the text domain is the boundary's (`AR-2`), so *own* and *inherited* arrive as controls' words
-     * do. Until that question is answered the key stands in, visibly — a wrong word noticed beats a
-     * wrong word guessed.
-     */
+    /** A word the boundary translated, or the key itself where it did not send one. */
     private function word(RenderContext $context, string $key): string
-    {
-        foreach ($context->surroundings->actions as $control) {
-            if ($control->name === 'word:' . $key) {
-                return RenderResult::escape($control->label);
-            }
-        }
-
-        return RenderResult::escape($key);
-    }
-
-    /**
-     * Dasselbe Wort **unescaped** — für ein Attribut, das {@see RenderResult::htmlTag()} selbst escapt.
-     *
-     * ⚠️ *Zweimal escapen ist der Fehler, der aus einem Apostroph `&amp;#039;` macht — in einem
-     * Tooltip liest das jeder.*
-     */
-    private function plainWord(RenderContext $context, string $key): string
     {
         foreach ($context->surroundings->actions as $control) {
             if ($control->name === 'word:' . $key) {
@@ -461,124 +234,5 @@ final class FieldRowRenderer extends RendererNode
         }
 
         return $key;
-    }
-
-    /**
-     * What the attribute points at — a link where the surface said where the node is.
-     *
-     * ⚠️ **A renderer may build the anchor; it may not invent the URL.** *`$this` is the
-     * {@see FieldRowRenderer}: wrapping what it drew is ordinary markup and keeps the shape of the
-     * row here (`R1`), while the address is a boundary fact handed in through
-     * {@see Surroundings::$href} (`CD-1`) — the same division {@see TreeNodeRenderer} makes for a
-     * tree row.*
-     *
-     * ⚠️ *Spelled through {@see RenderResult::htmlTag()}, which is the one place that knows how an
-     * element is written ([D-465](../../../docs/NewConcept/90-decision-log.md)) — and it escapes the
-     * URL on the way in, so the cell can be handed on as trusted markup.*
-     */
-    private function targetCell(RenderContext $context): string
-    {
-        $name = $context->surroundings->refersTo ?? '—';
-        $href = $context->surroundings->href;
-
-        // WICHTIG: Der Auswahldialog dieser Zeile, wenn der Rand einen mitgegeben hat -- TASK-029,
-        // auf sein Wort: "Points at ist der type und type muss aenderbar sein". Er kommt als
-        // fertiges Markup herein, weil er eine URL und eine Nonce braucht (CD-1).
-        $wahl = $context->surroundings->sections['target-chooser']->body ?? '';
-
-        // WICHTIG: Dieselbe Erscheinung wie beim Anlegen eines Feldes -- auf sein Wort:
-        // "existierendes Feld sollte genauso wie beim Erstellen von Feldern aussehen, Feld
-        // nicht eingebbar und rechts daneben der Baumknopf". Dieselbe Klasse wie das gesperrte
-        // Feld dort ({@see NodesScreen::fieldForm()}), damit beide gleich aussehen -- ein blosser
-        // Text neben dem Knopf sah dagegen wie ein anderes Bedienelement aus.
-        //
-        // WICHTIG: In einer eigenen Zeile mit Flex-Layout, sonst zeigt `flex:1` ins Leere --
-        // eine Tabellenzelle ist kein Flex-Behaelter. Auf sein Wort: "typ felder breiter und
-        // button rechts davon", statt darunter, wenn der Name lang ist.
-        if ($href === null || $name === '—') {
-            return '<span style="display:flex;align-items:center;gap:.3em">'
-                . RenderResult::htmlTag('input', [
-                    'type'     => 'text',
-                    'class'    => 'taxmod-chosen',
-                    'readonly' => true,
-                    'tabindex' => '-1',
-                    'value'    => $name,
-                    'style'    => 'flex:1;min-width:8em',
-                ]) . $wahl
-                . '</span>';
-        }
-
-        return '<span style="display:flex;align-items:center;gap:.3em">'
-            . RenderResult::htmlTag('a', ['href' => $href, 'class' => 'taxmod-field-target-link taxmod-chosen', 'style' => 'flex:1;min-width:8em'])
-            . RenderResult::escape($name)
-            . '</a>'
-            . $wahl
-            . '</span>';
-    }
-
-    /**
-     * Die Art — als Auswahlfeld, wo der Abstieg eines mitgegeben hat (eigene Zeile, TASK-066), sonst als Wort.
-     */
-    private function kindCell(Relation $subject, RenderContext $context): string
-    {
-        $drawn = $context->surroundings->configured['kind'] ?? null;
-
-        if ($drawn !== null && $drawn->wasDrawn()) {
-            return $this->cell($drawn->result->markup, 'taxmod-field-kind', false, true);
-        }
-
-        return $this->cell($subject->kind->value, 'taxmod-field-kind', true);
-    }
-
-    private function cell(string $inner, string $class, bool $code = false, bool $trusted = false): string
-    {
-        $body = $trusted ? $inner : RenderResult::escape($inner);
-
-        return '<td class="' . $class . '">' . ($code ? '<code>' . $body . '</code>' : $body) . '</td>';
-    }
-
-    /**
-     * The acts, built from what the boundary described — the same arrangement as the tree row.
-     *
-     * ⚠️ **One form for the whole row**, so the name field submits with the save button. The words
-     * `word:own`, `word:inherited` and the rest travel in the same list and are **not** buttons; they
-     * are skipped here. *That is a shortcut around OQ-087 and it is ugly — noted rather than dressed
-     * up.*
-     */
-    private function controls(Surroundings $surroundings, string $formId): string
-    {
-        if ($surroundings->submits === null) {
-            return '';
-        }
-
-        $fields = '';
-
-        foreach ($surroundings->submits->hidden as $name => $value) {
-            $fields .= RenderResult::htmlTag('input', [
-                'type'  => 'hidden',
-                'name'  => $name,
-                'value' => $value,
-            ]);
-        }
-
-        $buttons = '';
-
-        foreach ($surroundings->actions as $control) {
-            if (($control)->isAWord() || $control->value === self::FOLD) {
-                continue;
-            }
-
-            // ⚠️ **Greyed, not gone** (D-370), and red only where something is taken away — the
-            // same two rules as the tree row, because the owner asked for one look everywhere.
-            // ⚠️ **Composed in one place** ({@see ControlMarkup}) — greyed rather than gone (D-370),
-            // red only where something is taken away, and an icon-only button marked so no surface
-            // has to guess. *There were four copies of this and the borderless rule reached one of
-            // them, which is how boxes came back around the icons everywhere else.*
-            $buttons .= RenderResult::draw($control);
-        }
-
-        return '<form method="post" id="' . RenderResult::escape($formId) . '"'
-            . ' action="' . RenderResult::escape($surroundings->submits->action) . '"'
-            . ' class="taxmod-acts">' . $fields . $buttons . '</form>';
     }
 }

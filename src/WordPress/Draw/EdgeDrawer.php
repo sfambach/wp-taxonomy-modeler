@@ -13,6 +13,9 @@ use Taxmod\Core\Description\PickableNode;
 use Taxmod\Core\Description\RecordBrowser;
 use Taxmod\Core\Description\RecordChoice;
 use Taxmod\Core\Description\RecordPicker;
+use Taxmod\Core\Description\SettingOrigin;
+use Taxmod\Core\Description\SettingRow;
+use Taxmod\Core\Description\SettingsPanel;
 use Taxmod\Core\Description\SharedBody;
 use Taxmod\Core\Description\TreeChoice;
 use Taxmod\Core\Description\TreeLine;
@@ -20,6 +23,7 @@ use Taxmod\Core\Description\TreeView;
 use Taxmod\Core\Description\Describes;
 use Taxmod\Core\Description\DialogBox;
 use Taxmod\Core\Description\Drawn;
+use Taxmod\Core\Description\FieldRow;
 use Taxmod\Core\Description\Hint;
 use Taxmod\Core\Description\Icon;
 use Taxmod\Core\Description\Drawer;
@@ -34,6 +38,7 @@ use Taxmod\Core\Description\ShownValue;
 use Taxmod\Core\Description\ValueInput;
 use Taxmod\Core\Description\ValueKind;
 use Taxmod\Core\Renderer\Control;
+use Taxmod\Core\Renderer\RenderResult;
 
 /**
  * The edge drawer: one way of drawing per kind of description (D-1424, D-1429 A14). The markup is the one the core drew
@@ -76,6 +81,9 @@ final class EdgeDrawer implements Drawer
             $piece instanceof TreeChoice => $this->treeChoice($piece),
             $piece instanceof CurrentChoice => self::current($piece),
             $piece instanceof SharedBody => $this->sharedBody($piece),
+            $piece instanceof FieldRow   => $this->fieldRow($piece),
+            $piece instanceof SettingsPanel => $this->settings($piece),
+            $piece instanceof SettingRow => $this->setting($piece),
             $piece instanceof RecordChoice => self::recordChoice($piece),
             $piece instanceof RecordBrowser => $this->recordBrowser($piece),
             $piece instanceof RecordPicker => $this->recordPicker($piece),
@@ -192,6 +200,105 @@ final class EdgeDrawer implements Drawer
                 . IconMarkup::dashicon('networking', $p->treeWord) . '</button>')
             . '<span class="taxmod-record-dialog-open taxmod-record-word"' . ($nichts ? ' hidden' : '') . '>' . self::e($p->word) . '</span>'
             . $offen . $ende;
+    }
+
+    private function settings(SettingsPanel $panel): string
+    {
+        $markup = '';
+
+        foreach ($panel->groups as $gruppe) {
+            $innen = '';
+
+            foreach ($gruppe['sections'] as $abschnitt) {
+                $schmal = implode('', array_map($this->setting(...), $abschnitt['switches']));
+                $breit  = '';
+                $band   = null;
+
+                foreach ($abschnitt['fields'] as $zeile) {
+                    if ($zeile->band !== $band) {
+                        $breit .= $band === null ? '' : '</div>';
+                        $breit .= $zeile->band === null ? '' : '<div class="taxmod-setting-band"><code class="taxmod-setting-band-name">' . self::e($zeile->band) . '</code>';
+                        $band   = $zeile->band;
+                    }
+
+                    $breit .= $this->setting($zeile);
+                }
+
+                $breit .= $band === null ? '' : '</div>';
+                $innen .= ($abschnitt['heading'] === null ? '' : '<div class="taxmod-settings-subheading">' . self::e($abschnitt['heading']) . '</div>')
+                    . ($schmal === '' ? '' : '<div class="taxmod-settings-switches">' . $schmal . '</div>')
+                    . ($breit === '' ? '' : '<div class="taxmod-settings-fields">' . $breit . '</div>');
+            }
+
+            $markup .= '<div class="taxmod-settings-group taxmod-settings-' . self::e($gruppe['group']) . '">'
+                . '<div class="taxmod-settings-heading description">' . self::e($gruppe['heading']) . '</div>'
+                . $innen
+                . '</div>';
+        }
+
+        return $panel->formId === ''
+            ? '<div class="taxmod-settings">' . $markup . '</div>'
+            : '<form method="post" id="' . self::e($panel->formId) . '" action="' . self::e($panel->action) . '" class="taxmod-settings">'
+                . ($panel->carried === null ? '' : $this->draw($panel->carried)) . $markup . '</form>';
+    }
+
+    private function setting(SettingRow $r): string
+    {
+        $wort  = self::e($r->overrideWord);
+        $haken = $r->overrideName === '' ? '' : '<label class="taxmod-override-act" title="' . $wort . '">'
+            . '<input type="checkbox" class="taxmod-override" name="' . self::e($r->overrideName) . '" value="1"'
+            . ($r->automatic ? ' checked' : '') . ($r->form === '' ? '' : ' form="' . self::e($r->form) . '"')
+            . '><span class="screen-reader-text">' . $wort . '</span></label>';
+        $feld  = $r->control === null ? '<code class="taxmod-no-renderer">' . self::e($r->undrawn) . '</code>' : $this->draw($r->control);
+        $her   = match ($r->origin) {
+            SettingOrigin::Unmarked      => '',
+            SettingOrigin::Automatic     => '<em class="taxmod-automatic">' . self::e($r->originText) . '</em>',
+            SettingOrigin::InheritedFrom => '<em class="taxmod-inherited">' . self::e($r->originText) . '</em>',
+            SettingOrigin::Inherited     => '<em class="taxmod-inherited" title="' . self::e($r->originText) . '">↑</em>',
+        };
+
+        return '<div class="taxmod-setting' . ($r->locked ? ' taxmod-setting-locked' : '') . ($r->automatic ? ' taxmod-setting-automatic' : '') . '">'
+            . '<span class="taxmod-setting-override">' . $haken . '</span>'
+            . '<span class="taxmod-setting-name"><code class="taxmod-setting-key">' . self::e($r->key) . '</code>' . HintMarkup::icon($r->hint) . '</span>'
+            . '<span class="taxmod-setting-value">' . ($r->locked ? '<span class="taxmod-setting-locked-control">' . $feld . '</span>' : $feld) . '</span>'
+            . '<span class="taxmod-setting-from description">' . $her . '</span>'
+            . ($r->acts === null ? '' : '<span class="taxmod-setting-acts">' . implode('', array_map($this->draw(...), $r->acts)) . '</span>')
+            . '</div>';
+    }
+
+    private function fieldRow(FieldRow $f): string
+    {
+        $zelle  = static fn (string $innen, string $klasse): string => '<td class="' . $klasse . '">' . $innen . '</td>';
+        $nichts = self::NOTHING;
+        $flex   = '<span style="display:flex;align-items:center;gap:.3em">';
+        $ziel   = $f->targetHref === null || $f->target === '—'
+            ? $flex . RenderResult::htmlTag('input', ['type' => 'text', 'class' => 'taxmod-chosen', 'readonly' => true, 'tabindex' => '-1', 'value' => $f->target, 'style' => 'flex:1;min-width:8em'])
+                . $this->part($f->targetChooser) . '</span>'
+            : $flex . RenderResult::htmlTag('a', ['href' => $f->targetHref, 'class' => 'taxmod-field-target-link taxmod-chosen', 'style' => 'flex:1;min-width:8em'])
+                . self::e($f->target) . '</a>' . $this->part($f->targetChooser) . '</span>';
+        $name   = $f->renameAs === null
+            ? '<strong>' . self::e($f->name) . '</strong>'
+            : RenderResult::htmlTag('input', ['type' => 'text', 'class' => 'taxmod-field-rename', 'name' => $f->renameAs, 'value' => $f->name, 'aria-required' => 'true', 'style' => 'width:100%', 'form' => $f->renameForm]);
+        $schloss = ! $f->locked ? '' : ' ' . RenderResult::htmlTag('span', ['class' => 'taxmod-locked', 'title' => $f->lockedReason]) . '&#128274; ' . self::e($f->lockedWord) . '</span>';
+        $knoepfe = $f->actsForm === '' ? '' : '<form method="post" id="' . self::e($f->actsForm) . '" action="' . self::e($f->actsAt) . '" class="taxmod-acts">'
+            . $this->draw(new Carried($f->carried)) . implode('', array_map($this->draw(...), $f->acts)) . '</form>';
+
+        $zeile = '<tr class="taxmod-field' . ($f->locked ? ' taxmod-field-locked' : '') . '" data-taxmod-relation="' . $f->relation . '">'
+            . ($f->override === null ? '' : $zelle($this->part($f->override), 'taxmod-field-override'))
+            . $zelle($name, 'taxmod-field-name')
+            . $zelle($ziel, 'taxmod-field-target')
+            . ($f->kind === null ? $zelle('<code>' . self::e($f->kindText) . '</code>', 'taxmod-field-kind') : $zelle($this->draw($f->kind), 'taxmod-field-kind'))
+            . $zelle(($f->own ? self::e($f->ownWord) : '<em>' . self::e($f->inheritedWord) . '</em>') . $schloss, 'taxmod-field-from')
+            . $zelle($f->multiplicity === null ? $nichts : $this->draw($f->multiplicity), 'taxmod-field-many')
+            . $zelle($f->readOnly === null ? $nichts : $this->draw($f->readOnly), 'taxmod-field-switch')
+            . $zelle($f->unique === null ? $nichts : $this->draw($f->unique), 'taxmod-field-switch')
+            . (! $f->valueColumn ? '' : $zelle($f->value === null ? $nichts : $this->part($f->value), 'taxmod-field-value'))
+            . $zelle($knoepfe, 'taxmod-field-acts')
+            . '</tr>';
+        $leiste = $f->fold === null ? '' : '<tr class="taxmod-field-fold"><td colspan="' . $f->columns . '">' . $this->draw($f->fold) . '</td></tr>';
+
+        return $zeile . $leiste . ($f->settings === null ? ''
+            : '<tr class="taxmod-field-settings-row" id="' . self::e($f->settingsRow) . '"><td colspan="' . $f->columns . '">' . $this->part($f->settings) . '</td></tr>');
     }
 
     private function sharedBody(SharedBody $platz): string
