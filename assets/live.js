@@ -324,6 +324,15 @@
 
 		old = morph( old, fresh );
 
+		// *A part a page draws outside its .wrap (a module's left column) takes part when it says so with an id.*
+		doc.querySelectorAll( '[data-taxmod-morph][id]' ).forEach( function ( part ) {
+			var mine = document.getElementById( part.id );
+
+			if ( mine && ! old.contains( mine ) ) {
+				morph( mine, part );
+			}
+		} );
+
 		if ( doc.title ) {
 			document.title = doc.title;
 		}

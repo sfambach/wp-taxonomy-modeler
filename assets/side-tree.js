@@ -122,6 +122,9 @@
 		}
 	} );
 
+	// D-1408: an act puts the page in place without loading it; the tree is drawn again from what the server now says.
+	document.addEventListener( 'taxmod:replaced', start );
+
 	if ( document.readyState === 'loading' ) {
 		document.addEventListener( 'DOMContentLoaded', start );
 	} else {
