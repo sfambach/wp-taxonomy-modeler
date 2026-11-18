@@ -22,6 +22,8 @@ final class Section
         public readonly string $title,
         public readonly string $body,
         public readonly bool $collapsed = false,
+        /** The body described, where the part that made it already describes (A15: until every part does, `body` stays too). */
+        public readonly ?\Taxmod\Core\Description\Describes $piece = null,
     ) {
     }
 }

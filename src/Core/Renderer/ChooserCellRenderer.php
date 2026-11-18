@@ -2,6 +2,7 @@
 
 namespace Taxmod\Core\Renderer;
 
+use Taxmod\Core\Description\PickableNode;
 use Taxmod\Core\Model\Identity;
 use Taxmod\Core\Model\Node;
 use Taxmod\Core\Model\RecordInTree;
@@ -74,37 +75,25 @@ final class ChooserCellRenderer extends RendererNode
             return RenderResult::of('');
         }
 
-        $icon = $context->setting('icon')?->text ?? '';
-        // ⚠️ *Diese Stelle war die auffälligste: sie trug **gar keine** eigene CSS-Regel und zeichnete
-        // darum in der 20px-Vorgabe von WordPress, neben Nachbarn mit 17.*
-        $glyph = $icon === '' ? '' : RenderResult::draw(\Taxmod\Core\Description\Icon::named($icon)) . ' ';
-
         // WICHTIG: Dieselbe Zeile wie im Modellbaum, ein Renderer, unterschieden nur durch
         // editable. Vorher zeichnete diese Zelle ihre eigene Form -- gleiche Sache, zwei
         // Aussehen, und jede Aenderung am Baum ging an ihr vorbei.
-        $name = (new TreeNodeRenderer())->render($subject, $context->asChooserRow())->markup;
+        $node = (new TreeNodeRenderer())->describe($subject, $context->asChooserRow());
 
+        // ⚠️ Shown and not offered: the tree has to stay whole, because a child of an impossible
+        // parent may be a perfectly good one.
         if ($this->cannotBePicked($context)) {
-            // ⚠️ Shown and not offered: the tree has to stay whole, because a child of an impossible
-            // parent may be a perfectly good one.
-            return RenderResult::of('<span class="taxmod-chooser-row taxmod-chooser-fixed">' . $name . '</span>');
+            return RenderResult::described(new PickableNode($node, false));
         }
 
-        $chosen = $context->value->reference === $subject->id;
-
-        return RenderResult::of(
-            '<label class="taxmod-chooser-row">'
-            // ⚠️ *Eine der vier Stellen, die `name` von Hand escapten ([D-463]).*
-            . RenderResult::htmlTag('input', [
-                'type'    => 'radio',
-                'name'    => $context->fieldName,
-                'value'   => (int) $subject->id,
-                'checked' => $chosen,
-                'form'    => $context->surroundings->formId,
-            ]) . ' '
-            . $name
-            . '</label>'
-        );
+        return RenderResult::described(new PickableNode(
+            $node,
+            true,
+            $context->fieldName,
+            (int) $subject->id,
+            $context->value->reference === $subject->id,
+            $context->surroundings->formId
+        ));
     }
 
     private function cannotBePicked(RenderContext $context): bool

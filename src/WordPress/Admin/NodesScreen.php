@@ -1522,7 +1522,7 @@ final class NodesScreen
             // ⚠️ *Was das Speichern im Hintergrund sagt, wenn keine Antwort kommt (D-1089).*
             . ' data-save-failed="' . esc_attr__('Not saved — the connection failed. Your input is still here.', 'taxmod') . '"></span>';
 
-        $html .= $picker . ($nurBaum ? '' : $times->measure(__('Record dialogs', 'taxmod'), fn (): string => $this->rendering->sharedRecordBodies($this->grosseKoerperAuslagern(...)))) . $worte;
+        $html .= $picker . ($nurBaum ? '' : $times->measure(__('Record dialogs', 'taxmod'), fn (): string => \Taxmod\WordPress\Draw\SharedTemplates::of($this->rendering->sharedRecordBodies(), new \Taxmod\WordPress\Draw\EdgeDrawer(), $this->grosseKoerperAuslagern(...)))) . $worte;
 
         return $html . $times->line(strlen($html)) . '</div>';
     }

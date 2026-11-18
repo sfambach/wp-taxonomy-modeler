@@ -1282,13 +1282,13 @@ final class Rendering implements Presets, \Taxmod\Core\Port\FieldAddons
     }
 
     /**
-     * Die gesammelten Vorlagen — leer, wenn die Seite nicht teilt.
+     * Die gesammelten Körper — leer, wenn die Seite nicht teilt; der Rand zeichnet sie als Vorlagen.
      *
-     * @param (\Closure(string, string): ?string)|null $auslagern Wohin ein grosser Körper geht (D-898); null heisst: alle in der Seite.
+     * @return array<string, \Taxmod\Core\Description\Describes|string> Schlüssel ⇒ Körper
      */
-    public function sharedRecordBodies(?\Closure $auslagern = null): string
+    public function sharedRecordBodies(): array
     {
-        return $this->geteilteKoerper?->markup($auslagern) ?? '';
+        return $this->geteilteKoerper?->bodies() ?? [];
     }
 
     /** Dieselbe Zeichnung, aber ganze Knotenbäume öffnen den gemeinsamen Auswahlbaum — nur für eine Seite, die ihn zeichnet ([D-815](../../../docs/NewConcept/90-decision-log.md)). */
@@ -2838,7 +2838,7 @@ final class Rendering implements Presets, \Taxmod\Core\Port\FieldAddons
                 surroundings: new Surroundings(
                     refersTo: $chosenName,
                     sections: [
-                        ChooserRenderer::CANDIDATES => new Section($nothingToChoose, $tree->markup),
+                        ChooserRenderer::CANDIDATES => new Section($nothingToChoose, $tree->markup, piece: $tree->piece),
                         ChooserRenderer::TRIGGER    => new Section('', $trigger),
                         ChooserRenderer::CONFIRM    => new Section('', $confirm),
                     ],
@@ -8050,9 +8050,7 @@ final class Rendering implements Presets, \Taxmod\Core\Port\FieldAddons
         $baum = $context->surroundings->recordTree;
 
         if ($baum !== []) {
-            $knopf = static fn (string $wert, bool $an, string $wort, string $suche = '', bool $passt = false): string => '<label class="taxmod-record-choice' . ($passt ? ' taxmod-record-match' : '') . '"'
-                . ($suche === '' ? '' : ' data-taxmod-search="' . RenderResult::escape($suche) . '"') . '>'
-                . '<input type="checkbox" class="taxmod-ref-check" value="' . $wert . '"> ' . $wort . '</label>';
+            $knopf = static fn (string $wert, bool $an, string $wort, string $suche = '', bool $passt = false): \Taxmod\Core\Description\RecordChoice => \Taxmod\Core\Description\RecordChoice::forRows($wert, $wort, $suche, $passt);
             $suchwort = (string) ($this->dialogWords['search'] ?? '');
             $ok       = (string) ($this->dialogWords['ok'] ?? 'OK');
 
@@ -8060,7 +8058,7 @@ final class Rendering implements Presets, \Taxmod\Core\Port\FieldAddons
                 'taxmod-ref-dialog-' . preg_replace('/[^a-z0-9_-]/i', '', $formId . $name),
                 RenderResult::draw(\Taxmod\Core\Description\Icon::named('search', $suchwort === '' ? $relation->name : $suchwort)),
                 RenderResult::escape($relation->name),
-                '<div class="taxmod-record-tree">' . SummaryRenderer::browserBody($baum, $knopf, null, '', $this->dialogWords) . '</div>',
+                SummaryRenderer::browserBody($baum, $knopf, null, [], $this->dialogWords),
                 '<button type="button" class="button button-primary taxmod-ref-take">' . RenderResult::escape($ok) . '</button>',
                 'button ' . \Taxmod\Core\Renderer\Look::ICON_ONLY . ' taxmod-dialog-open taxmod-ref-browse',
                 cancel: (string) ($this->dialogWords['cancel'] ?? '')
@@ -8407,7 +8405,7 @@ final class Rendering implements Presets, \Taxmod\Core\Port\FieldAddons
                     $schluessel = $halter . '-' . $relation->id;
 
                     if ($wahlBaum !== []) {
-                        $mehrere = SummaryRenderer::multiDialog(
+                        $mehrere = RenderResult::draw(SummaryRenderer::multiDialog(
                             $wahlBaum,
                             'taxmod_multi[' . $schluessel . '][]',
                             $formId,
@@ -8415,7 +8413,7 @@ final class Rendering implements Presets, \Taxmod\Core\Port\FieldAddons
                             RenderResult::draw(\Taxmod\Core\Description\Icon::named('plus-alt', $this->partActs['many'])) . ' ' . RenderResult::escape($this->partActs['many']),
                             RenderResult::draw(new \Taxmod\Core\Renderer\Control('do[' . $schluessel . ']', 'add_parts', $this->partActs['many'], '', true, false, '', $formId, true)),
                             $this->dialogWords
-                        );
+                        ));
                     }
                 }
 

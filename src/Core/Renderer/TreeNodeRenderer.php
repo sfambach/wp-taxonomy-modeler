@@ -7,6 +7,9 @@ use Taxmod\Core\Model\Node;
 use Taxmod\Core\Model\RecordInTree;
 use Taxmod\Core\Model\Relation;
 use Taxmod\Core\Model\SimpleType;
+use Taxmod\Core\Description\Carried;
+use Taxmod\Core\Description\Icon;
+use Taxmod\Core\Description\NodeInTree;
 
 /**
  * One node as the tree draws it — the **cell** of [D-367](../../../docs/NewConcept/90-decision-log.md)'s
@@ -69,6 +72,12 @@ final class TreeNodeRenderer extends RendererNode
 
     public function render(Renderable $subject, RenderContext $context): RenderResult
     {
+        return RenderResult::described($this->describe($subject, $context));
+    }
+
+    /** The row, described — the chooser's cell puts it inside its own (D-367). */
+    public function describe(Renderable $subject, RenderContext $context): NodeInTree
+    {
         $icon = $context->setting('icon')?->text ?? '';
 
         // ⚠️ **The node's own name, not a label** ([D-369](../../../docs/NewConcept/90-decision-log.md)).
@@ -79,125 +88,50 @@ final class TreeNodeRenderer extends RendererNode
         $shown = $subject instanceof Node ? $subject->name : ($subject instanceof RecordInTree ? $subject->label() : '');
 
         // ⚠️ **An icon is a Dashicon key**, stored without the `dashicons-` prefix — the shape the
-        // legacy used and the owner confirmed: *for now simply the stock WordPress offers.* Drawing
-        // it is two **class names**, which the core may write: a class is a string, not a call into
-        // WordPress (`CD-1`). And it goes **before** the name, as it did there.
-        $named = ($icon === '' ? '' : RenderResult::draw(\Taxmod\Core\Description\Icon::named($icon)) . ' ')
-            . '<span class="taxmod-tree-label">' . RenderResult::escape($shown) . '</span>';
-
+        // legacy used and the owner confirmed: *for now simply the stock WordPress offers.* And it
+        // goes **before** the name, as it did there.
+        //
         // ⚠️ **Die Klasse steht dabei** ([D-716](../../../docs/NewConcept/90-decision-log.md), Schritt 1
         // des Bauplans) — klein hinter dem Namen, übersetzt vom Rand, und nur, wenn er sie hereingibt.
-        if ($context->surroundings->classLabel !== '') {
-            $named .= ' <span class="taxmod-tree-class">'
-                . RenderResult::escape($context->surroundings->classLabel) . '</span>';
-        }
-
-        // ⚠️ **The link is put around what was drawn, not handed back to be wrapped.** A URL comes
-        // in (`CD-1` — the core cannot make one); wrapping is ordinary markup, so the renderer keeps
-        // deciding the shape of the row. *Clickable without looking like one: an anchor that gives
-        // up its colour lets the icon stay black, which is what the owner asked for.*
-        if ($context->surroundings->href !== null) {
-            $named = '<a href="' . RenderResult::escape($context->surroundings->href) . '"'
-                . ' class="taxmod-tree-select" style="text-decoration:none;color:inherit">'
-                . $named . '</a>';
-        }
-
-        // ⚠️ A `div`, not a `span`: the controls handed in are forms, and a form may not sit inside
-        // phrasing content.
+        //
+        // ⚠️ **The link is put around what was drawn.** A URL comes in (`CD-1` — the core cannot make
+        // one). *Clickable without looking like one: the icon stays black, which is what the owner asked for.*
+        //
         // ⚠️ **An id per row, so the browser can scroll to it.** The owner: *the tree always slides to
-        // the top when I select a node at the bottom — it should stay where it is; probably you reload
-        // instead of only re-rendering?* **He is right about the cause**: selecting a node is a full
-        // page load, because this screen has no script at all, and a fresh document starts at the top.
+        // the top when I select a node at the bottom.* Selecting a node is a full page load, and a
+        // fresh document starts at the top — so the row gets an address and the link a `#fragment`.
+        // **No script, no stored offset, and it survives a bookmark.**
         //
-        // ⚠️ *So the row gets an address and the link gets a `#fragment` — the browser then scrolls the
-        // selected row into view by itself, inside the tree's own scroll pane. **No script, no stored
-        // offset, and it survives a bookmark.** It is coarser than restoring an exact pixel offset, and
-        // «the node I picked is on screen» is what was actually asked for.*
-        // ⚠️ **A hidden node says so while it is being shown.** The owner: *hidden nodes should also get
-        // grey text in the shown state.* With *show hidden* on, a hidden row is otherwise
-        // indistinguishable from a visible one — and the whole point of that mode is to work **on** the
-        // hidden ones.
+        // ⚠️ **A hidden node says so while it is being shown** — *hidden nodes should also get grey
+        // text in the shown state.* Handed in, because `hide` sits on the **inheritance relation**
+        // ([D-467](../../../docs/NewConcept/90-decision-log.md), [D-445](../../../docs/NewConcept/90-decision-log.md)),
+        // after a setting (D-426) and a column on the node (D-457) had both been wrong.
         //
-        // ⚠️ **Handed in, because a cell draws a **node** and `hide` sits on its **relation**.**
-        // *This line has been rewritten three times and the last one is the design:
-        // it read a **setting** (which put `hide` in the chain, so hiding a type blanked every field of
-        // that type — [D-426](../../../docs/NewConcept/90-decision-log.md)), then a **column on the
-        // node** ([D-457](../../../docs/NewConcept/90-decision-log.md)), and now the prepared fact
-        // ([D-467](../../../docs/NewConcept/90-decision-log.md), [D-445](../../../docs/NewConcept/90-decision-log.md)):
-        // `hide` is on the **inheritance relation**, which is what puts the node in the tree at all, and
-        // `Tree::rowsUnder()` loads those relations anyway.*
-        $hidden = $context->surroundings->hidden;
-
-        $markup = '<div class="taxmod-tree-node' . ($hidden ? ' taxmod-tree-node-hidden' : '') . '"'
-            . ' id="' . RenderResult::escape($context->surroundings->rowIdPrefix) . (int) $subject->id . '">'
-            . $named;
-
-        // ⚠️ **Right-aligned**, the owner's ask: `margin-left:auto` pushes everything after the
-        // name to the far relation, so the names stay a readable column and the controls line up.
         // WICHTIG: Ohne Bearbeitung keine Funktionen rechts -- auf sein Wort: die Baumansicht im
-        // Auswahldialog "sollte so wie in tree view aussehen, nur ohne die Funktionen rechts,
-        // somit koennte hier der gleiche Render verwendet werden, wir muessen nur eine Einstellung
-        // schaffen die sagt editable oder nicht". In der Seitenansicht an, im Dialog aus.
-        $funktionen = $this->controls($context->surroundings);
-        $zaehler    = $subject instanceof Node && $context->developerMode
-            ? '<span class="taxmod-tree-writes" style="opacity:.55">' . (int) $subject->version . '</span>'
-            : '';
+        // Auswahldialog "sollte so wie in tree view aussehen, nur ohne die Funktionen rechts". Wer
+        // nichts hineingibt, bekommt nichts; RenderContext::editable taugt nicht als Signal.
+        //
+        // ⚠️ **The write count is a diagnostic and shows only in developer mode**, one of the view
+        // filters under the one mode ([D-705](../../../docs/NewConcept/90-decision-log.md)). *It is a
+        // **write count** and never a version* ([D-349](../../../docs/NewConcept/90-decision-log.md)).
+        //
+        // ⚠️ **The actions arrive as {@see Submission} and {@see Control}**: the form's URL, its nonce
+        // and the words are boundary facts; handing in finished HTML would leave the shape of a row
+        // to the surface, which is what `R1` forbids.
+        $acts = $context->surroundings->actions !== [] && $context->surroundings->submits !== null;
 
-        // WICHTIG: Kein leerer Schwanz. Im Auswahldialog werden keine Funktionen hereingereicht --
-        // das ist genau, was er wollte: "sollte so wie in tree view aussehen, nur ohne die
-        // Funktionen rechts". Und es braucht keinen neuen Schalter dafuer: wer nichts hineingibt,
-        // bekommt nichts. RenderContext::editable taugt nicht als Signal -- es heisst "ein
-        // Eingabefeld darf angeboten werden", und cellsFor() setzt es auch im Modellbaum auf false.
-        if ($funktionen === '' && $zaehler === '') {
-            return RenderResult::of($markup . '</div>');
-        }
-
-        $markup .= '<span class="taxmod-tree-tail" style="margin-left:auto;display:flex;'
-            . 'gap:.4em;align-items:center">'
-            . $funktionen
-            // ⚠️ **The write count is a diagnostic and shows only in developer mode** — the owner
-            // asked for it off by default. ⚠️ **Hier stand, [D-248] sage, es gebe **einen**
-            // Modus statt eines Schalters je Diagnose — das gilt seit [D-705](../../../docs/NewConcept/90-decision-log.md)
-            // so nicht mehr: **es bleibt ein Modus, und darunter liegen vier Sichtfilter.** *Was
-            // D-248 verbot, war ein **zweiter Modus** — kein Sichtfilter innerhalb des einen.*
-            //
-            // ⚠️ *It is a **write count** and never a version* ([D-349](../../../docs/NewConcept/90-decision-log.md)):
-            // *version* promises a state to return to, and this only says *nobody changed this row
-            // since you read it*. **It stays visible in that mode because it earns its place** —
-            // that decision was written after a defect was found by reading these numbers.
-            . $zaehler
-            . '</span>';
-
-        return RenderResult::of($markup . '</div>');
-    }
-
-    /**
-     * The controls, built here from what the boundary described.
-     *
-     * ⚠️ **A renderer can build a button.** What it cannot do is invent the three WordPress-shaped
-     * values one needs — the form's **URL**, its **nonce**, and the **words** — so those arrive as
-     * {@see Submission} and {@see Control} and the markup is composed here. *Handing in finished
-     * HTML instead would have left the shape of a row to the surface, which is what `R1` forbids.*
-     */
-    private function controls(Surroundings $surroundings): string
-    {
-        if ($surroundings->actions === [] || $surroundings->submits === null) {
-            return '';
-        }
-
-        $fields = RenderResult::draw(\Taxmod\Core\Description\Carried::of($surroundings->submits));
-
-        $buttons = '';
-
-        foreach ($surroundings->actions as $control) {
-            // ⚠️ **Composed in one place** ({@see ControlMarkup}) — greyed rather than gone (D-370),
-            // red only where something is taken away, and an icon-only button marked so no surface
-            // has to guess. *There were four copies of this and the borderless rule reached one of
-            // them, which is how boxes came back around the icons everywhere else.*
-            $buttons .= RenderResult::draw($control);
-        }
-
-        return '<form method="post" action="' . RenderResult::escape($surroundings->submits->action) . '"'
-            . ' style="display:flex;gap:.2em">' . $fields . $buttons . '</form>';
+        return new NodeInTree(
+            (int) $subject->id,
+            $shown,
+            $context->surroundings->rowIdPrefix,
+            $icon === '' ? null : Icon::named($icon),
+            $context->surroundings->classLabel,
+            $context->surroundings->href,
+            $context->surroundings->hidden,
+            $acts ? $context->surroundings->submits->action : null,
+            $acts ? Carried::of($context->surroundings->submits) : null,
+            $acts ? array_values($context->surroundings->actions) : [],
+            $subject instanceof Node && $context->developerMode ? (int) $subject->version : null,
+        );
     }
 }

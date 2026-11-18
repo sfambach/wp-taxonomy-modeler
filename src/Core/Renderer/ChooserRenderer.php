@@ -2,6 +2,11 @@
 
 namespace Taxmod\Core\Renderer;
 
+use Taxmod\Core\Description\CurrentChoice;
+use Taxmod\Core\Description\DialogBox;
+use Taxmod\Core\Description\SharedBody;
+use Taxmod\Core\Description\TreeChoice;
+use Taxmod\Core\Description\TreeView;
 use Taxmod\Core\Model\ResolvedSetting;
 use Taxmod\Core\Model\SimpleType;
 use Taxmod\Core\Model\TypedValue;
@@ -100,96 +105,39 @@ final class ChooserRenderer extends RendererNode
         $tree = $context->surroundings->sections[self::CANDIDATES] ?? null;
 
         if ($tree === null || $tree->body === '') {
-            return RenderResult::of(
-                '<span class="taxmod-unsatisfiable">' . RenderResult::escape($tree?->title ?? '') . '</span>'
-            );
+            return RenderResult::described(TreeChoice::nothingToChoose($tree?->title ?? ''));
         }
 
         if ($context->setting(self::DIALOG)?->asBool() !== true) {
-            return RenderResult::of(
-                '<div class="taxmod-chooser taxmod-chooser-open"' . $this->width($context) . '>'
-                . '<div class="taxmod-chooser-tree">' . $tree->body . '</div>'
-                . '</div>'
-            );
+            $zeichen = $context->setting('display_size')?->int;
+
+            return RenderResult::described(TreeChoice::open($tree->piece ?? $tree->body, $zeichen === null || $zeichen <= 0 ? null : $zeichen));
         }
 
         $switch = self::unique('taxmod-dialog-' . $subject->id . '-' . preg_replace('/[^a-z0-9_-]/i', '', $context->fieldName));
 
-        if ($context->surroundings->refersTo !== null) {
-            $current = RenderResult::escape($context->surroundings->refersTo);
-        } elseif ($context->value->reference !== null) {
-            // ⚠️ *Ein Verweis, dessen Ziel keinen Namen mehr hat, bleibt sichtbar — als Nummer, gekennzeichnet.*
-            $current = '<span class="taxmod-dangling">'
-                . RenderResult::escape('#' . (string) $context->value->reference)
-                . '</span>';
-        } else {
-            // ⚠️ *Der Öffner trägt dann kein lesbares Wort — der Name des Gegenstands steht für den Vorleser dabei
-            // (`icon-button-check`: «has no name a screen reader can read», gemessen am 2026-09-12 an `einheit`).*
-            $current = '<span class="taxmod-nothing">—</span>'
-                . '<span class="screen-reader-text">' . RenderResult::escape($subject->label()) . '</span>';
-        }
+        // ⚠️ *Ein Verweis, dessen Ziel keinen Namen mehr hat, bleibt sichtbar — als Nummer, gekennzeichnet.*
+        $current = match (true) {
+            $context->surroundings->refersTo !== null => CurrentChoice::named($context->surroundings->refersTo),
+            $context->value->reference !== null       => CurrentChoice::dangling($context->value->reference),
+            default                                   => CurrentChoice::nothing($subject->label()),
+        };
 
         return $this->overlay($switch, $current, $context->surroundings->sections[self::TRIGGER] ?? null, $tree, $context);
     }
 
-    /** Die Breite aus `display_size` — nur, wo eine steht. */
-    private function width(RenderContext $context): string
-    {
-        $zeichen = $context->setting('display_size')?->int;
-
-        return $zeichen === null || $zeichen <= 0 ? '' : ' style="width:' . $zeichen . 'ch"';
-    }
-
-    /** Der Dialog — die eine Form aus {@see \Taxmod\WordPress\Draw\DialogMarkup}; der Fuss ist das Bestätigen des Aufrufers, wo er eines gibt. */
-    private function overlay(string $switch, string $current, ?Section $trigger, Section $tree, RenderContext $context): RenderResult
+    /** Der Dialog — die eine Form aus {@see DialogBox}; der Fuss ist das Bestätigen des Aufrufers, wo er eines gibt. */
+    private function overlay(string $switch, CurrentChoice $current, ?Section $trigger, Section $tree, RenderContext $context): RenderResult
     {
         $confirm = $context->surroundings->sections[self::CONFIRM] ?? null;
-        $koerper = $tree->body;
-
-        // ⚠️ **Teilt die Seite die Körper** ([D-866](../../../docs/NewConcept/90-decision-log.md)), steht der Baum einmal als Vorlage da — gemessen
-        // am 2026-09-19 an «CPUs»: 25 gleiche Einheitenbäume zu je 12 KB, seit die CPUs elf Einheitenwert-Felder haben. Der Baum kommt fertig
-        // gezeichnet, mit Feldname, Formular und Wahl in jedem Knopf; neutral heisst: ohne diese drei. Im Platzhalter steht die aktuelle Wahl als
-        // gewählter, verborgener Knopf, damit ein Speichern ohne Skript nichts verliert.
-        if ($context->surroundings->sharedBodies !== null && str_contains($koerper, 'type="radio"')) {
-            $wahl = preg_match('/<input type="radio"[^>]*\bchecked\b[^>]*>/', $koerper, $gewaehlt) === 1 ? $gewaehlt[0] : '';
-            $name = '';
-            $form = '';
-            $wert = '';
-            $neutral = (string) preg_replace_callback(
-                '/<input type="radio"[^>]*>/',
-                static fn (array $knopf): string => (string) preg_replace(['/ name="[^"]*"/', '/ form="[^"]*"/', '/ checked\b/'], '', $knopf[0]),
-                $koerper
-            );
-
-            if (preg_match('/<input type="radio"[^>]* name="([^"]*)"[^>]*>/', $koerper, $einer) === 1) {
-                $name = $einer[1];
-                $form = preg_match('/ form="([^"]*)"/', $einer[0], $f) === 1 ? $f[1] : '';
-                $wert = preg_match('/ value="([^"]*)"/', $wahl, $w) === 1 ? $w[1] : '';
-            }
-
-            // *Nur Knöpfe eines Satzformulars — der eine Auswahlbaum der Seite (D-815) liest seine Knöpfe selbst und bleibt ganz.*
-            if ($form !== '') {
-                // *Die Zeilen tragen den Feldnamen in ihrer Kennung («taxmod-choice-<Feld>-<Knoten>»); in der Vorlage steht dafür «{feld}», das
-                // Skript setzt ihn beim Einsetzen wieder ein.*
-                $neutral = str_replace(
-                    'id="taxmod-choice-' . preg_replace('/[^a-z0-9_-]/i', '', html_entity_decode($name)) . '-',
-                    'id="taxmod-choice-{feld}-',
-                    $neutral
-                );
-                $koerper = '<span class="taxmod-record-stub" data-taxmod-body="' . $context->surroundings->sharedBodies->share($neutral) . '"'
-                    . ' data-taxmod-name="' . $name . '" data-taxmod-form="' . $form . '" data-taxmod-value="' . $wert . '">'
-                    . ($wahl === '' ? '' : (string) preg_replace('/^<input /', '<input hidden ', $wahl))
-                    . '</span>';
-            }
-        }
 
         $eigener = $trigger !== null && $trigger->body !== '';
 
-        return RenderResult::of(RenderResult::draw(new \Taxmod\Core\Description\DialogBox(
+        return RenderResult::described(new DialogBox(
             $switch,
             $eigener ? $trigger->body : $current,
             $current,
-            '<span class="taxmod-chooser-tree">' . $koerper . '</span>',
+            TreeChoice::inDialog($this->shared($tree, $context) ?? $tree->piece ?? $tree->body),
             $confirm?->body ?? '',
             // *Ein Öffner ohne eigenen Auslöser zeigt die Wahl selbst; das Skript schreibt eine neue Wahl hinein. Sein Befund am 2026-11-04:
             // «nach auswahl wird platzart nicht angezeigt aber gesetzt wird es».*
@@ -198,6 +146,39 @@ final class ChooserRenderer extends RendererNode
             cancel: (string) ($context->surroundings->dialogWords['cancel'] ?? ''),
             // *Ohne eigenen Auslöser ist der Öffner das ausgegraute Feld, rechts daneben der Baum (D-1163).*
             tree: $eigener ? null : (string) ($context->surroundings->dialogWords['tree'] ?? '')
-        )));
+        ));
+    }
+
+    /**
+     * Der Platzhalter, wenn die Seite die Körper teilt; `null`, wenn nicht.
+     *
+     * ⚠️ **Teilt die Seite die Körper** ([D-866](../../../docs/NewConcept/90-decision-log.md)), steht der Baum einmal als Vorlage da — gemessen
+     * am 2026-09-19 an «CPUs»: 25 gleiche Einheitenbäume zu je 12 KB, seit die CPUs elf Einheitenwert-Felder haben. Neutral heisst: ohne
+     * Feldname, Formular und Wahl. Im Platzhalter steht die aktuelle Wahl als gewählter, verborgener Knopf, damit ein Speichern ohne Skript
+     * nichts verliert.
+     */
+    private function shared(Section $tree, RenderContext $context): ?SharedBody
+    {
+        $baum  = $tree->piece;
+        $einer = $baum instanceof TreeView ? $baum->firstPick() : null;
+
+        // *Nur Knöpfe eines Satzformulars — der eine Auswahlbaum der Seite (D-815) liest seine Knöpfe selbst und bleibt ganz.*
+        if ($context->surroundings->sharedBodies === null || $einer === null || $einer->name === '' || $einer->form === '') {
+            return null;
+        }
+
+        $wahl = $baum->chosen();
+
+        // *Die Zeilen tragen den Feldnamen in ihrer Kennung («taxmod-choice-<Feld>-<Knoten>»); in der Vorlage steht dafür «{feld}», das
+        // Skript setzt ihn beim Einsetzen wieder ein.*
+        $neutral = $baum->neutral('taxmod-choice-' . preg_replace('/[^a-z0-9_-]/i', '', $einer->name) . '-');
+
+        return new SharedBody(
+            $context->surroundings->sharedBodies->share($neutral),
+            $einer->name,
+            $einer->form,
+            $wahl === null ? '' : (string) $wahl->value,
+            $wahl === null ? [] : [$wahl->unseen()]
+        );
     }
 }

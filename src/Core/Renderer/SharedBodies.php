@@ -23,41 +23,31 @@ namespace Taxmod\Core\Renderer;
  */
 final class SharedBodies
 {
-    /** @var array<string, string> Schlüssel ⇒ Körper */
+    /** @var array<string, \Taxmod\Core\Description\Describes|string> Schlüssel ⇒ Körper */
     private array $koerper = [];
 
-    /** Den Körper ablegen und seinen Schlüssel geben — gleicher Körper, gleicher Schlüssel. */
-    public function share(string $koerper): string
+    /**
+     * Den Körper ablegen und seinen Schlüssel geben — gleicher Körper, gleicher Schlüssel.
+     *
+     * ⚠️ *Ein beschriebener Körper bekommt den Schlüssel aus seiner Beschreibung, nicht aus seinem Markup: der Kern zeichnet nicht (A18).
+     * Gleiche Beschreibung, gleiches Markup — der Schlüssel bleibt ein Hash des Inhalts (Review 2026-11-17, E8).*
+     */
+    public function share(\Taxmod\Core\Description\Describes|string $koerper): string
     {
-        $schluessel = 'b' . substr(md5($koerper), 0, 12);
+        $schluessel = 'b' . substr(md5(is_string($koerper) ? $koerper : (string) json_encode($koerper->toArray())), 0, 12);
         $this->koerper[$schluessel] ??= $koerper;
 
         return $schluessel;
     }
 
     /**
-     * Die Vorlagen, einmal je Körper — ausserhalb jedes Formulars auszugeben, denn ihre Knöpfe haben noch keinen Namen.
+     * Die Körper, einmal je Schlüssel — der Rand gibt sie als Vorlagen ausserhalb jedes Formulars aus, denn ihre Knöpfe haben noch keinen
+     * Namen; ein grosser darf er auslagern ([D-898](../../../docs/NewConcept/90-decision-log.md), INF-065).
      *
-     * ⚠️ **Ein grosser Körper darf ausgelagert werden** ([D-898](../../../docs/NewConcept/90-decision-log.md), INF-065): *gibt
-     * `$auslagern` für einen Körper eine Adresse zurück, steht nur eine leere Vorlage mit dieser Adresse da, und das Skript holt
-     * den Körper beim ersten Öffnen. Gemessen am 2026-09-21: die Satzauswahl «Models» war 171 KB und wuchs mit jedem Satz; die
-     * CPU-Seite lag bei 1010 KB. Wohin ausgelagert wird, weiss nur der Rand — der Kern kennt keine Adressen.*
-     *
-     * @param (\Closure(string $schluessel, string $koerper): ?string)|null $auslagern
+     * @return array<string, \Taxmod\Core\Description\Describes|string>
      */
-    public function markup(?\Closure $auslagern = null): string
+    public function bodies(): array
     {
-        $html = '';
-
-        foreach ($this->koerper as $schluessel => $koerper) {
-            $adresse = $auslagern === null ? null : $auslagern($schluessel, $koerper);
-
-            $html .= $adresse === null
-                ? '<template class="taxmod-shared-body" data-taxmod-body="' . $schluessel . '">' . $koerper . '</template>'
-                : '<template class="taxmod-shared-body" data-taxmod-body="' . $schluessel . '" data-taxmod-src="'
-                    . htmlspecialchars($adresse, ENT_QUOTES) . '"></template>';
-        }
-
-        return $html;
+        return $this->koerper;
     }
 }

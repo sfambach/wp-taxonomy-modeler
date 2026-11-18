@@ -31,6 +31,8 @@ enum ValueKind: string
     case NotOffered = 'not_offered';
     /** The word of a chosen colour (`target`: the colour, if any); empty: nothing chosen. */
     case ChosenColour = 'chosen_colour';
+    /** The word of a referenced record (`target`: its address, if any) (D-852). */
+    case Record = 'record';
     /** Points at something that is gone: the text is its number. */
     case Dangling = 'dangling';
 }

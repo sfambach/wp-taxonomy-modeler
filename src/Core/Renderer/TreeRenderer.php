@@ -2,6 +2,8 @@
 
 namespace Taxmod\Core\Renderer;
 
+use Taxmod\Core\Description\TreeLine;
+use Taxmod\Core\Description\TreeView;
 use Taxmod\Core\Model\Identity;
 use Taxmod\Core\Model\Node;
 use Taxmod\Core\Model\Relation;
@@ -34,9 +36,6 @@ use Taxmod\Core\Model\SimpleType;
 final class TreeRenderer extends RendererNode
 {
     public const NAME = 'tree';
-
-    /** How far one level indents. */
-    private const STEP = 1.4;
 
     public function supports(): array
     {
@@ -71,8 +70,8 @@ final class TreeRenderer extends RendererNode
             return RenderResult::of('');
         }
 
-        $markup = '';
-        $used   = [];
+        $lines = [];
+        $used  = [];
         // ⚠️ **Zu, solange eine Zeile unter einem geschlossenen Ast liegt.** *Auf der Seite kommt
         // eine zugeklappte Zeile nie hierher — der Server laesst sie weg. Im Dialog stehen dagegen
         // alle Zeilen im Dokument ({@see Rendering::nodeChooser()}), weil ein Neuaufbau ihn
@@ -89,71 +88,37 @@ final class TreeRenderer extends RendererNode
                 $zuAb = ($row->collapsed && $row->hasChildren) ? $row->depth : null;
             }
 
-            // WICHTIG: Die Tiefe steht am Element, nicht nur in der Einrueckung. Ein Skript, das
+            // WICHTIG: Die Tiefe steht an der Zeile, nicht nur in der Einrueckung. Ein Skript, das
             // einen Ast auf- und zuklappt, muss wissen, wo er aufhoert -- und im Dokument ist der
             // Baum flach.
-            // ⚠️ *Die gleichbleibende Gestalt steht im Stylesheet (`.taxmod-tree-row`, `-indent`, `-cell`); inline bleibt nur, was
-            // je Zeile anders ist ([D-816](../../../docs/NewConcept/90-decision-log.md) — gemessen 212 KB allein für den Zeilenstil).
-            // Das Skript schaltet `style.display` weiter selbst, und ein Inline-Wert schlägt die Klasse.*
-            $stil = array_filter([$versteckt ? 'display:none' : '', $row->highlighted ? 'background:#e8f0fb' : '']);
-
-            $markup .= '<div class="taxmod-tree-row" data-depth="' . (int) $row->depth . '"'
-                . ($stil === [] ? '' : ' style="' . implode(';', $stil) . '"') . '>'
-                . '<span class="taxmod-tree-indent" style="width:'
-                . number_format($row->depth * self::STEP, 2, '.', '') . 'em"></span>'
-                . $this->fold($row)
-                . '<span class="taxmod-tree-cell">' . $row->cell->markup . '</span>'
-                . '</div>';
+            //
+            // ⚠️ **A leaf keeps the space of the fold rather than closing it up**, or the depth would
+            // stop being readable — which is the one thing a tree is for. '#' heisst "klappt im
+            // Browser": im Dialog kann der Klapper kein Link sein, ein Neuaufbau schliesst ihn.
+            $lines[] = new TreeLine(
+                $row->depth,
+                $row->cell->piece(),
+                $row->hasChildren ? $row->toggle : null,
+                $row->collapsed,
+                $versteckt,
+                $row->highlighted
+            );
         }
 
         // WICHTIG: Das Suchfeld gehoert an den Baum und nicht in den Auswahldialog. Auf sein Wort:
         // "das Suchfeld sollten wir in die Baumansicht integrieren, kann auch in tax config Sinn
-        // ergeben zu filtern". Vorher stand es im Dialogkopf und half genau dort, wo der Baum
-        // ohnehin kurz ist -- die lange Liste steht in der Seitenansicht.
-        //
-        // WICHTIG: Ein Zeichen, kein Wort. Der Kern darf die Textdomaene nicht rufen (CD-1), und
-        // AR-2 verbietet fest hingeschriebene Beschriftungen.
-        $suche = '<div class="taxmod-tree-search">'
-            . '<span aria-hidden="true">&#128269;</span>'
-            . RenderResult::htmlTag('input', array_filter([
-                'type'  => 'search',
-                'class' => 'taxmod-tree-filter',
-                'name'  => $context->surroundings->filterName,
-                'value' => $context->surroundings->filterValue,
-                // ⚠️ *Das Suchformular steht ausserhalb des Baums — die Zeilen tragen eigene Formulare, und ein Formular im
-                // Formular verwirft der Browser (sein Befund: «add node with + is currently not working»).*
-                'form'  => $context->surroundings->formId,
-            ], static fn (string $v): bool => $v !== ''))
-            . '</div>';
-
-        return new RenderResult(
-            '<div class="taxmod-tree">' . $suche . $markup . '</div>',
-            array_values(array_unique($used))
+        // ergeben zu filtern".
+        // ⚠️ *Es nennt das Suchformular, das ausserhalb des Baums steht — die Zeilen tragen eigene
+        // Formulare, und ein Formular im Formular verwirft der Browser (sein Befund: «add node with +
+        // is currently not working»).*
+        return RenderResult::described(
+            new TreeView(
+                $lines,
+                $context->surroundings->filterName,
+                $context->surroundings->filterValue,
+                $context->surroundings->formId
+            ),
+            ...array_values(array_unique($used))
         );
-    }
-
-    /**
-     * The fold control, or the space it would take.
-     *
-     * ⚠️ **A leaf keeps the space rather than closing it up.** Without it every level of leaves
-     * would sit a little to the left of its siblings that have children, and the depth would stop
-     * being readable — which is the one thing a tree is for.
-     */
-    private function fold(DrawnRow $row): string
-    {
-        if (! $row->hasChildren || $row->toggle === null) {
-            return '<span class="taxmod-tree-fold-box"></span>';
-        }
-
-        // WICHTIG: '#' heisst "klappt im Browser". Im Dialog kann der Klapper kein Link sein --
-        // ein Neuaufbau schliesst den Dialog, weil er von einer angehakten Checkbox offengehalten
-        // wird. Auf der Seite bleibt es ein echter Link und braucht kein Skript.
-        if ($row->toggle === '#') {
-            return '<a href="#" class="taxmod-tree-fold taxmod-tree-fold-box" data-fold="' . ($row->collapsed ? 'zu' : 'auf') . '">'
-                . ($row->collapsed ? '&#9656;' : '&#9662;') . '</a>';
-        }
-
-        return '<a href="' . RenderResult::escape($row->toggle) . '" class="taxmod-tree-fold-box">'
-            . ($row->collapsed ? '&#9656;' : '&#9662;') . '</a>';
     }
 }

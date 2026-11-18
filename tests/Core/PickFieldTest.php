@@ -37,7 +37,7 @@ final class PickFieldTest extends TestCase
             ['depth' => 1, 'name' => 'Lieferant', 'records' => [7 => 'Reichelt'], 'node' => 11, 'newWord' => 'New here …', 'createWord' => 'Create'],
             ['depth' => 1, 'name' => 'Hersteller', 'records' => [8 => 'ASUS'], 'node' => 12, 'newWord' => 'New here …', 'createWord' => 'Create'],
         ];
-        $html = SummaryRenderer::pick('sources[0][firm]', '', $baum, 8, ['tree' => 'Baum', 'ok' => 'OK']);
+        $html = (new \Taxmod\WordPress\Draw\EdgeDrawer())->draw(SummaryRenderer::pick('sources[0][firm]', '', $baum, 8, ['tree' => 'Baum', 'ok' => 'OK']));
 
         self::assertStringContainsString('taxmod-record-pick taxmod-record-taken', $html);
         self::assertStringContainsString('>ASUS</label><label class="button taxmod-icon-button taxmod-pick-tree"', $html);

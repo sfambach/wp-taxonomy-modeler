@@ -15,10 +15,10 @@ final class DialogBox implements Describes
     public function __construct(
         /** Unique on the page. */
         public readonly string $switch,
-        public readonly string $opener,
-        public readonly string $head,
-        public readonly string $body,
-        public readonly string $foot,
+        public readonly Describes|string $opener,
+        public readonly Describes|string $head,
+        public readonly Describes|string $body,
+        public readonly Describes|string $foot,
         public readonly string $openerClass = 'button taxmod-icon-button taxmod-dialog-open',
         public readonly string $ok = '',
         public readonly string $cancel = '',
@@ -32,10 +32,10 @@ final class DialogBox implements Describes
     {
         return [
             'dialog'       => $this->switch,
-            'opener'       => $this->opener,
-            'head'         => $this->head,
-            'body'         => $this->body,
-            'foot'         => $this->foot,
+            'opener'       => $this->opener instanceof Describes ? $this->opener->toArray() : $this->opener,
+            'head'         => $this->head instanceof Describes ? $this->head->toArray() : $this->head,
+            'body'         => $this->body instanceof Describes ? $this->body->toArray() : $this->body,
+            'foot'         => $this->foot instanceof Describes ? $this->foot->toArray() : $this->foot,
             'opener_class' => $this->openerClass,
             'ok'           => $this->ok,
             'cancel'       => $this->cancel,

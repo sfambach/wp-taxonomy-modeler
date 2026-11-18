@@ -29,13 +29,13 @@ final class RecordPick
             }
         }
 
-        return SummaryRenderer::pick($name, $formId, array_values($tree), $chosen, [
+        return (new \Taxmod\WordPress\Draw\EdgeDrawer())->draw(SummaryRenderer::pick($name, $formId, array_values($tree), $chosen, [
             'ok'     => __('OK', 'taxmod'),
             'cancel' => __('Cancel', 'taxmod'),
             'tree'   => __('Show the tree', 'taxmod'),
             'clear'  => __('Remove this choice', 'taxmod'),
             'search' => __('Search', 'taxmod'),
-        ], $mayBeNothing) . self::words();
+        ], $mayBeNothing)) . self::words();
     }
 
     /**
