@@ -1009,6 +1009,11 @@ final class ListPage
     public const ICON_DELETE = 'trash';
     /** D-1273: «Kopieren», the same glyph the modeller's own «Duplicate» draws. */
     public const ICON_COPY = 'admin-page';
+    /** D-1451: the row acts of the stock's receipt lists — store, edit, not stored, new. */
+    public const ICON_STORE = 'download';
+    public const ICON_EDIT = 'edit';
+    public const ICON_NOT_STORED = 'dismiss';
+    public const ICON_NEW = 'plus-alt2';
 
     /** An icon in place of a button's word; the word stays for the screen reader and as the tooltip. */
     public static function icon(string $icon, string $label): string

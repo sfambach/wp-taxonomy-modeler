@@ -741,11 +741,9 @@ final class EdgeDrawer implements Drawer
 
     private function nodeInTree(NodeInTree $n): string
     {
-        $named = ($n->icon === null ? '' : $this->draw($n->icon) . ' ') . '<span class="taxmod-tree-label">' . self::e($n->name) . '</span>';
-
-        if ($n->classWord !== '') {
-            $named .= ' <span class="taxmod-tree-class">' . self::e($n->classWord) . '</span>';
-        }
+        // ⚠️ *Die Klasse steht im Tooltip, nicht in der Zeile (D-1450): sein Wort «wenn das nicht zu sehen ist und nur im Tooltip, ist auch nicht schlimm».*
+        $klasse = $n->classWord === '' ? '' : ' title="' . self::e($n->classWord) . '" data-taxmod-class="' . self::e($n->classWord) . '"';
+        $named  = ($n->icon === null ? '' : $this->draw($n->icon) . ' ') . '<span class="taxmod-tree-label"' . $klasse . '>' . self::e($n->name) . '</span>';
 
         if ($n->href !== null) {
             $named = '<a href="' . self::e($n->href) . '" class="taxmod-tree-select" style="text-decoration:none;color:inherit">' . $named . '</a>';
