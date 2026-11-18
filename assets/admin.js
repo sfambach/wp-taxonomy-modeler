@@ -613,6 +613,17 @@
 			if ( window.taxmodKnotenVorwaehlen ) {
 				window.taxmodKnotenVorwaehlen( target.closest( '.taxmod-chooser' ) );
 			}
+
+			// *A tree standing in the dialog shows its chosen row, inside its own box (his wish 2026-11-18 19:52: «der Ast
+			// zumindest vorausgewählt»).*
+			( panel || document ).querySelectorAll( '.taxmod-chooser-tree' ).forEach( function ( liste ) {
+				var an  = liste.querySelector( '.taxmod-tree-row input[type="radio"]:checked' );
+				var row = an ? an.closest( '.taxmod-tree-row' ) : null;
+
+				if ( row && row.offsetParent !== null ) {
+					liste.scrollTop += row.getBoundingClientRect().top - liste.getBoundingClientRect().top - liste.clientHeight / 3;
+				}
+			} );
 		}, 0 );
 
 		if ( ! panel ) {

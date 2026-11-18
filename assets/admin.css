@@ -1691,6 +1691,9 @@ ol.taxmod-switch-cascade .taxmod-list-remove,
     background: #fff;
     border-radius: 4px;
     overflow: hidden;
+    /* *clip, not only hidden: a focused row in a tree standing inside (D-1467) must not scroll the panel and push its title out
+     * of sight — his screenshot 18.11. 19:52. The body scrolls, never the panel.* */
+    overflow: clip;
     box-shadow: 0 8px 40px rgba(0, 0, 0, .35);
 }
 
