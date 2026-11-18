@@ -5586,15 +5586,17 @@ final class NodesScreen
     {
         $parent = $node->parentNodeId === null ? null : $this->editor->find($node->parentNodeId);
         $parent = $parent !== null && ! $this->framework->isProtected($parent) ? $parent : null;
+        $kinder = $this->editor->childrenOf($node->id);
 
         return new Control(
             'do',
             'move_record',
             __('Move', 'taxmod'),
             __('Move this record up to the parent or down into a child — its values travel with it', 'taxmod'),
-            true,
+            // *Nowhere to go — no parent that holds records, no child: greyed, no empty dialog (gate 18.11. on D-1436).*
+            $parent !== null || $kinder !== [],
             icon: 'randomize',
-            opens: $this->moveRecordDialog($record, $parent, $this->editor->childrenOf($node->id), $parent === null ? [] : $this->data->lostOnMove($record->id, $parent->id)),
+            opens: $parent === null && $kinder === [] ? null : $this->moveRecordDialog($record, $parent, $kinder, $parent === null ? [] : $this->data->lostOnMove($record->id, $parent->id)),
             address: Address::ofRecord($node->id, $record->id)
         );
     }
@@ -5950,9 +5952,9 @@ final class NodesScreen
                         'move_record',
                         __('Move', 'taxmod'),
                         __('Move this record up to the parent or down into a child — its values travel with it', 'taxmod'),
-                        true,
+                        $vater !== null || $kinder !== [],
                         icon: 'randomize',
-                        opens: $this->moveRecordDialog($record, $vater, $kinder, $verluste[$record->id] ?? [])
+                        opens: $vater === null && $kinder === [] ? null : $this->moveRecordDialog($record, $vater, $kinder, $verluste[$record->id] ?? [])
                     ),
                     // ⚠️ *«record duplizieren fehlt» (D-1012) — eine Kopie neben dem Satz, die sich gleich zum Bearbeiten öffnet.*
                     new Control(
