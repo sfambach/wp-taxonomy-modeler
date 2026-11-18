@@ -736,6 +736,11 @@ details.taxmod-page-block > summary {
  * it does — the detail half is a column of white boxes, so a grey tree beside them read as the one
  * unfinished part of the screen rather than as a different kind of thing.
  */
+/* D-1449, his word 18.11.: «die icon im baum … sind zu groß» — the tree's icons a step smaller than the page's, same one calculation. */
+.taxmod-tree-pane .taxmod-tree-row .taxmod-icon {
+    --taxmod-icon-more: -4px;
+}
+
 .taxmod-tree-pane {
     background: #fff;
     border: 1px solid #c3c4c7;
@@ -902,6 +907,8 @@ a.taxmod-tree-fold-box {
 
 .taxmod-tree-node {
     display: flex;
+    /* D-1449: the row's buttons go under the name when the third of the page is too narrow — never cut off at the edge. */
+    flex-wrap: wrap;
     gap: .5em;
     align-items: center;
 }
