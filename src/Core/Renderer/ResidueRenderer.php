@@ -91,8 +91,8 @@ final class ResidueRenderer
                 'action' => $entry->submits->action,
                 'style'  => 'margin:0;flex:none',
             ])
-            . ControlMarkup::hidden($entry->submits)
-            . ControlMarkup::button($entry->act)
+            . RenderResult::draw(\Taxmod\Core\Description\Carried::of($entry->submits))
+            . RenderResult::draw($entry->act)
             . '</form>';
     }
 }

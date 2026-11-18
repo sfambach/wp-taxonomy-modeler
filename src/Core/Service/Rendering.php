@@ -36,8 +36,6 @@ use Taxmod\Core\Renderer\ChooserCellRenderer;
 use Taxmod\Core\Renderer\ChooserRenderer;
 use Taxmod\Core\Renderer\ReferenceRenderer;
 use Taxmod\Core\Renderer\Control;
-use Taxmod\Core\Renderer\ControlMarkup;
-use Taxmod\Core\Renderer\IconMarkup;
 use Taxmod\Core\Renderer\DrawnRow;
 use Taxmod\Core\Renderer\FormRenderer;
 use Taxmod\Core\Renderer\LabelSlot;
@@ -1184,12 +1182,12 @@ final class Rendering implements Presets, \Taxmod\Core\Port\FieldAddons
         }
 
         return $html
-            . '<button type="button" class="button ' . ControlMarkup::ICON_ONLY . ' taxmod-list-move" data-taxmod-move="up"' . ($erstes ? ' disabled style="color:#1d2327;opacity:.35"' : ' style="color:#1d2327"') . '>'
-            . IconMarkup::dashicon('arrow-up-alt2', $titel) . '</button>'
-            . '<button type="button" class="button ' . ControlMarkup::ICON_ONLY . ' taxmod-list-move" data-taxmod-move="down"' . ($letztes ? ' disabled style="color:#1d2327;opacity:.35"' : ' style="color:#1d2327"') . '>'
-            . IconMarkup::dashicon('arrow-down-alt2', $titel) . '</button>'
-            . '<button type="button" class="button ' . ControlMarkup::ICON_ONLY . ' taxmod-list-remove" style="color:#b32d2e">'
-            . IconMarkup::dashicon('trash', $titel) . '</button>'
+            . '<button type="button" class="button ' . \Taxmod\Core\Renderer\Look::ICON_ONLY . ' taxmod-list-move" data-taxmod-move="up"' . ($erstes ? ' disabled style="color:#1d2327;opacity:.35"' : ' style="color:#1d2327"') . '>'
+            . RenderResult::draw(\Taxmod\Core\Description\Icon::named('arrow-up-alt2', $titel)) . '</button>'
+            . '<button type="button" class="button ' . \Taxmod\Core\Renderer\Look::ICON_ONLY . ' taxmod-list-move" data-taxmod-move="down"' . ($letztes ? ' disabled style="color:#1d2327;opacity:.35"' : ' style="color:#1d2327"') . '>'
+            . RenderResult::draw(\Taxmod\Core\Description\Icon::named('arrow-down-alt2', $titel)) . '</button>'
+            . '<button type="button" class="button ' . \Taxmod\Core\Renderer\Look::ICON_ONLY . ' taxmod-list-remove" style="color:#b32d2e">'
+            . RenderResult::draw(\Taxmod\Core\Description\Icon::named('trash', $titel)) . '</button>'
             . '</li>';
     }
 
@@ -3175,7 +3173,7 @@ final class Rendering implements Presets, \Taxmod\Core\Port\FieldAddons
 
             $vorne[] = $row['lead'];
             // *Ohne Akte beim Anzeigen kein leeres Formular je Zeile — die Sammeltabelle für Leser (D-955).*
-            $akte[]  = $row['acts'] === [] && $purpose === Purpose::Display ? '' : ControlMarkup::actsForm($formId, $row['submits'], $row['acts']);
+            $akte[]  = $row['acts'] === [] && $purpose === Purpose::Display ? '' : RenderResult::draw(new \Taxmod\Core\Description\ActsForm($formId, $row['submits'], $row['acts']));
             // ⚠️ *Wohin die Anzahl eines 1..n-Teils führt: der Satz der Zeile, geöffnet an seiner Eingabe (D-825).*
             $links[] = (string) ($row['link'] ?? '');
         }
@@ -6937,16 +6935,16 @@ final class Rendering implements Presets, \Taxmod\Core\Port\FieldAddons
                         . ' value="' . (int) ($stelle[$kandidatId] ?? $platz) . '"' . $form . '>'
                         // *Wie die Pfeile der Feldzeilen: dasselbe Zeichen, randlos, der erste nach oben und der letzte nach unten ausgegraut —
                         // sein Wort «like the fields».*
-                        . ' <button type="button" class="button ' . ControlMarkup::ICON_ONLY . ' taxmod-list-move" data-taxmod-move="up"'
+                        . ' <button type="button" class="button ' . \Taxmod\Core\Renderer\Look::ICON_ONLY . ' taxmod-list-move" data-taxmod-move="up"'
                         . ($platz === 0 ? ' disabled style="color:#1d2327;opacity:.35"' : ' style="color:#1d2327"') . '>'
-                        . IconMarkup::dashicon('arrow-up-alt2', $kandidaten[$kandidatId]) . '</button>'
-                        . '<button type="button" class="button ' . ControlMarkup::ICON_ONLY . ' taxmod-list-move" data-taxmod-move="down"'
+                        . RenderResult::draw(\Taxmod\Core\Description\Icon::named('arrow-up-alt2', $kandidaten[$kandidatId])) . '</button>'
+                        . '<button type="button" class="button ' . \Taxmod\Core\Renderer\Look::ICON_ONLY . ' taxmod-list-move" data-taxmod-move="down"'
                         . ($platz === count($gewaehlt) - 1 ? ' disabled style="color:#1d2327;opacity:.35"' : ' style="color:#1d2327"') . '>'
-                        . IconMarkup::dashicon('arrow-down-alt2', $kandidaten[$kandidatId]) . '</button>'
+                        . RenderResult::draw(\Taxmod\Core\Description\Icon::named('arrow-down-alt2', $kandidaten[$kandidatId])) . '</button>'
                     : '')
-                . '<button type="button" class="button ' . ControlMarkup::ICON_ONLY . ' taxmod-list-remove" style="color:#b32d2e">'
+                . '<button type="button" class="button ' . \Taxmod\Core\Renderer\Look::ICON_ONLY . ' taxmod-list-remove" style="color:#b32d2e">'
                 // *Löschen ist immer der Mülleimer (D-828).*
-                . IconMarkup::dashicon('trash', $kandidaten[$kandidatId]) . '</button>'
+                . RenderResult::draw(\Taxmod\Core\Description\Icon::named('trash', $kandidaten[$kandidatId])) . '</button>'
                 . '</li>';
         }
 
@@ -7835,7 +7833,7 @@ final class Rendering implements Presets, \Taxmod\Core\Port\FieldAddons
                 }
 
                 return ['renderer' => \Taxmod\Core\Renderer\MediaRenderer::NAME, 'rows' => [], 'rowActs' => [], 'after' => '', 'result' => RenderResult::of(
-                    '<span class="taxmod-value taxmod-media-count">' . $titel . \Taxmod\Core\Renderer\IconMarkup::dashicon('format-gallery') . ' ' . count($werte) . '</span>'
+                    '<span class="taxmod-value taxmod-media-count">' . $titel . \Taxmod\Core\Renderer\RenderResult::draw(\Taxmod\Core\Description\Icon::named('format-gallery')) . ' ' . count($werte) . '</span>'
                 )];
             }
 
@@ -7942,14 +7940,14 @@ final class Rendering implements Presets, \Taxmod\Core\Port\FieldAddons
             $html .= '<li class="taxmod-switch-chosen" data-taxmod-id="' . RenderResult::escape($roh) . '">'
                 . '<input type="hidden" class="taxmod-switch-member" name="' . RenderResult::escape($name) . '" value="' . RenderResult::escape($roh) . '"' . $form . '>'
                 . '<span class="taxmod-switch-name">' . RenderResult::escape($wort) . '</span>'
-                . ' <button type="button" class="button ' . ControlMarkup::ICON_ONLY . ' taxmod-list-move" data-taxmod-move="up"'
+                . ' <button type="button" class="button ' . \Taxmod\Core\Renderer\Look::ICON_ONLY . ' taxmod-list-move" data-taxmod-move="up"'
                 . ($platz === 0 ? ' disabled style="color:#1d2327;opacity:.35"' : ' style="color:#1d2327"') . '>'
-                . IconMarkup::dashicon('arrow-up-alt2', $wort) . '</button>'
-                . '<button type="button" class="button ' . ControlMarkup::ICON_ONLY . ' taxmod-list-move" data-taxmod-move="down"'
+                . RenderResult::draw(\Taxmod\Core\Description\Icon::named('arrow-up-alt2', $wort)) . '</button>'
+                . '<button type="button" class="button ' . \Taxmod\Core\Renderer\Look::ICON_ONLY . ' taxmod-list-move" data-taxmod-move="down"'
                 . ($platz === count($werte) - 1 ? ' disabled style="color:#1d2327;opacity:.35"' : ' style="color:#1d2327"') . '>'
-                . IconMarkup::dashicon('arrow-down-alt2', $wort) . '</button>'
-                . '<button type="button" class="button ' . ControlMarkup::ICON_ONLY . ' taxmod-list-remove" style="color:#b32d2e">'
-                . IconMarkup::dashicon('trash', $wort) . '</button>'
+                . RenderResult::draw(\Taxmod\Core\Description\Icon::named('arrow-down-alt2', $wort)) . '</button>'
+                . '<button type="button" class="button ' . \Taxmod\Core\Renderer\Look::ICON_ONLY . ' taxmod-list-remove" style="color:#b32d2e">'
+                . RenderResult::draw(\Taxmod\Core\Description\Icon::named('trash', $wort)) . '</button>'
                 . '</li>';
         }
 
@@ -8038,10 +8036,10 @@ final class Rendering implements Presets, \Taxmod\Core\Port\FieldAddons
             $html .= '<tr class="taxmod-ref-row"><td>'
                 . RenderResult::draw(Choosing::offer($name, $optionen, $jetzt === null ? null : (string) $jetzt, true, $formId, ChoicePurpose::ReferenceRow))
                 . '</td><td class="taxmod-table-acts">'
-                . '<button type="button" class="button ' . ControlMarkup::ICON_ONLY . ' taxmod-ref-add" style="color:#1d2327"' . ($einfuegen === '' ? '' : ' title="' . RenderResult::escape($einfuegen) . '"') . '>'
-                . IconMarkup::dashicon('plus-alt2', $einfuegen) . '</button>'
-                . '<button type="button" class="button ' . ControlMarkup::ICON_ONLY . ' taxmod-ref-remove" style="color:#b32d2e"' . ($entfernen === '' ? '' : ' title="' . RenderResult::escape($entfernen) . '"') . '>'
-                . IconMarkup::dashicon('trash', $entfernen) . '</button>'
+                . '<button type="button" class="button ' . \Taxmod\Core\Renderer\Look::ICON_ONLY . ' taxmod-ref-add" style="color:#1d2327"' . ($einfuegen === '' ? '' : ' title="' . RenderResult::escape($einfuegen) . '"') . '>'
+                . RenderResult::draw(\Taxmod\Core\Description\Icon::named('plus-alt2', $einfuegen)) . '</button>'
+                . '<button type="button" class="button ' . \Taxmod\Core\Renderer\Look::ICON_ONLY . ' taxmod-ref-remove" style="color:#b32d2e"' . ($entfernen === '' ? '' : ' title="' . RenderResult::escape($entfernen) . '"') . '>'
+                . RenderResult::draw(\Taxmod\Core\Description\Icon::named('trash', $entfernen)) . '</button>'
                 . '</td></tr>';
         }
 
@@ -8058,15 +8056,15 @@ final class Rendering implements Presets, \Taxmod\Core\Port\FieldAddons
             $suchwort = (string) ($this->dialogWords['search'] ?? '');
             $ok       = (string) ($this->dialogWords['ok'] ?? 'OK');
 
-            $html .= \Taxmod\Core\Renderer\DialogMarkup::of(
+            $html .= \Taxmod\Core\Renderer\RenderResult::draw(new \Taxmod\Core\Description\DialogBox(
                 'taxmod-ref-dialog-' . preg_replace('/[^a-z0-9_-]/i', '', $formId . $name),
-                IconMarkup::dashicon('search', $suchwort === '' ? $relation->name : $suchwort),
+                RenderResult::draw(\Taxmod\Core\Description\Icon::named('search', $suchwort === '' ? $relation->name : $suchwort)),
                 RenderResult::escape($relation->name),
                 '<div class="taxmod-record-tree">' . SummaryRenderer::browserBody($baum, $knopf, null, '', $this->dialogWords) . '</div>',
                 '<button type="button" class="button button-primary taxmod-ref-take">' . RenderResult::escape($ok) . '</button>',
-                'button ' . ControlMarkup::ICON_ONLY . ' taxmod-dialog-open taxmod-ref-browse',
+                'button ' . \Taxmod\Core\Renderer\Look::ICON_ONLY . ' taxmod-dialog-open taxmod-ref-browse',
                 cancel: (string) ($this->dialogWords['cancel'] ?? '')
-            );
+            ));
         }
 
         return [
@@ -8361,7 +8359,7 @@ final class Rendering implements Presets, \Taxmod\Core\Port\FieldAddons
                 // bleibt, nur der Verweis geht. Der Knopf nennt Halter, Kante und Satz, weil ein verwiesener Satz mehrere Halter haben kann.
                 // Kein «+» je Zeile: «darunter einfügen» (D-830) legt einen Teil an, den es hier nicht gibt; neue Zeilen kommen über «Add row».*
                 if ($verweisliste) {
-                    $akte[] = $teilId === 0 || $halter === 0 ? '' : ControlMarkup::button(
+                    $akte[] = $teilId === 0 || $halter === 0 ? '' : RenderResult::draw(
                         new \Taxmod\Core\Renderer\Control('do[' . $halter . '-' . $relation->id . '-' . $teilId . ']', 'unlink_part', ($this->partActs['unlink'] ?? '') === '' ? $this->partActs['remove'] : $this->partActs['unlink'], '', true, true, 'trash', $formId)
                     );
 
@@ -8370,10 +8368,10 @@ final class Rendering implements Presets, \Taxmod\Core\Port\FieldAddons
 
                 // ⚠️ *Erst das «+», das direkt unter dieser Zeile eine gleicher Art einfügt (D-830), dann der Mülleimer — sein Wort: «bitte + und
                 // müll tauschen erst + dann müll» (D-831).*
-                $akte[] = $teilId === 0 ? '' : (($this->partActs['insert'] ?? '') === '' ? '' : ControlMarkup::button(
+                $akte[] = $teilId === 0 ? '' : (($this->partActs['insert'] ?? '') === '' ? '' : RenderResult::draw(
                         new \Taxmod\Core\Renderer\Control('do[' . $teilId . ']', 'insert_part', $this->partActs['insert'], '', true, false, 'plus-alt2', $formId)
                     ))
-                    . ControlMarkup::button(
+                    . RenderResult::draw(
                         new \Taxmod\Core\Renderer\Control('do[' . $teilId . ']', 'remove_part', $this->partActs['remove'], '', true, true, 'trash', $formId)
                     );
             }
@@ -8414,8 +8412,8 @@ final class Rendering implements Presets, \Taxmod\Core\Port\FieldAddons
                             'taxmod_multi[' . $schluessel . '][]',
                             $formId,
                             'taxmod-multi-dialog-' . preg_replace('/[^a-z0-9_-]/i', '', $formId . $schluessel),
-                            IconMarkup::dashicon('plus-alt', $this->partActs['many']) . ' ' . RenderResult::escape($this->partActs['many']),
-                            ControlMarkup::button(new \Taxmod\Core\Renderer\Control('do[' . $schluessel . ']', 'add_parts', $this->partActs['many'], '', true, false, '', $formId, true)),
+                            RenderResult::draw(\Taxmod\Core\Description\Icon::named('plus-alt', $this->partActs['many'])) . ' ' . RenderResult::escape($this->partActs['many']),
+                            RenderResult::draw(new \Taxmod\Core\Renderer\Control('do[' . $schluessel . ']', 'add_parts', $this->partActs['many'], '', true, false, '', $formId, true)),
                             $this->dialogWords
                         );
                     }
@@ -8425,7 +8423,7 @@ final class Rendering implements Presets, \Taxmod\Core\Port\FieldAddons
                 // «zweimal plus». Jede Zeile trägt ihr eigenes «+» (D-830); unter der letzten eingefügt ist dasselbe wie hinten angehängt.
                 // Ohne Zeile gäbe es sonst keinen Weg zur ersten.*
                 $zeilenDa = array_filter($teilIds, static fn (int $id): bool => $id !== 0) !== [];
-                $danach   = '<div class="taxmod-part-add">' . ($zeilenDa && ($this->partActs['insert'] ?? '') !== '' && ! $verweisliste ? '' : ControlMarkup::button(
+                $danach   = '<div class="taxmod-part-add">' . ($zeilenDa && ($this->partActs['insert'] ?? '') !== '' && ! $verweisliste ? '' : RenderResult::draw(
                     new \Taxmod\Core\Renderer\Control('do[' . $halter . '-' . $relation->id . ']', 'add_part', $this->partActs['add'], '', true, false, 'plus-alt2', $formId)
                 )) . $mehrere . '</div>';
             }

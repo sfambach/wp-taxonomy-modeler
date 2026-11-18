@@ -77,7 +77,7 @@ final class ChooserCellRenderer extends RendererNode
         $icon = $context->setting('icon')?->text ?? '';
         // ⚠️ *Diese Stelle war die auffälligste: sie trug **gar keine** eigene CSS-Regel und zeichnete
         // darum in der 20px-Vorgabe von WordPress, neben Nachbarn mit 17.*
-        $glyph = $icon === '' ? '' : IconMarkup::dashicon($icon) . ' ';
+        $glyph = $icon === '' ? '' : RenderResult::draw(\Taxmod\Core\Description\Icon::named($icon)) . ' ';
 
         // WICHTIG: Dieselbe Zeile wie im Modellbaum, ein Renderer, unterschieden nur durch
         // editable. Vorher zeichnete diese Zelle ihre eigene Form -- gleiche Sache, zwei

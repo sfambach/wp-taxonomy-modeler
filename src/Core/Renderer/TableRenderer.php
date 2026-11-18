@@ -164,7 +164,7 @@ final class TableRenderer extends RendererNode
         $koepfe   = array_map(static fn (string $kopf): string => RenderResult::escape($kopf), $vorspalten);
 
         foreach ($spalten as $relationId => $name) {
-            $koepfe[] = RenderResult::escape($name) . HintMarkup::icon($hinweise[$relationId] ?? '');
+            $koepfe[] = RenderResult::escape($name) . RenderResult::draw(new \Taxmod\Core\Description\Hint($hinweise[$relationId] ?? ''));
         }
 
         if ($mitActs) {

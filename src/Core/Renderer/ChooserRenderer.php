@@ -140,7 +140,7 @@ final class ChooserRenderer extends RendererNode
         return $zeichen === null || $zeichen <= 0 ? '' : ' style="width:' . $zeichen . 'ch"';
     }
 
-    /** Der Dialog — die eine Form aus {@see DialogMarkup}; der Fuss ist das Bestätigen des Aufrufers, wo er eines gibt. */
+    /** Der Dialog — die eine Form aus {@see \Taxmod\WordPress\Draw\DialogMarkup}; der Fuss ist das Bestätigen des Aufrufers, wo er eines gibt. */
     private function overlay(string $switch, string $current, ?Section $trigger, Section $tree, RenderContext $context): RenderResult
     {
         $confirm = $context->surroundings->sections[self::CONFIRM] ?? null;
@@ -185,7 +185,7 @@ final class ChooserRenderer extends RendererNode
 
         $eigener = $trigger !== null && $trigger->body !== '';
 
-        return RenderResult::of(DialogMarkup::of(
+        return RenderResult::of(RenderResult::draw(new \Taxmod\Core\Description\DialogBox(
             $switch,
             $eigener ? $trigger->body : $current,
             $current,
@@ -198,6 +198,6 @@ final class ChooserRenderer extends RendererNode
             cancel: (string) ($context->surroundings->dialogWords['cancel'] ?? ''),
             // *Ohne eigenen Auslöser ist der Öffner das ausgegraute Feld, rechts daneben der Baum (D-1163).*
             tree: $eigener ? null : (string) ($context->surroundings->dialogWords['tree'] ?? '')
-        ));
+        )));
     }
 }

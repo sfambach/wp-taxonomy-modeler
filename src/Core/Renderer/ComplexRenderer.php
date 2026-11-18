@@ -264,7 +264,7 @@ final class ComplexRenderer extends RendererNode
         }
 
         return '<div class="taxmod-complex-block"><h4 class="taxmod-complex-heading">'
-            . RenderResult::escape($part->relation->name) . HintMarkup::icon($part->hint) . '</h4>'
+            . RenderResult::escape($part->relation->name) . RenderResult::draw(new \Taxmod\Core\Description\Hint($part->hint)) . '</h4>'
             . $body . '</div>';
     }
 

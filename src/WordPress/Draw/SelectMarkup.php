@@ -4,8 +4,6 @@ namespace Taxmod\WordPress\Draw;
 
 use Taxmod\Core\Description\AddChosen;
 use Taxmod\Core\Description\Choosing;
-use Taxmod\Core\Renderer\ControlMarkup;
-use Taxmod\Core\Renderer\IconMarkup;
 
 /**
  * **Das eine Auswahlfeld** — jedes `<select>` der Oberfläche wird hier gezeichnet, damit es überall gleich aussieht und gleich

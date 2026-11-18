@@ -1,6 +1,8 @@
 <?php declare(strict_types=1);
 
-namespace Taxmod\Core\Renderer;
+namespace Taxmod\WordPress\Draw;
+
+use Taxmod\Core\Renderer\RenderResult;
 
 /**
  * The one read-only table of a Taxmod page: facts, a history, the lines of a form. A list with selection and actions is

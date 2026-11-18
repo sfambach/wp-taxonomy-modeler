@@ -1,6 +1,12 @@
 <?php declare(strict_types=1);
 
-namespace Taxmod\Core\Renderer;
+namespace Taxmod\WordPress\Draw;
+
+use Taxmod\Core\Description\Carried;
+use Taxmod\Core\Renderer\Control;
+use Taxmod\Core\Renderer\Look;
+use Taxmod\Core\Renderer\RenderResult;
+use Taxmod\Core\Renderer\Submission;
 
 /**
  * One button, composed from a {@see Control} — **the only place that does it**.
@@ -28,21 +34,12 @@ namespace Taxmod\Core\Renderer;
  */
 final class ControlMarkup
 {
-    /** Marks a button whose whole content is an icon, so the surface can strip its box. */
-    public const ICON_ONLY = 'taxmod-icon-button';
+    /** The class names stand once, in the core, while hand-built core markup still needs them (A15). */
+    public const ICON_ONLY = Look::ICON_ONLY;
 
-    /**
-     * Marks a drawn character standing in for an icon, so it takes the same size as a Dashicon.
-     *
-     * ⚠️ **Measured: the diskette was 13px beside 17px Dashicons in the same row** — the glyph span had
-     * no class, so the only size it could get was the inherited `font-size` of an admin page. *And
-     * WordPress's emoji script then replaces the character with an `<img class="emoji">` sized `1em`,
-     * which inherits the same wrong number. Naming the span is what lets one rule size both faces.*
-     */
-    public const GLYPH_FACE = 'taxmod-icon-glyph';
+    public const GLYPH_FACE = Look::GLYPH_FACE;
 
-    /** Die Klasse jedes Speichern-Knopfs ([D-860](../../../docs/NewConcept/90-decision-log.md)). */
-    public const SAVE = 'taxmod-save';
+    public const SAVE = Look::SAVE;
 
     /**
      * @param bool|null $available Overrides the control's own answer, for a row that decides per
@@ -146,19 +143,19 @@ final class ControlMarkup
     private static function face(Control $control, bool $icon): string
     {
         // ⚠️ *Beide Zweige schrieben ihr Symbol selbst hin, in **zwei verschiedenen Techniken**,
-        // innerhalb derselben Methode. Jetzt fragen sie {@see IconMarkup} — dieselbe Stelle, die
+        // innerhalb derselben Methode. Jetzt fragen sie {@see \Taxmod\WordPress\Draw\IconMarkup} — dieselbe Stelle, die
         // auch die sechs übrigen Fundorte benutzen.*
         // *Symbol und Wort (D-861): das Symbol ist Schmuck, der Name steht als Text daneben.*
         if ($icon && $control->iconWithLabel) {
-            return IconMarkup::dashicon($control->icon) . ' ' . RenderResult::escape($control->label);
+            return RenderResult::draw(\Taxmod\Core\Description\Icon::named($control->icon)) . ' ' . RenderResult::escape($control->label);
         }
 
         if ($icon) {
-            return IconMarkup::dashicon($control->icon, $control->label);
+            return RenderResult::draw(\Taxmod\Core\Description\Icon::named($control->icon, $control->label));
         }
 
         if ($control->glyph !== '') {
-            return IconMarkup::glyph($control->glyph, $control->label);
+            return RenderResult::draw(\Taxmod\Core\Description\Icon::glyph($control->glyph, $control->label));
         }
 
         return RenderResult::escape($control->label);
@@ -181,9 +178,15 @@ final class ControlMarkup
      */
     public static function hidden(Submission $submits, string $formId = ''): string
     {
-        $fields = '';
+        return self::carried(Carried::of($submits, $formId));
+    }
 
-        foreach ($submits->hidden as $name => $value) {
+    public static function carried(Carried $carried): string
+    {
+        $fields = '';
+        $formId = $carried->form;
+
+        foreach ($carried->values as $name => $value) {
             $fields .= RenderResult::htmlTag('input', [
                 'type'  => 'hidden',
                 'name'  => $name,
@@ -200,8 +203,8 @@ final class ControlMarkup
     /**
      * Ein `<form>` mit seinen verborgenen Feldern und seinen Knöpfen — **an einer Stelle**.
      *
-     * ⚠️ **Weil es diese drei Zeilen schon zweimal gab.** *{@see FieldRowRenderer} baut sie in ihrer
-     * Aktionszelle, {@see RecordRenderer} um seinen Block. Eine dritte Abschrift für die Datensatz-Zeile
+     * ⚠️ **Weil es diese drei Zeilen schon zweimal gab.** *{@see \Taxmod\Core\Renderer\FieldRowRenderer} baut sie in ihrer
+     * Aktionszelle, {@see \Taxmod\Core\Renderer\RecordRenderer} um seinen Block. Eine dritte Abschrift für die Datensatz-Zeile
      * wäre die vierte Gelegenheit, eine Regel zu vergessen — genau das ist mit `ControlMarkup::button()`
      * schon passiert: **vier Abschriften, und die randlose Regel erreichte eine davon**, weshalb überall
      * sonst die Kästen um die Bilder zurückkamen.*
@@ -241,6 +244,6 @@ final class ControlMarkup
      */
     public static function isAWord(Control $control): bool
     {
-        return str_starts_with($control->name, 'word:');
+        return $control->isAWord();
     }
 }

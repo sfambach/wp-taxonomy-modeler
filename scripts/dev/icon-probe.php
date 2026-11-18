@@ -28,8 +28,8 @@ require dirname(__DIR__, 4) . '/wp-load.php';
 require dirname(__DIR__, 2) . '/vendor/autoload.php';
 
 use Taxmod\Core\Renderer\Control;
-use Taxmod\Core\Renderer\ControlMarkup;
-use Taxmod\Core\Renderer\IconMarkup;
+use Taxmod\WordPress\Draw\ControlMarkup;
+use Taxmod\WordPress\Draw\IconMarkup;
 
 $css = file_get_contents(dirname(__DIR__, 2) . '/assets/admin.css');
 

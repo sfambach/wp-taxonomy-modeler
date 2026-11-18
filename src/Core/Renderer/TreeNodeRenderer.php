@@ -82,7 +82,7 @@ final class TreeNodeRenderer extends RendererNode
         // legacy used and the owner confirmed: *for now simply the stock WordPress offers.* Drawing
         // it is two **class names**, which the core may write: a class is a string, not a call into
         // WordPress (`CD-1`). And it goes **before** the name, as it did there.
-        $named = ($icon === '' ? '' : IconMarkup::dashicon($icon) . ' ')
+        $named = ($icon === '' ? '' : RenderResult::draw(\Taxmod\Core\Description\Icon::named($icon)) . ' ')
             . '<span class="taxmod-tree-label">' . RenderResult::escape($shown) . '</span>';
 
         // ⚠️ **Die Klasse steht dabei** ([D-716](../../../docs/NewConcept/90-decision-log.md), Schritt 1
@@ -185,7 +185,7 @@ final class TreeNodeRenderer extends RendererNode
             return '';
         }
 
-        $fields = ControlMarkup::hidden($surroundings->submits);
+        $fields = RenderResult::draw(\Taxmod\Core\Description\Carried::of($surroundings->submits));
 
         $buttons = '';
 
@@ -194,7 +194,7 @@ final class TreeNodeRenderer extends RendererNode
             // red only where something is taken away, and an icon-only button marked so no surface
             // has to guess. *There were four copies of this and the borderless rule reached one of
             // them, which is how boxes came back around the icons everywhere else.*
-            $buttons .= ControlMarkup::button($control);
+            $buttons .= RenderResult::draw($control);
         }
 
         return '<form method="post" action="' . RenderResult::escape($surroundings->submits->action) . '"'

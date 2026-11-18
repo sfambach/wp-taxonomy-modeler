@@ -1,6 +1,8 @@
 <?php declare(strict_types=1);
 
-namespace Taxmod\Core\Renderer;
+namespace Taxmod\WordPress\Draw;
+
+use Taxmod\Core\Renderer\RenderResult;
 
 /**
  * Das eine Stück Code, das weiss, wie ein Icon geschrieben wird.
@@ -9,7 +11,7 @@ namespace Taxmod\Core\Renderer;
  * sind irgendwie nicht richtig aligned, die Grösse stimmt nicht … das Speichern-Symbol ist wieder
  * nach oben verschoben.»* **Ein Fehler, der wiederkommt, nachdem er einzeln behoben wurde, ist kein
  * Serienfehler, sondern ein fehlender Ort** — dieselbe Diagnose, aus der
- * {@see RenderResult::htmlTag()} entstand ([D-465](../../../docs/NewConcept/90-decision-log.md)).
+ * {@see \Taxmod\Core\Renderer\RenderResult::htmlTag()} entstand ([D-465](../../../docs/NewConcept/90-decision-log.md)).
  *
  * ⚠️ **Seine Vermutung war nachprüfbar falsch, und das ist der Grund, warum hier gemessen und nicht
  * getauscht wurde.** *Er hielt unterschiedliche `viewBox`-Werte oder ein schlechtes Icon-Set für die

@@ -1,6 +1,8 @@
 <?php declare(strict_types=1);
 
-namespace Taxmod\Core\Renderer;
+namespace Taxmod\WordPress\Draw;
+
+use Taxmod\Core\Renderer\RenderResult;
 
 /**
  * Das eine Stück Code, das weiss, wie eine Erklärung hinter ein Fragezeichen kommt.
@@ -64,7 +66,7 @@ final class HintMarkup
     public const TEXT = 'taxmod-hint-text';
 
     /** Was zwei gesammelte Hilfen trennt ([D-662](../../../docs/NewConcept/90-decision-log.md)). */
-    public const JOIN = ' · ';
+    public const JOIN = \Taxmod\Core\Description\Hint::JOIN;
 
     /**
      * Ein Fragezeichen, hinter dem dieser Satz steht.
@@ -103,12 +105,7 @@ final class HintMarkup
      */
     public static function combined(array $hints): string
     {
-        $texts = array_values(array_filter(
-            array_map(static fn (string $one): string => trim($one), $hints),
-            static fn (string $one): bool => $one !== ''
-        ));
-
-        return self::icon(implode(self::JOIN, $texts));
+        return self::icon(\Taxmod\Core\Description\Hint::combined($hints)->text);
     }
 
     /**

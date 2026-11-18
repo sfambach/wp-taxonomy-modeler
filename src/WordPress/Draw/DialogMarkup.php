@@ -1,12 +1,14 @@
 <?php declare(strict_types=1);
 
-namespace Taxmod\Core\Renderer;
+namespace Taxmod\WordPress\Draw;
+
+use Taxmod\Core\Renderer\RenderResult;
 
 /**
  * Die eine Form eines Dialogs: ein geklipptes Häkchen als Schalter, ein Öffner, eine Schattenfläche, die Tafel —
  * ohne Skript.
  *
- * ⚠️ **Einmal, nicht je Aufrufer.** *Der Wähler ({@see ChooserRenderer}) und ein Bedienelement mit Dialog
+ * ⚠️ **Einmal, nicht je Aufrufer.** *Der Wähler ({@see \Taxmod\Core\Renderer\ChooserRenderer}) und ein Bedienelement mit Dialog
  * ({@see ControlMarkup::button()}) zeichneten sonst dieselben sieben Tags zweimal — und das Stylesheet
  * kennt genau diese Klassen.*
  *
@@ -55,7 +57,7 @@ final class DialogMarkup
         // 2026-11-04: «bei einfacher auswahl ein ausgegrautes feld erwarten und recht daneben … das baum symbol das öffnet den dialog». Beide
         // beschriften den Schalter, also öffnet auch ein Klick ins Feld.*
         $baum = $tree === null ? '' : '<label class="button ' . ControlMarkup::ICON_ONLY . ' taxmod-pick-tree" for="' . $id . '"'
-            . ($tree === '' ? '' : ' title="' . RenderResult::escape($tree) . '"') . '>' . IconMarkup::dashicon('networking', $tree) . '</label>';
+            . ($tree === '' ? '' : ' title="' . RenderResult::escape($tree) . '"') . '>' . RenderResult::draw(\Taxmod\Core\Description\Icon::named('networking', $tree)) . '</label>';
 
         return '<span class="taxmod-chooser' . ($tree === null ? '' : ' taxmod-pick') . '">'
             . RenderResult::htmlTag('input', [

@@ -5,7 +5,7 @@
  *
  * ⚠️ **The owner has reported this four times and every fix so far was written against the wrong
  * cause.** First the borderless rule was scoped too narrowly, then it lost on specificity, then
- * {@see \Taxmod\Core\Renderer\ControlMarkup} became the one place that composes a button. **On
+ * {@see \Taxmod\WordPress\Draw\ControlMarkup} became the one place that composes a button. **On
  * 2026-08-28 two save buttons were boxed again and the markup side was blameless**: measured in the
  * browser, `put_labels` and `save_field` reached it as `<button class="button">💾</button>`, 49×41
  * among 24×17 neighbours, wearing WordPress's blue secondary border.
@@ -46,7 +46,7 @@ require_once ABSPATH . 'wp-admin/includes/plugin.php';
 require_once ABSPATH . 'wp-admin/includes/template.php';
 
 use Taxmod\Core\Renderer\Control;
-use Taxmod\Core\Renderer\ControlMarkup;
+use Taxmod\WordPress\Draw\ControlMarkup;
 use Taxmod\WordPress\Plugin;
 
 wp_set_current_user(1);
@@ -425,7 +425,7 @@ foreach ($phpDateien('src') as $datei) {
 
 check('keine Datei ausser IconMarkup schreibt ein Icon von Hand', $schuldig === [], implode(', ', $schuldig));
 
-$iconQuelle = (string) file_get_contents($quellwurzel . '/src/Core/Renderer/IconMarkup.php');
+$iconQuelle = (string) file_get_contents($quellwurzel . '/src/WordPress/Draw/IconMarkup.php');
 
 check('IconMarkup schreibt es wirklich selbst', str_contains($iconQuelle, '<span class="'));
 

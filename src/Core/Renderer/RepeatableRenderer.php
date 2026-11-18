@@ -106,7 +106,7 @@ final class RepeatableRenderer extends RendererNode
 
             $zeilen .= '<li class="taxmod-repeatable-entry">'
                 . '<span class="taxmod-repeatable-value">' . $part->result->markup . '</span>'
-                . ($knopf === null ? '' : '<span class="taxmod-repeatable-act">' . ControlMarkup::button($knopf) . '</span>')
+                . ($knopf === null ? '' : '<span class="taxmod-repeatable-act">' . RenderResult::draw($knopf) . '</span>')
                 . '</li>';
         }
 
@@ -114,7 +114,7 @@ final class RepeatableRenderer extends RendererNode
         // nichts — **ein Feld ohne Werte verschwindet nicht**, sonst könnte man ihm nie einen geben.*
         return RenderResult::of(
             '<ul class="taxmod-repeatable">' . $zeilen . '</ul>'
-            . ($hinzu === null ? '' : '<div class="taxmod-repeatable-add">' . ControlMarkup::button($hinzu) . '</div>'),
+            . ($hinzu === null ? '' : '<div class="taxmod-repeatable-add">' . RenderResult::draw($hinzu) . '</div>'),
             ...$usedRelations
         );
     }

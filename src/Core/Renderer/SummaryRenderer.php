@@ -125,13 +125,13 @@ final class SummaryRenderer extends TypedFieldRenderer
             . '<input type="search" class="taxmod-record-quick" autocomplete="off" placeholder="' . RenderResult::escape($suchwort) . '" aria-label="' . RenderResult::escape($suchwort) . '"' . ($nichts ? '' : ' hidden') . '>'
             // ⚠️ **Neben der Suche der Baum** ([D-1011](../../../docs/NewConcept/90-decision-log.md)) — *sein Wort: «Erst Text, dann Baum». Der
             // Knopf trägt keinen Baum: Knoten und Sätze holt das Skript erst, wenn er gedrückt und ein Knoten angeklickt wird.*
-            . ($baumwort === '' ? '' : '<button type="button" class="button ' . ControlMarkup::ICON_ONLY . ' taxmod-record-browse"' . ($nichts ? '' : ' hidden') . ' title="' . RenderResult::escape($baumwort) . '">'
-                . IconMarkup::dashicon('networking', $baumwort) . '</button>')
+            . ($baumwort === '' ? '' : '<button type="button" class="button ' . Look::ICON_ONLY . ' taxmod-record-browse"' . ($nichts ? '' : ' hidden') . ' title="' . RenderResult::escape($baumwort) . '">'
+                . RenderResult::draw(\Taxmod\Core\Description\Icon::named('networking', $baumwort)) . '</button>')
             . '<span class="taxmod-record-dialog-open taxmod-record-word"' . ($nichts ? ' hidden' : '') . '>' . RenderResult::escape($wort) . '</span>'
             . self::openChosen($context->surroundings->href, $context->surroundings->dialogWords, $nichts)
             // *Der Mülleimer steht immer da, ohne Wahl verborgen — eine Wahl aus Suche oder Baum zeigt ihn (D-1011).*
-            . '<button type="button" class="button ' . ControlMarkup::ICON_ONLY . ' taxmod-record-clear"' . ($nichts ? ' hidden' : '') . ' style="color:#b32d2e" title="' . RenderResult::escape($loeschen) . '">'
-                . IconMarkup::dashicon('trash', $loeschen) . '</button>'
+            . '<button type="button" class="button ' . Look::ICON_ONLY . ' taxmod-record-clear"' . ($nichts ? ' hidden' : '') . ' style="color:#b32d2e" title="' . RenderResult::escape($loeschen) . '">'
+                . RenderResult::draw(\Taxmod\Core\Description\Icon::named('trash', $loeschen)) . '</button>'
             . '<span class="taxmod-record-hits" hidden></span>'
             . '</span>';
     }
@@ -244,7 +244,7 @@ final class SummaryRenderer extends TypedFieldRenderer
             . '<input type="search" class="taxmod-record-search" autocomplete="off" aria-label="' . $wurzel . '"'
             . ((string) ($worte['search'] ?? '') === '' ? '' : ' placeholder="' . RenderResult::escape((string) $worte['search']) . '"') . '>'
             . ($baumWort === '' ? '' : '<label class="taxmod-record-treeswitch" title="' . RenderResult::escape($baumWort) . '">'
-                . '<input type="checkbox" class="taxmod-record-treetoggle" checked>' . IconMarkup::dashicon('networking', $baumWort) . '</label>')
+                . '<input type="checkbox" class="taxmod-record-treetoggle" checked>' . RenderResult::draw(\Taxmod\Core\Description\Icon::named('networking', $baumWort)) . '</label>')
             . '</div>';
 
         $knoten = '';
@@ -262,8 +262,8 @@ final class SummaryRenderer extends TypedFieldRenderer
                 . ($zeile['records'] === [] ? '' : ' <span class="taxmod-record-count">(' . count($zeile['records']) . ')</span>')
                 . '</span>'
                 // ⚠️ *Fehlt der Satz, legt man ihn an diesem Knoten an (D-792, Zeile 154) — seine Seite in einem neuen Reiter.*
-                . ((string) ($zeile['add'] ?? '') === '' ? '' : ' <a class="' . ControlMarkup::ICON_ONLY . ' taxmod-record-add" href="' . RenderResult::escape((string) $zeile['add']) . '" target="_blank" rel="noopener" title="' . RenderResult::escape((string) ($zeile['addWord'] ?? '')) . '">'
-                    . IconMarkup::dashicon('plus-alt2', (string) ($zeile['addWord'] ?? '')) . '</a>')
+                . ((string) ($zeile['add'] ?? '') === '' ? '' : ' <a class="' . Look::ICON_ONLY . ' taxmod-record-add" href="' . RenderResult::escape((string) $zeile['add']) . '" target="_blank" rel="noopener" title="' . RenderResult::escape((string) ($zeile['addWord'] ?? '')) . '">'
+                    . RenderResult::draw(\Taxmod\Core\Description\Icon::named('plus-alt2', (string) ($zeile['addWord'] ?? ''))) . '</a>')
                 . '</summary>';
 
             $tiefe = $zeile['depth'];
@@ -323,7 +323,7 @@ final class SummaryRenderer extends TypedFieldRenderer
             . ($suche === '' ? '' : ' data-taxmod-search="' . RenderResult::escape($suche) . '"') . '>'
             . '<input type="checkbox" name="' . RenderResult::escape($name) . '" value="' . $wert . '"' . $form . '> ' . $wort . '</label>';
 
-        return DialogMarkup::of(
+        return RenderResult::draw(new \Taxmod\Core\Description\DialogBox(
             $schalter,
             $oeffner,
             $oeffner,
@@ -331,7 +331,7 @@ final class SummaryRenderer extends TypedFieldRenderer
             $bestaetigen,
             'button taxmod-dialog-open taxmod-record-multi-open',
             cancel: (string) ($worte['cancel'] ?? '')
-        );
+        ));
     }
 
     /** @param list<array<string, mixed>> $baum */
@@ -399,7 +399,7 @@ final class SummaryRenderer extends TypedFieldRenderer
             ? '<span class="taxmod-nothing">—</span><span class="screen-reader-text">' . RenderResult::escape((string) ($baum[0]['name'] ?? '')) . '</span>'
             : RenderResult::escape($wort ?? '#' . $gewaehlt);
 
-        $dialog = DialogMarkup::of(
+        $dialog = RenderResult::draw(new \Taxmod\Core\Description\DialogBox(
             'taxmod-record-dialog-' . preg_replace('/[^a-z0-9_-]/i', '', $formId . $fieldName),
             $jetzt,
             $jetzt,
@@ -409,7 +409,7 @@ final class SummaryRenderer extends TypedFieldRenderer
             ok: (string) ($worte['ok'] ?? ''),
             cancel: (string) ($worte['cancel'] ?? ''),
             tree: (string) ($worte['tree'] ?? '')
-        );
+        ));
 
         // ⚠️ **Kein Suchfeld mehr vor dem Dialog** ([D-1163](../../../docs/NewConcept/90-decision-log.md), ersetzt D-792 Zeile 153 hier) — *sein
         // Befund am 2026-11-04: «da erscheint ein Feld … weiß nicht, ob das eigentlich hidden sein soll», und sein Wunsch: «bei einfacher auswahl
@@ -418,8 +418,8 @@ final class SummaryRenderer extends TypedFieldRenderer
             . $dialog
             . self::openChosen($href, $worte, $nichts)
             // *Der Mülleimer steht immer da, ohne Wahl verborgen — eine Wahl im Dialog zeigt ihn und verbirgt das Suchfeld (D-1138).*
-            . '<button type="button" class="button ' . ControlMarkup::ICON_ONLY . ' taxmod-record-clear"' . ($nichts ? ' hidden' : '') . ' style="color:#b32d2e" title="' . RenderResult::escape((string) ($worte['clear'] ?? '')) . '">'
-                . IconMarkup::dashicon('trash', (string) ($worte['clear'] ?? '')) . '</button>'
+            . '<button type="button" class="button ' . Look::ICON_ONLY . ' taxmod-record-clear"' . ($nichts ? ' hidden' : '') . ' style="color:#b32d2e" title="' . RenderResult::escape((string) ($worte['clear'] ?? '')) . '">'
+                . RenderResult::draw(\Taxmod\Core\Description\Icon::named('trash', (string) ($worte['clear'] ?? ''))) . '</button>'
             . '<span class="taxmod-record-hits" hidden></span>'
             . '</span>';
     }
@@ -431,7 +431,7 @@ final class SummaryRenderer extends TypedFieldRenderer
         $wort = (string) ($worte['open'] ?? '');
 
         return $nichts || $ziel === null || $ziel === '' || $wort === '' ? ''
-            : '<a class="button ' . ControlMarkup::ICON_ONLY . ' taxmod-record-open" href="' . RenderResult::escape($ziel) . '" target="_blank" rel="noopener" title="' . RenderResult::escape($wort) . '">'
-                . IconMarkup::dashicon('edit', $wort) . '</a>';
+            : '<a class="button ' . Look::ICON_ONLY . ' taxmod-record-open" href="' . RenderResult::escape($ziel) . '" target="_blank" rel="noopener" title="' . RenderResult::escape($wort) . '">'
+                . RenderResult::draw(\Taxmod\Core\Description\Icon::named('edit', $wort)) . '</a>';
     }
 }

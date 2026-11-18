@@ -190,9 +190,9 @@ final class MediaRenderer extends TypedFieldRenderer
             . ($beschriftungName === '' ? '' : ' data-taxmod-caption="' . RenderResult::escape($beschriftungName) . '"')
             . ' data-taxmod-newtab="' . ($neuerTab ? '1' : '0') . '"';
         $knopf = static function (string $klasse, string $symbol, string $wort) use ($daten): string {
-            return '<button type="button" class="button ' . ControlMarkup::ICON_ONLY . ' ' . $klasse . '" style="color:#1d2327"'
+            return '<button type="button" class="button ' . Look::ICON_ONLY . ' ' . $klasse . '" style="color:#1d2327"'
                 . ($wort === '' ? '' : ' title="' . RenderResult::escape($wort) . '"') . $daten . '>'
-                . IconMarkup::dashicon($symbol, $wort) . '</button>';
+                . RenderResult::draw(\Taxmod\Core\Description\Icon::named($symbol, $wort)) . '</button>';
         };
 
         return $knopf('taxmod-media-library', 'media-default', (string) ($worte['upload'] ?? ''))

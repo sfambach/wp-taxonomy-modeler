@@ -1,6 +1,8 @@
 <?php declare(strict_types=1);
 
-namespace Taxmod\Core\Renderer;
+namespace Taxmod\WordPress\Draw;
+
+use Taxmod\Core\Renderer\RenderResult;
 
 /**
  * The one dialog for «somebody else saved in the meantime» — the modeller's record form and every module show the same

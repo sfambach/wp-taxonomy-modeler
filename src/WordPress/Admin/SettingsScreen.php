@@ -165,7 +165,7 @@ final class SettingsScreen
                 . '<input type="hidden" name="tab" value="' . esc_attr($tab) . '">'
                 . wp_nonce_field(self::ACTION, '_taxmod_nonce', true, false)
                 // D-1308: the save on top, as the toolbar.
-                . ListPage::toolbar([\Taxmod\Core\Renderer\ControlMarkup::button(\Taxmod\Core\Renderer\Control::saving('submit', '1', __('Save', 'taxmod'), __('Save the settings on this page', 'taxmod')))])
+                . ListPage::toolbar([\Taxmod\WordPress\Draw\ControlMarkup::button(\Taxmod\Core\Renderer\Control::saving('submit', '1', __('Save', 'taxmod'), __('Save the settings on this page', 'taxmod')))])
                 // ⚠️ *Sein Wunsch vom 2026-10-23 (D-981): «als standard und vielleicht an der gleichen stelle überall … also
                 // zugangsdaten, intervalle und ander einstellungen». The page gives the order, the module the content; a part
                 // the module does not give is left out with its heading.*
@@ -217,7 +217,7 @@ final class SettingsScreen
             . '<input type="hidden" name="action" value="' . esc_attr(self::ACTION) . '">'
             . wp_nonce_field(self::ACTION, '_taxmod_nonce', true, false)
             // D-1308: the save on top, as the toolbar.
-            . ListPage::toolbar([\Taxmod\Core\Renderer\ControlMarkup::button(\Taxmod\Core\Renderer\Control::saving('submit', '1', __('Save', 'taxmod'), __('Save the settings on this page', 'taxmod')))])
+            . ListPage::toolbar([\Taxmod\WordPress\Draw\ControlMarkup::button(\Taxmod\Core\Renderer\Control::saving('submit', '1', __('Save', 'taxmod'), __('Save the settings on this page', 'taxmod')))])
             // ⚠️ **Drei Spalten auf sein Wort** ([D-695](../../../docs/NewConcept/90-decision-log.md)):
             // *«tablle links label, schalter/wert, recht erklärung».* **Und nicht `form-table`**,
             // *deren zwei Spalten es gar nicht anders könnten.*

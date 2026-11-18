@@ -25,8 +25,8 @@ use Taxmod\Core\Renderer\RenderResult;
  *   M --> C["assets/admin.css · die Farbe"]
  * ```
  *
- * ⚠️ *Kein `$this`: die Klasse hält keinen Zustand und wird nie gebaut — wie {@see \Taxmod\Core\Renderer\HintMarkup} und
- * {@see \Taxmod\Core\Renderer\IconMarkup}, neben denen sie steht.*
+ * ⚠️ *Kein `$this`: die Klasse hält keinen Zustand und wird nie gebaut — wie {@see HintMarkup} und
+ * {@see IconMarkup}, neben denen sie steht.*
  *
  * @see docs/NewConcept/30-renderer.md
  */

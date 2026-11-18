@@ -317,7 +317,7 @@ final class FieldRowRenderer extends RendererNode
             // better and is more the standard».* *Das nimmt «settings dazu schreiben» vom 2026-09-12 zurück. Das Wort bleibt der
             // Name des Knopfes für den Screenreader; ein Knopf mit Zeichen bekommt von {@see ControlMarkup} keinen Kasten.*
             return '<tr class="taxmod-field-fold"><td colspan="' . $spalten . '">'
-                . ControlMarkup::button($control)
+                . RenderResult::draw($control)
                 . '</td></tr>';
         }
 
@@ -564,7 +564,7 @@ final class FieldRowRenderer extends RendererNode
         $buttons = '';
 
         foreach ($surroundings->actions as $control) {
-            if (ControlMarkup::isAWord($control) || $control->value === self::FOLD) {
+            if (($control)->isAWord() || $control->value === self::FOLD) {
                 continue;
             }
 
@@ -574,7 +574,7 @@ final class FieldRowRenderer extends RendererNode
             // red only where something is taken away, and an icon-only button marked so no surface
             // has to guess. *There were four copies of this and the borderless rule reached one of
             // them, which is how boxes came back around the icons everywhere else.*
-            $buttons .= ControlMarkup::button($control);
+            $buttons .= RenderResult::draw($control);
         }
 
         return '<form method="post" id="' . RenderResult::escape($formId) . '"'

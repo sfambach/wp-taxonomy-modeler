@@ -2,10 +2,15 @@
 
 namespace Taxmod\WordPress\Draw;
 
+use Taxmod\Core\Description\ActsForm;
 use Taxmod\Core\Description\AddChosen;
 use Taxmod\Core\Description\ChoicePurpose;
 use Taxmod\Core\Description\Choosing;
+use Taxmod\Core\Description\Carried;
 use Taxmod\Core\Description\Describes;
+use Taxmod\Core\Description\DialogBox;
+use Taxmod\Core\Description\Hint;
+use Taxmod\Core\Description\Icon;
 use Taxmod\Core\Description\Drawer;
 use Taxmod\Core\Description\InputKind;
 use Taxmod\Core\Description\Locked;
@@ -13,7 +18,7 @@ use Taxmod\Core\Description\Sequence;
 use Taxmod\Core\Description\ShownValue;
 use Taxmod\Core\Description\ValueInput;
 use Taxmod\Core\Description\ValueKind;
-use Taxmod\Core\Renderer\IconMarkup;
+use Taxmod\Core\Renderer\Control;
 
 /**
  * The edge drawer: one way of drawing per kind of description (D-1424, D-1429 A14). The markup is the one the core drew
@@ -36,6 +41,12 @@ final class EdgeDrawer implements Drawer
             $piece instanceof Locked     => '<fieldset disabled class="taxmod-read-only">' . $this->draw($piece->inner) . '</fieldset>',
             $piece instanceof Sequence   => implode('', array_map($this->draw(...), $piece->pieces)),
             $piece instanceof Choosing   => $this->choosing($piece),
+            $piece instanceof Icon       => $piece->character ? IconMarkup::glyph($piece->symbol, $piece->label) : IconMarkup::dashicon($piece->symbol, $piece->label),
+            $piece instanceof Hint       => HintMarkup::icon($piece->text),
+            $piece instanceof Control    => ControlMarkup::button($piece),
+            $piece instanceof ActsForm   => ControlMarkup::actsForm($piece->id, $piece->submits, $piece->controls),
+            $piece instanceof Carried    => ControlMarkup::carried($piece),
+            $piece instanceof DialogBox  => DialogMarkup::of($piece->switch, $piece->opener, $piece->head, $piece->body, $piece->foot, $piece->openerClass, $piece->ok, $piece->cancel, $piece->open, $piece->tree),
             $piece instanceof AddChosen  => SelectMarkup::add($piece, $piece->purpose === ChoicePurpose::AddonCandidate ? 'taxmod-addon-add' : 'taxmod-list-add'),
             default                      => throw new \InvalidArgumentException('Nothing draws a ' . $piece::class . '.'),
         };

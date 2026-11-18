@@ -194,7 +194,7 @@ final class Labels
      * Unterschied:** *dessen Kette fällt auf die Rolle `name` und zuletzt auf `$node->name` zurück
      * ([D-020](../../../docs/NewConcept/90-decision-log.md), [D-646](../../../docs/NewConcept/90-decision-log.md)).
      * **Mit Rückfall trüge jedes Feld ein Fragezeichen, hinter dem sein eigener Name stünde** — ein
-     * Zeichen ohne Erklärung, genau das, was {@see \Taxmod\Core\Renderer\HintMarkup::icon()} für den
+     * Zeichen ohne Erklärung, genau das, was {@see \Taxmod\WordPress\Draw\HintMarkup::icon()} für den
      * leeren Satz ablehnt.*
      *
      * ⚠️ *Die **Sprache** fällt weiterhin zurück — angefragte Sprache, dann Standardsprache

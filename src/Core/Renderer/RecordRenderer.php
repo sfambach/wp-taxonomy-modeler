@@ -116,15 +116,15 @@ final class RecordRenderer extends RendererNode
         $buttons = '';
 
         foreach ($context->surroundings->actions as $control) {
-            if (ControlMarkup::isAWord($control)) {
+            if (($control)->isAWord()) {
                 continue;
             }
 
-            $buttons .= ControlMarkup::button($control);
+            $buttons .= RenderResult::draw($control);
         }
 
         return '<form method="post" action="' . RenderResult::escape($submits->action) . '">'
-            . ControlMarkup::hidden($submits)
+            . RenderResult::draw(\Taxmod\Core\Description\Carried::of($submits))
             // D-1308: the buttons above the fields, as the toolbar.
             . ($buttons === '' ? '' : '<div class="taxmod-record-acts taxmod-toolbar" role="toolbar">' . $buttons . '</div>')
             . $inside

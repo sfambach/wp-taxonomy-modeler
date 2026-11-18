@@ -146,11 +146,11 @@ final class LabelsRenderer extends RendererNode
         // ⚠️ *The buttons need no branch: a {@see Control} carries the form it submits, so whoever
         // names the page's form on the fields names it on the button too.*
         if ($formId !== '') {
-            return ControlMarkup::hidden($submits, $formId) . $inside . $this->acts($context);
+            return RenderResult::draw(\Taxmod\Core\Description\Carried::of($submits, $formId)) . $inside . $this->acts($context);
         }
 
         return '<form method="post" action="' . RenderResult::escape($submits->action) . '">'
-            . ControlMarkup::hidden($submits) . $inside . $this->acts($context) . '</form>';
+            . RenderResult::draw(\Taxmod\Core\Description\Carried::of($submits)) . $inside . $this->acts($context) . '</form>';
     }
 
     /**
@@ -251,7 +251,7 @@ final class LabelsRenderer extends RendererNode
         $buttons = '';
 
         foreach ($context->surroundings->actions as $control) {
-            if (ControlMarkup::isAWord($control)) {
+            if (($control)->isAWord()) {
                 continue;
             }
 
@@ -259,7 +259,7 @@ final class LabelsRenderer extends RendererNode
             // red only where something is taken away, and an icon-only button marked so no surface
             // has to guess. *There were four copies of this and the borderless rule reached one of
             // them, which is how boxes came back around the icons everywhere else.*
-            $buttons .= ControlMarkup::button($control);
+            $buttons .= RenderResult::draw($control);
         }
 
         if ($buttons === '') {

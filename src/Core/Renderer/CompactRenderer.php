@@ -179,7 +179,7 @@ final class CompactRenderer extends RendererNode
         }
 
         if ($inner !== '' && $gesammelt !== []) {
-            $inner .= HintMarkup::combined($gesammelt);
+            $inner .= RenderResult::draw(\Taxmod\Core\Description\Hint::combined($gesammelt));
         }
 
         return new RenderResult(
@@ -264,7 +264,7 @@ final class CompactRenderer extends RendererNode
         // trennt die Felder nur ein Leerzeichen, **ein Zeichen je Feld wäre ein Zeichen je
         // Leerzeichen**. Senkrecht hat jedes Feld seine eigene Zeile und damit auch Platz für sein
         // eigenes Zeichen.*
-        $hint = $vertical ? HintMarkup::icon($part->hint) : '';
+        $hint = $vertical ? RenderResult::draw(new \Taxmod\Core\Description\Hint($part->hint)) : '';
 
         return RenderResult::htmlTag('span', ['class' => 'taxmod-compact-part'])
             . $label

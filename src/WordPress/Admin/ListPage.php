@@ -2,9 +2,9 @@
 
 namespace Taxmod\WordPress\Admin;
 
-use Taxmod\Core\Renderer\HintMarkup;
+use Taxmod\WordPress\Draw\HintMarkup;
 use Taxmod\Core\Listing\ListColumn;
-use Taxmod\Core\Renderer\DialogMarkup;
+use Taxmod\WordPress\Draw\DialogMarkup;
 use Taxmod\Core\Listing\ListView;
 use Taxmod\WordPress\Plugin;
 
@@ -933,7 +933,7 @@ final class ListPage
      */
     public static function grid(array $columns, array $rows, string $empty = '', string $class = ''): string
     {
-        return \Taxmod\Core\Renderer\GridMarkup::table($columns, $rows, $empty, $class);
+        return \Taxmod\WordPress\Draw\GridMarkup::table($columns, $rows, $empty, $class);
     }
 
     /**

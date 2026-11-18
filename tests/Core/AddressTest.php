@@ -5,7 +5,7 @@ namespace Taxmod\Tests\Core;
 use PHPUnit\Framework\TestCase;
 use Taxmod\Core\Event\Address;
 use Taxmod\Core\Renderer\Control;
-use Taxmod\Core\Renderer\ControlMarkup;
+use Taxmod\WordPress\Draw\ControlMarkup;
 
 /** Plan step 1 (D-1424): a place in the model, written so a button can carry it. */
 final class AddressTest extends TestCase

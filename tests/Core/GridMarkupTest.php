@@ -4,7 +4,7 @@ namespace Taxmod\Tests\Core;
 
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
-use Taxmod\Core\Renderer\GridMarkup;
+use Taxmod\WordPress\Draw\GridMarkup;
 
 /** The one read-only table: head escaped, cells as given, numbers aligned by class, never by style. */
 final class GridMarkupTest extends TestCase

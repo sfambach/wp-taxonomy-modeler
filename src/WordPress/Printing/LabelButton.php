@@ -114,7 +114,7 @@ final class LabelButton
             . '<input type="hidden" name="subtitle" value="' . esc_attr($label->subtitle) . '">'
             . ($filled === null ? '' : '<input type="hidden" name="document" value="' . esc_attr($filled->toJson()) . '">')
             . ($chooser === null ? '' : $chooser['hidden'])
-            . \Taxmod\Core\Renderer\DialogMarkup::of(
+            . \Taxmod\WordPress\Draw\DialogMarkup::of(
                 $switch,
                 // D-1230: the printer instead of the word, in every module that asks for this button.
                 \Taxmod\WordPress\Admin\ListPage::icon(\Taxmod\WordPress\Admin\ListPage::ICON_PRINT, __('Etikett drucken', 'taxmod')),

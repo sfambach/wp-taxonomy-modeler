@@ -15,7 +15,7 @@ namespace Taxmod\Core\Renderer;
  * ```mermaid
  * flowchart LR
  *   B["the boundary<br/>nonce · URL · words · what is allowed"] --> C[Control]
- *   C --> R["the renderer<br/>builds the markup"]
+ *   C --> R["the edge drawer<br/>builds the markup (6c)"]
  * ```
  *
  * ⚠️ **So the boundary hands in facts, not markup.** That is the difference between a renderer
@@ -36,7 +36,7 @@ namespace Taxmod\Core\Renderer;
  *
  * @see docs/NewConcept/30-renderer.md
  */
-final class Control
+final class Control implements \Taxmod\Core\Description\Describes
 {
     /**
      * The one character that stands for saving, because Dashicons has no diskette.
@@ -188,5 +188,30 @@ final class Control
             $this->iconWithLabel,
             $address,
         );
+    }
+
+    /** A word the edge hands over inside the list of acts, not an act: never drawn as a button. */
+    public function isAWord(): bool
+    {
+        return str_starts_with($this->name, 'word:');
+    }
+
+    public function toArray(): array
+    {
+        return [
+            'control'         => $this->name,
+            'value'           => $this->value,
+            'label'           => $this->label,
+            'title'           => $this->title,
+            'available'       => $this->available,
+            'destroys'        => $this->destroys,
+            'icon'            => $this->icon,
+            'form'            => $this->form,
+            'leads'           => $this->leads,
+            'glyph'           => $this->glyph,
+            'opens'           => $this->opens === null ? null : ['id' => $this->opens->id, 'title' => $this->opens->title, 'confirm' => $this->opens->confirm, 'cancel' => $this->opens->cancel],
+            'icon_with_label' => $this->iconWithLabel,
+            'address'         => $this->address?->token(),
+        ];
     }
 }

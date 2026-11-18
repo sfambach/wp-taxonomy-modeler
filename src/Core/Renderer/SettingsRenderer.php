@@ -209,7 +209,7 @@ final class SettingsRenderer extends RendererNode
         return RenderResult::of(
             '<form method="post" id="' . RenderResult::escape(self::formFor($subject))
             . '" action="' . RenderResult::escape($submits->action) . '" class="taxmod-settings">'
-            . ControlMarkup::hidden($submits) . $markup . '</form>'
+            . RenderResult::draw(\Taxmod\Core\Description\Carried::of($submits)) . $markup . '</form>'
         );
     }
 
@@ -250,7 +250,7 @@ final class SettingsRenderer extends RendererNode
             // ⚠️ **Ein Fragezeichen, das sagt, was die Einstellung tut** ([D-795](../../../docs/NewConcept/90-decision-log.md)) — *sein Wort:
             // «question mark explaining what this area does». Der Satz kommt vom Rand als `hint:<schlüssel>` (`AR-2`); ohne Satz kein Zeichen.*
             // ⚠️ *Name und Fragezeichen in einem Element, oben; der Wert darunter — sein Wort: «label/ question mark on top, value beneath» (D-796).*
-            . '<span class="taxmod-setting-name"><code class="taxmod-setting-key">' . RenderResult::escape($key) . '</code>' . HintMarkup::icon($this->hintFor($context, $key)) . '</span>'
+            . '<span class="taxmod-setting-name"><code class="taxmod-setting-key">' . RenderResult::escape($key) . '</code>' . RenderResult::draw(new \Taxmod\Core\Description\Hint($this->hintFor($context, $key))) . '</span>'
             . '<span class="taxmod-setting-value">'
             . ($gesperrt ? '<span class="taxmod-setting-locked-control">' . $this->control($drawn) . '</span>' : $this->control($drawn))
             . '</span>'
@@ -280,7 +280,7 @@ final class SettingsRenderer extends RendererNode
         $buttons = '';
 
         foreach ($context->surroundings->actions as $control) {
-            if (ControlMarkup::isAWord($control)) {
+            if (($control)->isAWord()) {
                 continue;
             }
 
@@ -328,8 +328,7 @@ final class SettingsRenderer extends RendererNode
             // rode in a hidden field; in one form a button has to say **which** setting it means, so
             // it submits as `empty[<key>]`. *That is also what lets the page-head save coexist with
             // them: three different acts, three different field names, one form.*
-            $buttons .= ControlMarkup::button(
-                new Control(
+            $buttons .= RenderResult::draw(new Control(
                     $control->name . '[' . $key . ']',
                     $control->value,
                     $control->label,
@@ -337,9 +336,7 @@ final class SettingsRenderer extends RendererNode
                     $available,
                     $control->destroys,
                     $control->icon
-                ),
-                $available
-            );
+                ));
         }
 
         return $buttons;

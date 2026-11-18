@@ -4,7 +4,7 @@ namespace Taxmod\Tests\Core;
 
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
-use Taxmod\Core\Renderer\DialogMarkup;
+use Taxmod\WordPress\Draw\DialogMarkup;
 use Taxmod\Core\Renderer\SummaryRenderer;
 
 /** D-1163: a single choice is a greyed field with the tree button beside it, both opening the dialog. */

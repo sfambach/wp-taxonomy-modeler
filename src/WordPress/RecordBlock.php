@@ -3,7 +3,7 @@
 namespace Taxmod\WordPress;
 
 use Taxmod\Core\Renderer\ComparisonPosition;
-use Taxmod\Core\Renderer\HintMarkup;
+use Taxmod\WordPress\Draw\HintMarkup;
 use Taxmod\WordPress\Admin\NodesScreen;
 use Taxmod\WordPress\Admin\SettingsScreen;
 use Taxmod\WordPress\Persistence\WpdbChangelog;

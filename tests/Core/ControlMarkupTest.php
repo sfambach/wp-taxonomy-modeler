@@ -5,7 +5,7 @@ namespace Taxmod\Tests\Core;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use Taxmod\Core\Renderer\Control;
-use Taxmod\Core\Renderer\ControlMarkup;
+use Taxmod\WordPress\Draw\ControlMarkup;
 
 /**
  * The one place that composes a button — and the slot the diskette kept missing.

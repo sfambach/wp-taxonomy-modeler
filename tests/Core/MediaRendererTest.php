@@ -11,7 +11,7 @@ use Taxmod\Core\Model\TypedValue;
 use Taxmod\Core\Port\MediaFile;
 use Taxmod\Core\Port\MediaLibrary;
 use Taxmod\Core\Renderer\Control;
-use Taxmod\Core\Renderer\ControlMarkup;
+use Taxmod\WordPress\Draw\ControlMarkup;
 use Taxmod\Core\Renderer\MediaRenderer;
 use Taxmod\Core\Renderer\Purpose;
 use Taxmod\Core\Renderer\RenderContext;

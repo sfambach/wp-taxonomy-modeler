@@ -169,7 +169,7 @@ final class FormRenderer extends RendererNode
         return '<div class="taxmod-form-row">'
             . '<span class="taxmod-form-label">' . RenderResult::escape($part->relation->name) . '</span>'
             . '<span class="taxmod-form-field">' . $part->result->markup . '</span>'
-            . HintMarkup::icon($part->hint)
+            . RenderResult::draw(new \Taxmod\Core\Description\Hint($part->hint))
             . '</div>';
     }
 }
