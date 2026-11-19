@@ -96,6 +96,10 @@ final class PageTimesLog
             'b'  => self::$at['b'],
             'r'  => self::$at['r'],
             'h'  => (int) round(self::$outside),
+            // Addendum to D-1482: how long the model's own statements took, and its streamed reads — a slow page is
+            // slow in the database or in the program, and the two ask for different cures.
+            'd'  => Query::waited()[0],
+            's'  => Query::waited()[1],
         ] + ($switches === '' ? [] : ['a' => $switches])), false);
     }
 

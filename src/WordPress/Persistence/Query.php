@@ -69,6 +69,37 @@ final class Query
         self::$read = [];
     }
 
+    /** @var array{0: float, 1: float} seconds this request waited for its reads and writes, and for its streamed reads */
+    private static array $waited = [0.0, 0.0];
+
+    /**
+     * Where the time of a page went, as far as this class saw it — for the page times (addendum to D-1482): the milliseconds
+     * spent waiting for statements, and those spent in streamed reads ({@see self::each()}, the folding of each row included).
+     * What WordPress itself asked is not in it.
+     *
+     * @return array{0: int, 1: int}
+     */
+    public static function waited(): array
+    {
+        return [(int) round(self::$waited[0] * 1000), (int) round(self::$waited[1] * 1000)];
+    }
+
+    /**
+     * @template T
+     * @param callable(): T $ask
+     * @return T
+     */
+    private static function timed(int $which, callable $ask): mixed
+    {
+        $from = microtime(true);
+
+        try {
+            return $ask();
+        } finally {
+            self::$waited[$which] += microtime(true) - $from;
+        }
+    }
+
     /** How many statements this request has sent to the database so far — for the drawing times of the developer mode (Ladezeit S0). */
     public static function asked(): int
     {
@@ -184,24 +215,27 @@ final class Query
         $wpdb->flush();
         $wpdb->last_error = '';
         // Derselbe Filter, den `$wpdb` für jede Anweisung ruft: wer Anweisungen zählt oder mitliest, sieht auch diese.
-        $sql    = (string) apply_filters('query', (string) $sql);
-        $result = mysqli_query($link, $sql, MYSQLI_USE_RESULT);
-        $wpdb->num_queries++;
+        $sql = (string) apply_filters('query', (string) $sql);
 
-        if (! $result instanceof \mysqli_result) {
-            $wpdb->last_error = mysqli_error($link);
-            self::nothingWentWrong($doing);
+        self::timed(1, static function () use ($link, $sql, $doing, $each, $wpdb): void {
+            $result = mysqli_query($link, $sql, MYSQLI_USE_RESULT);
+            $wpdb->num_queries++;
 
-            return;
-        }
+            if (! $result instanceof \mysqli_result) {
+                $wpdb->last_error = mysqli_error($link);
+                self::nothingWentWrong($doing);
 
-        try {
-            while (($row = mysqli_fetch_assoc($result)) !== null && $row !== false) {
-                $each($row);
+                return;
             }
-        } finally {
-            mysqli_free_result($result);
-        }
+
+            try {
+                while (($row = mysqli_fetch_assoc($result)) !== null && $row !== false) {
+                    $each($row);
+                }
+            } finally {
+                mysqli_free_result($result);
+            }
+        });
     }
 
     /**
@@ -276,7 +310,7 @@ final class Query
     {
         // D-1485: a locking read is the check at the point of writing (D-1148) — it asks the database every time, never the memory.
         if (self::$depth === 0 || preg_match('/\bFOR\s+UPDATE\s*$/i', $sql) === 1) {
-            return $read();
+            return self::timed(0, $read);
         }
 
         self::watchWrites();
@@ -287,7 +321,7 @@ final class Query
             return self::$read[$key];
         }
 
-        return self::$read[$key] = $read();
+        return self::$read[$key] = self::timed(0, $read);
     }
 
     /**
@@ -325,7 +359,7 @@ final class Query
         self::statementIsUsable($doing, $sql);
 
         $wpdb->last_error = '';
-        $affected         = $wpdb->query($sql);
+        $affected         = self::timed(0, static fn (): int|bool => $wpdb->query($sql));
 
         self::nothingWentWrong($doing);
 

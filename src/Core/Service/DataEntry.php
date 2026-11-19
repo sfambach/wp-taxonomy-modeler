@@ -2524,6 +2524,11 @@ final class DataEntry
         return $aus;
     }
 
+    public function countRecordsOf(int $nodeId): int
+    {
+        return $this->records->countOfNode($nodeId);
+    }
+
     /** @return list<NodeRecord> */
     public function recordsOf(int $nodeId): array
     {

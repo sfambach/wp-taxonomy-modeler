@@ -605,11 +605,13 @@ final class ModelAbilities
               + (($aus = $screen->composedOf($r, $id)) === [] ? [] : ['composed_of' => $aus]);
         }
 
-        $records = $entries->recordsOf($id);
-        $gesamt  = count($records);
+        // Who asks without records — a module's door asking for the fields — gets their number, and no record is built for it.
+        $ohne    = ($input['records'] ?? true) === false;
+        $records = $ohne ? [] : $entries->recordsOf($id);
+        $gesamt  = $ohne ? $entries->countRecordsOf($id) : count($records);
         $seite   = [];
 
-        if (($input['records'] ?? true) !== false) {
+        if (! $ohne) {
             $limit = isset($input['limit']) ? max(1, min(self::MAX_RECORDS_PAGE, (int) $input['limit'])) : null;
             $seite = array_slice($records, max(0, (int) ($input['offset'] ?? 0)), $limit);
         }
@@ -1445,6 +1447,8 @@ final class ModelAbilities
                 'loaded_ms' => (int) ($e['b'] ?? 0),
                 'drawn_ms'  => (int) ($e['r'] ?? 0),
                 'http_ms'   => (int) ($e['h'] ?? 0),
+                'db_ms'     => (int) ($e['d'] ?? 0),
+                'stream_ms' => (int) ($e['s'] ?? 0),
                 'switches'  => (string) ($e['a'] ?? ''),
             ], array_reverse(array_slice($calls, -$limit))),
         ];

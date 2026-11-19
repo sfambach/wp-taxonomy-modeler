@@ -73,7 +73,8 @@ $entries = PageTimesLog::entries();
 $last    = $entries[count($entries) - 1] ?? [];
 
 $say(count($entries) === 2, 'ein Aufruf ist ein Eintrag');
-$say(array_keys($last) === ['t', 'p', 'ms', 'q', 'mb', 'o', 'b', 'r', 'h'], 'ein Eintrag trägt genau t, p, ms, q, mb, o, b, r, h');
+$say(array_keys($last) === ['t', 'p', 'ms', 'q', 'mb', 'o', 'b', 'r', 'h', 'd', 's'], 'ein Eintrag trägt genau t, p, ms, q, mb, o, b, r, h, d, s');
+$say(is_int($last['d']) && is_int($last['s']) && $last['d'] >= 0 && $last['d'] <= $last['ms'] && $last['s'] <= $last['ms'], 'd und s sind Millisekunden in der Datenbank und nie mehr als der ganze Aufruf (Nachtrag D-1482)');
 $say(array_filter($last, 'is_int') === array_diff_key($last, ['p' => 1]) && $last['p'] === 'taxmod-probe/a', 'alles ausser der Seite ist eine Zahl');
 $say(! str_contains((string) wp_json_encode($entries), (string) wp_get_current_user()->user_login), 'kein Benutzername im Ring');
 
@@ -87,15 +88,15 @@ PageTimesLog::write('taxmod-probe/b');
 $entries = PageTimesLog::entries();
 
 $say(count($entries) === PageTimes::KEEP && $entries[PageTimes::KEEP - 1]['p'] === 'taxmod-probe/b', 'der Ring bleibt bei ' . PageTimes::KEEP . ' und behält den neuesten');
-$say(strlen((string) maybe_serialize($entries)) < 33000, 'ein voller Ring bleibt unter 33 KB — drei Zahlen mehr je Eintrag seit D-1482 (' . strlen((string) maybe_serialize($entries)) . ' Bytes)');
+$say(strlen((string) maybe_serialize($entries)) < 38000, 'ein voller Ring bleibt unter 38 KB — drei Zahlen mehr je Eintrag seit D-1482, zwei weitere (d, s) mit dem Nachtrag (' . strlen((string) maybe_serialize($entries)) . ' Bytes)');
 
 $kept = PageTimesLog::entries();
 PageTimesLog::write('taxmod-probe/c', 'group,order,pick,s,taxmod_node');
 $entries = PageTimesLog::entries();
 $with    = $entries[count($entries) - 1] ?? [];
-$say(($with['a'] ?? null) === 'group,order,pick,s,taxmod_node' && array_keys($with) === ['t', 'p', 'ms', 'q', 'mb', 'o', 'b', 'r', 'h', 'a'], 'ein Aufruf mit Schaltern trägt ihre Namen unter a (Nachtrag zu D-1482), einer ohne trägt kein a');
+$say(($with['a'] ?? null) === 'group,order,pick,s,taxmod_node' && array_keys($with) === ['t', 'p', 'ms', 'q', 'mb', 'o', 'b', 'r', 'h', 'd', 's', 'a'], 'ein Aufruf mit Schaltern trägt ihre Namen unter a (Nachtrag zu D-1482), einer ohne trägt kein a');
 update_option(PageTimesLog::OPTION, array_fill(0, PageTimes::KEEP, ['a' => 'taxmod_collapsed,taxmod_hidden,taxmod_message,taxmod_node,taxmod_open_record,taxmod_root,taxmod_search,term'] + $with), false);
-$say(strlen((string) maybe_serialize(PageTimesLog::entries())) < 60000, 'ein voller Ring, jeder Eintrag mit acht langen Namen, bleibt unter 60 KB (' . strlen((string) maybe_serialize(PageTimesLog::entries())) . ' Bytes)');
+$say(strlen((string) maybe_serialize(PageTimesLog::entries())) < 65000, 'ein voller Ring, jeder Eintrag mit acht langen Namen, bleibt unter 65 KB (' . strlen((string) maybe_serialize(PageTimesLog::entries())) . ' Bytes)');
 update_option(PageTimesLog::OPTION, $kept, false);
 
 echo "\nDer Schalter\n";
@@ -122,7 +123,7 @@ if ($ability !== null && $node !== null) {
     $say(is_array($answer) && array_keys($answer) === ['environment', 'pages', 'calls'], 'sie antwortet mit Umgebung, Seiten und Aufrufen');
     $say(is_array($answer) && count($answer['calls']) === 1 && $answer['calls'][0]['page'] === 'taxmod-probe/b', 'limit und page greifen');
     $say(is_array($answer) && isset($answer['pages']['taxmod-probe/a']['median_ms'], $answer['environment']['opcache']), 'je Seite die Mitte, dazu OPcache an oder aus');
-    $say(is_array($answer) && ($answer['environment']['db_round_trip_us'] ?? 0) > 0 && isset($answer['calls'][0]['loaded_ms'], $answer['calls'][0]['drawn_ms'], $answer['calls'][0]['http_ms']), 'wohin die Zeit ging: geladen, gezeichnet, fremde Server, und was eine leere Abfrage kostet');
+    $say(is_array($answer) && ($answer['environment']['db_round_trip_us'] ?? 0) > 0 && isset($answer['calls'][0]['loaded_ms'], $answer['calls'][0]['drawn_ms'], $answer['calls'][0]['http_ms'], $answer['calls'][0]['db_ms'], $answer['calls'][0]['stream_ms']), 'wohin die Zeit ging: geladen, gezeichnet, fremde Server, und was eine leere Abfrage kostet');
 
     wp_set_current_user(0);
     $say($ability->check_permissions(['limit' => 1]) !== true && $node->check_permissions(['id' => 1]) !== true, 'ohne Anmeldung so verschlossen wie read-node');
