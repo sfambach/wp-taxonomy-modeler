@@ -250,6 +250,14 @@ final class ModelDoor
         return $this->applied([['op' => 'rename_node', 'node' => $node, 'name' => $name]]);
     }
 
+    /** D-1474: the node every choice list hangs below (D-1457: «Konstanten», one category per module) — the framework says which. */
+    public function constantsRoot(): int
+    {
+        $nodes = new Persistence\WpdbNodeRepository();
+
+        return (new Persistence\SeededFrameworkNodes($nodes, new Persistence\WpdbRelationRepository(), new Persistence\WpdbChangelog(new SystemClock())))->rootOf(\Taxmod\Core\Model\Branch::Constants)->id;
+    }
+
     /** D-1458, D-1474: every choice of `$from` chooses `$into`, `$from` goes to the trash; the modeller's rules refuse with a reason. */
     public function mergeConstant(int $from, int $into): int
     {

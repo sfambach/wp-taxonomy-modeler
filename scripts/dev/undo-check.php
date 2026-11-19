@@ -192,6 +192,7 @@ if (is_array($liste)) {
     check('trash_unused_constant: a list with values is refused', $fehler !== '', 'accepted');
     $frei = wp_get_ability('taxmod/apply')->execute(['changes' => [['op' => 'create_node', 'ref' => 'z', 'name' => '__un Silber', 'parent' => $l['l']]]]);
     check('trash_unused_constant: the unused value is built', is_array($frei));
+    check('constantsRoot: the door names the framework\'s Konstanten', (new \Taxmod\WordPress\ModelDoor())->constantsRoot() === $konst->id);
     check('constantUses: one query counts the chosen value only', (new \Taxmod\WordPress\ModelDoor())->constantUses([(int) $l['y'], (int) ($frei['refs']['z'] ?? 0)]) === [(int) $l['y'] => 1]);
     roundTrip('trash_unused_constant', [['op' => 'trash_unused_constant', 'node' => $frei['refs']['z'] ?? 0]]);
 }
