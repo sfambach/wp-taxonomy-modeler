@@ -119,8 +119,32 @@ $say($datei->invoke(null, ['Content-Type: application/pdf']) === true, 'eine PDF
 $say($datei->invoke(null, ['Content-Type: text/html; charset=UTF-8', 'Cache-Control: no-cache']) === false, 'eine Seite ist keiner');
 $say($datei->invoke(null, ['Content-Type: application/json; charset=utf-8']) === false, 'eine Antwort an das Skript ist keiner');
 $say($datei->invoke(null, []) === false, 'eine Antwort ohne Angabe ist keiner');
-$quelle = (string) file_get_contents(dirname(__DIR__, 2) . '/src/WordPress/Admin/OnceMark.php');
-$say(preg_match('/if \(self::isDownload\(headers_list\(\)\)\) \{\s+self::giveBack\(\);/', $quelle) === 1, 'am Ende der Anfrage gibt ein Download die Marke zurück');
+// Das Ende einer Anfrage mit eigener Antwort, wie `OnceMark::atEnd` es führt — mit den Kopfzeilen, die die Antwort trüge.
+$ende    = new ReflectionMethod(OnceMark::class, 'endWith');
+$pdf     = ['Content-Type: application/pdf', 'Content-Disposition: inline; filename="label.pdf"'];
+$endet   = static function (string $marke, callable $arbeit, array $kopf) use ($ende): void {
+    $_POST = [OnceMark::FIELD => $marke];
+    OnceMark::enter();
+    $arbeit();
+    $ende->invoke(null, $kopf);
+    $_POST = [];
+};
+$vorher = $kinder();
+$marke  = wp_generate_uuid4();
+$endet($marke, static fn (): array => get_users(['number' => 1, 'fields' => 'ID']), $pdf);
+$anfrage($marke, $anlegen);
+$say($kinder() === $vorher + 1, 'ein Download ohne Schreiben gibt die Marke zurück: dieselbe Marke wirkt wieder');
+$vorher = $kinder();
+$marke  = wp_generate_uuid4();
+$endet($marke, $anlegen, $pdf);
+$anfrage($marke, $anlegen);
+$say($kinder() === $vorher + 1, 'ein Download, der geschrieben hat, bleibt einmalig: dieselbe Marke wirkt nicht noch einmal');
+$vorher = $kinder();
+$marke  = wp_generate_uuid4();
+$endet($marke, static fn (): array => get_users(['number' => 1, 'fields' => 'ID']), ['Content-Type: text/html; charset=UTF-8']);
+$anfrage($marke, $anlegen);
+$say($kinder() === $vorher, 'eine Seite zählt als erledigt, auch ohne Schreiben');
+$say(str_contains((string) file_get_contents(dirname(__DIR__, 2) . '/src/WordPress/Admin/OnceMark.php'), 'self::endWith(headers_list());'), 'das Ende der Anfrage führt dorthin');
 
 echo "\n== eine Marke gehört dem, der sie schickt ==\n";
 $marke = wp_generate_uuid4();

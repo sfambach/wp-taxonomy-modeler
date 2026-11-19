@@ -2,6 +2,8 @@
 
 namespace Taxmod\WordPress\Admin;
 
+use Taxmod\WordPress\Persistence\Query;
+
 /**
  * The one-time mark of a form (D-1434): the first act that carries it uses it up, a second request with the same mark acts no more
  * and goes where the first went.
@@ -12,7 +14,7 @@ namespace Taxmod\WordPress\Admin;
  *   C -->|new| W["act runs"] --> S["settle: where it went"]
  *   C -->|known| E["no act: the first one's way"]
  *   W -->|failed| F["release: a retry may act"]
- *   W -->|download| F
+ *   W -->|download, nothing written| F
  * ```
  *
  * ⚠️ *His word 2026-11-18 07:53: «wenn man dann zweimal Buttons drückt, dass die Aktion zum Beispiel zweimal Platz anlegt».* The page
@@ -45,6 +47,9 @@ final class OnceMark
 
     /** The mark this request used up and has not yet settled. */
     private static ?string $current = null;
+
+    /** {@see Query::writes()} when the mark was claimed — a request that ends on the same count wrote nothing. */
+    private static int $writesAtStart = 0;
 
     /**
      * For every admin-post request (`admin_init`): a mark used before ends the request where the first one went; a new one is
@@ -82,6 +87,8 @@ final class OnceMark
 
         if ($earlier === null) {
             self::$current = $mark;
+            // *Counted from here: the mark's own row is written, what follows is the act's.*
+            self::$writesAtStart = Query::writes();
         }
 
         return $earlier;
@@ -107,7 +114,7 @@ final class OnceMark
         }
     }
 
-    /** A request that ended without going anywhere: a crash, a refusal or a download gives the mark back, a page counts as done. */
+    /** A request that ended without going anywhere: a crash, a refusal or a download that wrote nothing gives the mark back, a page counts as done. */
     public static function atEnd(): void
     {
         $error = error_get_last();
@@ -119,9 +126,19 @@ final class OnceMark
             return;
         }
 
-        // *A download changes nothing a second one would double, and its page stays standing with the same form and the same
-        // mark: given back, so the person may ask for the file again.*
-        if (self::isDownload(headers_list())) {
+        self::endWith(headers_list());
+    }
+
+    /**
+     * The request ends on an answer of its own. A download that wrote nothing changes nothing a second one would double, and
+     * its page stays standing with the same form and the same mark: given back, so the person may ask for the file again.
+     * A download that wrote — an export that notes «exported» — stays once, like a page.
+     *
+     * @param list<string> $headers the answer's header lines
+     */
+    private static function endWith(array $headers): void
+    {
+        if (self::isDownload($headers) && Query::writes() === self::$writesAtStart) {
             self::giveBack();
 
             return;
