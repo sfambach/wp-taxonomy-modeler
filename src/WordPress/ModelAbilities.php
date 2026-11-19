@@ -245,7 +245,9 @@ final class ModelAbilities
                                 'drop'        => ['type' => 'boolean'],
                                 'field'       => $ziel,
                                 'to'          => $ziel,
+                                'from'        => $ziel,
                                 'into'        => $ziel,
+                                'records'     => ['type' => 'array', 'items' => $ziel],
                                 'under'       => $ziel,
                                 'first'       => ['type' => 'boolean'],
                                 'class'       => ['type' => 'string'],
@@ -314,7 +316,7 @@ final class ModelAbilities
         wp_register_ability('taxmod/write-data', [
             'label'               => __('Write records', 'taxmod'),
             'description'         => __(
-                'Like taxmod/apply, but only for data: create_record, set_values, remove_record, move_record, move_part, reorder_values, duplicate_record on user records, and undo_act {act} for a change that wrote records only. Nodes, fields and settings cannot be changed here. One change number, all or nothing; "ref" and "@ref" work as in apply.',
+                'Like taxmod/apply, but only for data: create_record, set_values, remove_record, make_variants, add_variant, merge_record, move_record, move_part, reorder_values, duplicate_record on user records, and undo_act {act} for a change that wrote records only. Nodes, fields and settings cannot be changed here. One change number, all or nothing; "ref" and "@ref" work as in apply.',
                 'taxmod'
             ),
             'category'            => self::CATEGORY,
@@ -341,6 +343,10 @@ final class ModelAbilities
                                 'values'    => ['type' => 'object'],
                                 'own_value' => ['type' => 'string'],
                                 'locale'    => ['type' => 'string'],
+                                // D-1478 make_variants, D-1480 merge_record.
+                                'records'   => ['type' => 'array', 'items' => $ziel],
+                                'from'      => $ziel,
+                                'into'      => $ziel,
                             ],
                             'required'   => ['op'],
                             'additionalProperties' => false,
@@ -1247,7 +1253,7 @@ final class ModelAbilities
         $op = (string) ($change['op'] ?? '');
 
         if (! in_array($op, self::DATA_OPS, true)) {
-            throw new \InvalidArgumentException("{$op} changes the model; only create_record, set_values, remove_record, move_record, move_part, reorder_values, duplicate_record and undo_act are allowed here.");
+            throw new \InvalidArgumentException("{$op} changes the model; only create_record, set_values, remove_record, make_variants, add_variant, merge_record, move_record, move_part, reorder_values, duplicate_record and undo_act are allowed here.");
         }
 
         if (isset($change['record_type']) && (string) $change['record_type'] !== RecordType::User->value) {
@@ -1255,8 +1261,17 @@ final class ModelAbilities
         }
 
         // *move_part touches two records, the part and its new head; both must be user records. undo_act checks its rows itself.*
-        foreach (in_array($op, ['create_record', 'undo_act'], true) ? [] : ($op === 'move_part' ? ['part', 'to'] : ['record']) as $key) {
-            $recordId = $this->resolve($change[$key] ?? null, $refs, $key);
+        // *make_variants and merge_record name their records under their own keys; every one must be a user record (D-1478, D-1480).*
+        $named = match (true) {
+            in_array($op, ['create_record', 'undo_act'], true) => [],
+            $op === 'move_part'                               => [['part', $change['part'] ?? null], ['to', $change['to'] ?? null]],
+            $op === 'merge_record'                            => [['from', $change['from'] ?? null], ['into', $change['into'] ?? null]],
+            $op === 'make_variants'                           => array_map(static fn (mixed $one): array => ['records', $one], is_array($change['records'] ?? null) ? $change['records'] : []),
+            default                                           => [['record', $change['record'] ?? null]],
+        };
+
+        foreach ($named as [$key, $one]) {
+            $recordId = $this->resolve($one, $refs, $key);
             $record   = $this->screen()->entries()->find($recordId) ?? throw new \InvalidArgumentException("No record {$recordId}.");
 
             if ($record->recordType !== RecordType::User) {
