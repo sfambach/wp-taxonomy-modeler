@@ -208,6 +208,21 @@ final class InMemoryRecords implements RecordRepository
         ));
     }
 
+    public function nodeReferrerCounts(array $nodeIds): array
+    {
+        $aus = [];
+
+        foreach (array_map('intval', $nodeIds) as $id) {
+            $anzahl = count($this->nodeReferrers($id));
+
+            if ($anzahl > 0) {
+                $aus[$id] = $anzahl;
+            }
+        }
+
+        return $aus;
+    }
+
     public function referrersOfMany(array $recordIds): array
     {
         $aus = [];

@@ -58,6 +58,11 @@ final class ImpossibleMove extends DomainError
         return new self(sprintf('«%s» cannot be merged: %s', $from, $why));
     }
 
+    public static function constantNotRemovable(string $name, string $why): self
+    {
+        return new self(sprintf('«%s» cannot be deleted: %s', $name, $why));
+    }
+
     public static function notTheSameField(string $from, string $into): self
     {
         return new self(sprintf('«%s» and «%s» do not point at the same target, so one cannot take the other\'s values.', $from, $into));
