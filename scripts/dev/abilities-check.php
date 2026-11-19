@@ -477,6 +477,16 @@ $abgewiesen   = $daten?->execute(['changes' => [
 ]]);
 check('nach einem abgewiesenen Schritt bleibt kein Satz stehen', is_wp_error($abgewiesen) && count($node->execute(['node' => $ergebnis['refs']['i']])['records'] ?? []) === $saetzeVorher);
 
+// D-1478/D-1480: the record ops of the variants and the merge pass the input schema of write-data (Prüftor 19.11.: «records» was refused).
+foreach ([
+    'make_variants' => ['op' => 'make_variants', 'records' => [$einstellung, $einstellung]],
+    'add_variant'   => ['op' => 'add_variant', 'record' => $einstellung, 'values' => []],
+    'merge_record'  => ['op' => 'merge_record', 'from' => $einstellung, 'into' => $einstellung],
+] as $op => $change) {
+    $antwort = $daten?->execute(['changes' => [$change]]);
+    check("write-data nimmt {$op} an (Schema) und weist nur den Einstellungssatz ab", is_wp_error($antwort) && str_contains($antwort->get_error_message(), 'only user records'), is_wp_error($antwort) ? $antwort->get_error_message() : 'kein Fehler');
+}
+
 wp_set_current_user(0);
 check('ein Gast darf keine Sätze schreiben', is_wp_error($daten?->execute(['changes' => [['op' => 'create_record', 'node' => $ergebnis['refs']['i']]]])));
 wp_set_current_user((int) ($admin[0] ?? 1));

@@ -74,6 +74,9 @@ final class ModelAbilities
         'move_field' => '{node, field, to} — declares the field at another node, values stay; refused if a record with values would end up outside it',
         'retarget_field' => '{node, field, target, drop_values?} — points the field at another node and keeps its kind; refused while stored values would not fit the new target (a plain value on a part field or the reverse), unless drop_values: true removes them (D-1371)',
         'drop_unfit_values' => '{node, field} — removes the stored values of the field that do not fit its target, e.g. numbers left on a field that now holds unit-value parts (D-1371)',
+        'make_variants' => '{records} — records of one node become the variants of a new parent: the parent takes the values they share, each keeps its «Je Variante» values, id, stock and labels; refused naming field and records where they differ elsewhere, or where one already is or has a variant; the node needs a field with «Variante von»; one change number (D-1478)',
+        'add_variant' => '{record, values?} — a new variant beside record (of its parent, of itself when it has variants, else record first becomes the only variant of a new parent); values only on «Je Variante» fields (D-1478)',
+        'merge_record' => '{from, into} — a doubled record: every reference to from points at into, a reference that would then stand twice falls, from and the modules\' own records of it (Lager-Stammsatz) go to the trash; one change number. Refused unless both stand in the same node, where from holds a value into lacks or holds differently (fields named), where a module vetoes, or where a taxmod/record block in a post names from (post ids named). The answer names moved per field, dropped, trashed (D-1480)',
         'merge_constant' => '{from, into} — a doubled constant: every value (records and settings) that chose from chooses into, a value that would then stand twice in the same field falls, from goes to the trash; one change number, so undo_act takes it back. Refused if from has children, is a field target, or a field holding it cannot choose into (retarget_field first) (D-1458)',
         'merge_field' => '{node, field, into, under?, first?} — moves the values of the field onto another field with the same target and parks it; refused if a record would end up outside «into» or already holds values there; with under only records below that node, and the field stays; with first the values go to the front of the other field\'s list, its own values move back and a value already there stands only once (D-1205)',
         'create_record' => '{node, record_type?, values?, locale?} — values as for set_values, written in the same act',
@@ -109,10 +112,14 @@ final class ModelAbilities
     // D-1073: moving a record is data too — the stock's material page moves a material to another group.
     // D-1098: a part changing its head is data too — the stock moves a purchase between a requirement and a supplier draft.
     // D-1135: copying a record is data too — the stock copies a material and a storage place.
-    private const DATA_OPS = ['create_record', 'set_values', 'remove_record', 'move_record', 'move_part', 'reorder_values', 'duplicate_record', 'undo_act'];
+    // D-1478: making variants changes records only — the stock asks it of its own material list.
+    private const DATA_OPS = ['create_record', 'set_values', 'remove_record', 'make_variants', 'add_variant', 'merge_record', 'move_record', 'move_part', 'reorder_values', 'duplicate_record', 'undo_act'];
 
     /** Whether the running change list came through `write-data` — an undo there may only take back record rows (D-1410). */
     private bool $onlyRecords = false;
+
+    /** @var array{moved: array<int, int>, dropped: int, trashed: list<int>}|null what the last merge_record did, for its answer line (D-1480) */
+    private ?array $merged = null;
 
     /**
      * @param \Closure(): NodesScreen $screen Erst beim Ausführen gebaut — das Registrieren läuft in jeder Anfrage.
@@ -211,7 +218,7 @@ final class ModelAbilities
         wp_register_ability('taxmod/apply', [
             'label'               => __('Change the model', 'taxmod'),
             'description'         => __(
-                'Applies a list of changes as one act (one change number, all or nothing). The answer names its change number as "act"; undo_act {act} takes a change back. Ops: create_node, rename_node, trash_node, trash_unused_constant, move_node, add_field, rename_field, remove_field, move_field, retarget_field, merge_field, create_record, set_values, remove_record, move_part, reorder_values, duplicate_record, set_kind, set_multiplicity, move_record, set_list, set_label, set_addons, set_setting, hide_field. Fields and rules of one op: taxmod/help {op}. Any op may carry "ref"; later ops use "@ref" in place of an id. Values are typed as on the admin screen. brief: true answers with the count and the refs only. dry_run: true writes nothing and answers what each merge_field would move (records, both, duplicates); only merge_field.',
+                'Applies a list of changes as one act (one change number, all or nothing). The answer names its change number as "act"; undo_act {act} takes a change back. Ops: create_node, rename_node, trash_node, trash_unused_constant, move_node, add_field, rename_field, remove_field, move_field, retarget_field, merge_field, create_record, set_values, remove_record, make_variants, add_variant, merge_record, move_part, reorder_values, duplicate_record, set_kind, set_multiplicity, move_record, set_list, set_label, set_addons, set_setting, hide_field. Fields and rules of one op: taxmod/help {op}. Any op may carry "ref"; later ops use "@ref" in place of an id. Values are typed as on the admin screen. brief: true answers with the count and the refs only. dry_run: true writes nothing and answers what each merge_field would move (records, both, duplicates); only merge_field.',
                 'taxmod'
             ),
             'category'            => self::CATEGORY,
@@ -225,7 +232,7 @@ final class ModelAbilities
                         'items'    => [
                             'type'       => 'object',
                             'properties' => [
-                                'op'          => ['type' => 'string', 'enum' => ['create_node', 'rename_node', 'set_class', 'trash_node', 'trash_unused_constant', 'move_node', 'add_field', 'rename_field', 'remove_field', 'move_field', 'merge_field', 'merge_constant', 'retarget_field', 'drop_unfit_values', 'create_record', 'set_values', 'remove_record', 'move_record', 'move_part', 'reorder_values', 'duplicate_record', 'set_kind', 'set_multiplicity', 'set_list', 'set_setting', 'hide_field', 'set_label', 'set_addons', 'undo_act']],
+                                'op'          => ['type' => 'string', 'enum' => ['create_node', 'rename_node', 'set_class', 'trash_node', 'trash_unused_constant', 'move_node', 'add_field', 'rename_field', 'remove_field', 'move_field', 'merge_field', 'merge_constant', 'retarget_field', 'drop_unfit_values', 'create_record', 'set_values', 'remove_record', 'make_variants', 'add_variant', 'merge_record', 'move_record', 'move_part', 'reorder_values', 'duplicate_record', 'set_kind', 'set_multiplicity', 'set_list', 'set_setting', 'hide_field', 'set_label', 'set_addons', 'undo_act']],
                                 'act'         => ['type' => 'integer', 'minimum' => 1],
                                 'ref'         => ['type' => 'string', 'pattern' => '^[A-Za-z0-9_-]+$'],
                                 'name'        => ['type' => 'string'],
@@ -238,7 +245,9 @@ final class ModelAbilities
                                 'drop'        => ['type' => 'boolean'],
                                 'field'       => $ziel,
                                 'to'          => $ziel,
+                                'from'        => $ziel,
                                 'into'        => $ziel,
+                                'records'     => ['type' => 'array', 'items' => $ziel],
                                 'under'       => $ziel,
                                 'first'       => ['type' => 'boolean'],
                                 'class'       => ['type' => 'string'],
@@ -307,7 +316,7 @@ final class ModelAbilities
         wp_register_ability('taxmod/write-data', [
             'label'               => __('Write records', 'taxmod'),
             'description'         => __(
-                'Like taxmod/apply, but only for data: create_record, set_values, remove_record, move_record, move_part, reorder_values, duplicate_record on user records, and undo_act {act} for a change that wrote records only. Nodes, fields and settings cannot be changed here. One change number, all or nothing; "ref" and "@ref" work as in apply.',
+                'Like taxmod/apply, but only for data: create_record, set_values, remove_record, make_variants, add_variant, merge_record, move_record, move_part, reorder_values, duplicate_record on user records, and undo_act {act} for a change that wrote records only. Nodes, fields and settings cannot be changed here. One change number, all or nothing; "ref" and "@ref" work as in apply.',
                 'taxmod'
             ),
             'category'            => self::CATEGORY,
@@ -334,6 +343,10 @@ final class ModelAbilities
                                 'values'    => ['type' => 'object'],
                                 'own_value' => ['type' => 'string'],
                                 'locale'    => ['type' => 'string'],
+                                // D-1478 make_variants, D-1480 merge_record.
+                                'records'   => ['type' => 'array', 'items' => $ziel],
+                                'from'      => $ziel,
+                                'into'      => $ziel,
                             ],
                             'required'   => ['op'],
                             'additionalProperties' => false,
@@ -900,7 +913,8 @@ final class ModelAbilities
                         $refs[(string) $change['ref']] = $id;
                     }
 
-                    $ergebnis[] = ['op' => (string) $change['op'], 'id' => $id];
+                    $ergebnis[] = ['op' => (string) $change['op'], 'id' => $id] + ($this->merged === null ? [] : ['merged' => $this->merged]);
+                    $this->merged = null;
                 }
             });
 
@@ -1067,6 +1081,39 @@ final class ModelAbilities
 
                 return $recordId;
 
+            case 'make_variants':
+                // D-1478: «Als Varianten zusammenfassen» — refused with field and records named where they differ outside «Je Variante».
+                return $screen->makeVariants(array_map(fn (mixed $one): int => $this->resolve($one, $refs, 'records'), is_array($change['records'] ?? null) ? $change['records'] : []));
+
+            case 'add_variant':
+                // D-1478: «Variante anlegen» at a record; its own values in the same act.
+                $variant = $screen->addVariant($at('record'));
+
+                if (is_array($change['values'] ?? null) && $change['values'] !== []) {
+                    $this->applyOne(['op' => 'set_values', 'record' => $variant, 'values' => $change['values']], $refs);
+                }
+
+                return $variant;
+
+            case 'merge_record':
+                // D-1480: a post block naming from would show nothing afterwards — refused with the post ids, never rewritten.
+                $from  = $at('from');
+                $posts = [];
+
+                foreach ($this->blockUsage()['rows'] as $row) {
+                    if ((int) $row['record'] === $from || in_array($from, array_map('intval', explode(',', (string) $row['records'])), true)) {
+                        $posts[(int) $row['post']] = true;
+                    }
+                }
+
+                if ($posts !== []) {
+                    throw new \InvalidArgumentException(sprintf('#%d is named by a taxmod/record block in post %s — change the block first.', $from, implode(', ', array_keys($posts))));
+                }
+
+                $this->merged = $screen->mergeRecords($from, $at('into'));
+
+                return $at('into');
+
             case 'remove_record':
                 $recordId = $at('record');
                 $screen->entries()->removeRecord($recordId);
@@ -1206,7 +1253,7 @@ final class ModelAbilities
         $op = (string) ($change['op'] ?? '');
 
         if (! in_array($op, self::DATA_OPS, true)) {
-            throw new \InvalidArgumentException("{$op} changes the model; only create_record, set_values, remove_record, move_record, move_part, reorder_values, duplicate_record and undo_act are allowed here.");
+            throw new \InvalidArgumentException("{$op} changes the model; only create_record, set_values, remove_record, make_variants, add_variant, merge_record, move_record, move_part, reorder_values, duplicate_record and undo_act are allowed here.");
         }
 
         if (isset($change['record_type']) && (string) $change['record_type'] !== RecordType::User->value) {
@@ -1214,8 +1261,17 @@ final class ModelAbilities
         }
 
         // *move_part touches two records, the part and its new head; both must be user records. undo_act checks its rows itself.*
-        foreach (in_array($op, ['create_record', 'undo_act'], true) ? [] : ($op === 'move_part' ? ['part', 'to'] : ['record']) as $key) {
-            $recordId = $this->resolve($change[$key] ?? null, $refs, $key);
+        // *make_variants and merge_record name their records under their own keys; every one must be a user record (D-1478, D-1480).*
+        $named = match (true) {
+            in_array($op, ['create_record', 'undo_act'], true) => [],
+            $op === 'move_part'                               => [['part', $change['part'] ?? null], ['to', $change['to'] ?? null]],
+            $op === 'merge_record'                            => [['from', $change['from'] ?? null], ['into', $change['into'] ?? null]],
+            $op === 'make_variants'                           => array_map(static fn (mixed $one): array => ['records', $one], is_array($change['records'] ?? null) ? $change['records'] : []),
+            default                                           => [['record', $change['record'] ?? null]],
+        };
+
+        foreach ($named as [$key, $one]) {
+            $recordId = $this->resolve($one, $refs, $key);
             $record   = $this->screen()->entries()->find($recordId) ?? throw new \InvalidArgumentException("No record {$recordId}.");
 
             if ($record->recordType !== RecordType::User) {

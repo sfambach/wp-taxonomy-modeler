@@ -440,7 +440,7 @@ final class CalculationWriter
                 return false;
             }
 
-            $this->data->put($satzId, $kante->id, $wert);
+            $this->data->putDerived($satzId, $kante->id, $wert);
 
             return true;
         }
@@ -494,7 +494,7 @@ final class CalculationWriter
 
         foreach ($soll as $feld => $wert) {
             if (! isset($vorher[$feld]) || ! $vorher[$feld]->equals($wert)) {
-                $this->data->put($teilId, $feld, $wert);
+                $this->data->putDerived($teilId, $feld, $wert);
             }
         }
 

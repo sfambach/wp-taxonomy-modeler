@@ -2273,6 +2273,221 @@ final class RenderingTest extends TestCase
         self::assertSame('IC-Sockel · DIP-14', $steht);
     }
 
+    /** D-1478: a variant is named after its parent plus the words of its own «Je Variante» fields; a parent's change renames it. */
+    #[Test]
+    public function a_variant_is_named_after_its_parent_and_its_own_values(): void
+    {
+        $this->typeNodes->remember(\Taxmod\Core\Model\SimpleType::Summary, $this->lookalike('Summary')->id);
+        $display     = $this->thing('Display');
+        $text        = $this->type('Text');
+        $bezeichnung = $this->editor->addField($display->id, $text->id, 'Bezeichnung');
+        $controller  = $this->editor->addField($display->id, $text->id, 'Controller');
+        $farbe       = $this->editor->addField($display->id, $text->id, 'Farbe');
+        $vonFeld     = $this->editor->addField($display->id, $display->id, 'Variante von', RelationKind::Aggregation);
+
+        $vater   = $this->records->add(new NodeRecord(0, $display->id, 1, '2026-11-19 08:00:00', RecordType::User));
+        $weiss   = $this->records->add(new NodeRecord(0, $display->id, 1, '2026-11-19 08:00:00', RecordType::User));
+        $einfach = $this->records->add(new NodeRecord(0, $display->id, 1, '2026-11-19 08:00:00', RecordType::User));
+        $this->records->putValue(RelationRecord::direct($vater, $controller->id, TypedValue::ofText('SSD1306')));
+        $this->records->putValue(RelationRecord::direct($weiss, $farbe->id, TypedValue::ofText('weiß')));
+        $this->records->putValue(RelationRecord::direct($weiss, $vonFeld->id, TypedValue::ofRecordReference($vater)));
+        $this->records->putValue(RelationRecord::direct($einfach, $vonFeld->id, TypedValue::ofRecordReference($vater)));
+
+        $editor = new SettingsEditor($this->settings, $this->nodes, $this->resolver, ShippedRenderers::registry(), ShippedConverters::registry());
+        $editor->setMembers($display, SummaryRenderer::FIELDS, [$controller->id], $bezeichnung);
+        $this->neuZeichnen();
+
+        $addons = new class ([$vonFeld->id => ['variant_of'], $farbe->id => ['variant']]) implements \Taxmod\Core\Port\FieldAddons {
+            /** @param array<int, list<string>> $names */
+            public function __construct(private readonly array $names)
+            {
+            }
+
+            public function addonNamesAt(array $relations): array
+            {
+                return array_intersect_key($this->names, array_flip(array_map(static fn ($r): int => $r->id, $relations)));
+            }
+        };
+        $daten   = new DataEntry($this->records, $this->relations, $this->nodes, $this->framework, new \Taxmod\Tests\Core\Fake\FixedClock(), new \Taxmod\Tests\Core\Fake\RecordedChanges(), null, $addons);
+        $schreib = new \Taxmod\Core\Service\SummaryWriter($this->records, $this->relations, $this->nodes, $this->framework, $this->typeNodes, $this->rendering, $daten);
+        $name    = function (int $satz) use ($bezeichnung): string {
+            foreach ($this->records->valuesOf($satz) as $zeile) {
+                if ($zeile->relationId === $bezeichnung->id) {
+                    return (string) $zeile->value->text;
+                }
+            }
+
+            return '';
+        };
+
+        $schreib->refresh([$vater]);
+
+        self::assertSame('SSD1306', $name($vater));
+        self::assertSame('SSD1306 · weiß', $name($weiss), 'parent name plus its own colour');
+        self::assertSame('SSD1306', $name($einfach), 'a variant without own words carries the parent name');
+    }
+
+    /** D-1478: «Als Varianten zusammenfassen» — a new parent takes the shared values, a difference outside «Je Variante» refuses. */
+    #[Test]
+    public function records_become_variants_of_a_new_parent_with_their_shared_values(): void
+    {
+        $this->typeNodes->remember(\Taxmod\Core\Model\SimpleType::Summary, $this->lookalike('Summary')->id);
+        $display     = $this->thing('Display');
+        $text        = $this->type('Text');
+        $bezeichnung = $this->editor->addField($display->id, $text->id, 'Bezeichnung');
+        $controller  = $this->editor->addField($display->id, $text->id, 'Controller');
+        $farbe       = $this->editor->addField($display->id, $text->id, 'Farbe');
+        $vonFeld     = $this->editor->addField($display->id, $display->id, 'Variante von', RelationKind::Aggregation);
+        $satz        = function (array $werte) use ($display): int {
+            $id = $this->records->add(new NodeRecord(0, $display->id, 1, '2026-11-19 08:00:00', RecordType::User));
+
+            foreach ($werte as $feld => $wert) {
+                $this->records->putValue(RelationRecord::direct($id, $feld, TypedValue::ofText($wert)));
+            }
+
+            return $id;
+        };
+        $blau  = $satz([$controller->id => 'SSD1306', $farbe->id => 'blau', $bezeichnung->id => 'SSD1306 blau']);
+        $weiss = $satz([$controller->id => 'SSD1306', $farbe->id => 'weiß', $bezeichnung->id => 'SSD1306 weiß']);
+        $leer  = $satz([$controller->id => 'SSD1306', $farbe->id => 'gelb']);
+        $ohne  = $satz([$farbe->id => 'grün']);
+        $fremd = $satz([$controller->id => 'SH1106']);
+
+        $editor = new SettingsEditor($this->settings, $this->nodes, $this->resolver, ShippedRenderers::registry(), ShippedConverters::registry());
+        $editor->setMembers($display, SummaryRenderer::FIELDS, [$controller->id], $bezeichnung);
+        $this->neuZeichnen();
+
+        $addons = new class ([$vonFeld->id => ['variant_of'], $farbe->id => ['variant']]) implements \Taxmod\Core\Port\FieldAddons {
+            /** @param array<int, list<string>> $names */
+            public function __construct(private readonly array $names)
+            {
+            }
+
+            public function addonNamesAt(array $relations): array
+            {
+                return array_intersect_key($this->names, array_flip(array_map(static fn ($r): int => $r->id, $relations)));
+            }
+        };
+        $daten = new DataEntry($this->records, $this->relations, $this->nodes, $this->framework, new \Taxmod\Tests\Core\Fake\FixedClock(), new \Taxmod\Tests\Core\Fake\RecordedChanges(), null, $addons);
+        $macher = new \Taxmod\Core\Service\VariantMaker($daten, $this->relations, $this->nodes, $this->framework, $this->typeNodes, $this->rendering);
+        $wert   = function (int $id, int $feld): ?string {
+            foreach ($this->records->valuesOf($id) as $zeile) {
+                if ($zeile->relationId === $feld) {
+                    return (string) ($zeile->value->text ?? $zeile->value->reference);
+                }
+            }
+
+            return null;
+        };
+
+        try {
+            $macher->make([$blau, $fremd]);
+            self::fail('a different controller is refused');
+        } catch (\Taxmod\Core\Exception\NotYetStorable $e) {
+            self::assertStringContainsString('«Controller» differs between #' . $blau . ' and #' . $fremd, $e->getMessage());
+        }
+
+        try {
+            $macher->make([$blau, $ohne]);
+            self::fail('an empty controller beside a filled one is refused, not inherited');
+        } catch (\Taxmod\Core\Exception\NotYetStorable $e) {
+            self::assertStringContainsString('«Controller» is filled at #' . $blau . ' and empty at #' . $ohne, $e->getMessage());
+        }
+
+        $vater = $macher->make([$blau, $weiss, $leer]);
+
+        self::assertSame('SSD1306', $wert($vater, $controller->id), 'the parent takes the shared value');
+        self::assertNull($wert($vater, $farbe->id), 'a «Je Variante» value stays with the variant');
+        self::assertNull($wert($blau, $controller->id), 'cleared at the variant, it is read from the parent');
+        self::assertSame('blau', $wert($blau, $farbe->id));
+        self::assertSame((string) $vater, $wert($leer, $vonFeld->id));
+
+        $this->expectException(\Taxmod\Core\Exception\NotYetStorable::class);
+        $macher->make([$blau]);
+    }
+
+    /** D-1480: a doubled record merged — pointers repointed, a module's own record to the trash, nothing of from's own lost silently. */
+    #[Test]
+    public function a_doubled_record_is_merged_and_nothing_of_its_own_is_lost(): void
+    {
+        $this->typeNodes->remember(\Taxmod\Core\Model\SimpleType::Summary, $this->lookalike('Summary')->id);
+        $display    = $this->thing('Display');
+        $text       = $this->type('Text');
+        $controller = $this->editor->addField($display->id, $text->id, 'Controller');
+        $farbe      = $this->editor->addField($display->id, $text->id, 'Farbe');
+        $kauf       = $this->thing('Kauf');
+        $wovon      = $this->editor->addField($kauf->id, $display->id, 'Material', RelationKind::Aggregation);
+        $lager      = $this->thing('Lager');
+        $furWas     = $this->editor->addField($lager->id, $display->id, 'Material', RelationKind::Aggregation);
+        $satz       = function (int $node, array $werte) {
+            $id = $this->records->add(new NodeRecord(0, $node, 1, '2026-11-19 08:00:00', RecordType::User));
+
+            foreach ($werte as $feld => $wert) {
+                $this->records->putValue(RelationRecord::direct($id, $feld, is_int($wert) ? TypedValue::ofRecordReference($wert) : TypedValue::ofText($wert)));
+            }
+
+            return $id;
+        };
+        $bleibt  = $satz($display->id, [$controller->id => 'PCD8544']);
+        $doppelt = $satz($display->id, [$controller->id => 'PCD8544']);
+        $rot     = $satz($display->id, [$farbe->id => 'rot']);
+        $k1      = $satz($kauf->id, [$wovon->id => $doppelt]);
+        $lBleibt = $satz($lager->id, [$furWas->id => $bleibt]);
+        $lWeg    = $satz($lager->id, [$furWas->id => $doppelt]);
+        $this->neuZeichnen();
+
+        $modul = new class ($lWeg) implements \Taxmod\Core\Port\RecordMergeParticipant {
+            public string $veto = '';
+
+            public function __construct(private readonly int $weg)
+            {
+            }
+
+            public function onMerge(int $from, int $into): array
+            {
+                return $this->veto !== '' ? ['veto' => $this->veto] : ['trash' => [$this->weg]];
+            }
+        };
+        $buch   = new \Taxmod\Tests\Core\Fake\RecordedChanges();
+        $daten  = new DataEntry($this->records, $this->relations, $this->nodes, $this->framework, new \Taxmod\Tests\Core\Fake\FixedClock(), $buch);
+        $merger = new \Taxmod\Core\Service\RecordMerger($this->records, $daten, $this->relations, $this->nodes, $this->framework, $this->typeNodes, $this->rendering, $buch, [$modul]);
+
+        try {
+            $merger->merge($rot, $bleibt);
+            self::fail('a colour #bleibt lacks is refused');
+        } catch (\Taxmod\Core\Exception\NotYetStorable $e) {
+            self::assertStringContainsString('«Farbe»', $e->getMessage());
+        }
+
+        $modul->veto = 'Mindestbestand differs';
+
+        try {
+            $merger->merge($doppelt, $bleibt);
+            self::fail('a module veto refuses');
+        } catch (\Taxmod\Core\Exception\NotYetStorable $e) {
+            self::assertStringContainsString('Mindestbestand differs', $e->getMessage());
+        }
+
+        $modul->veto = '';
+        $antwort     = $merger->merge($doppelt, $bleibt);
+        $zeigt       = function (int $id, int $feld): ?int {
+            foreach ($this->records->valuesOf($id) as $zeile) {
+                if ($zeile->relationId === $feld) {
+                    return $zeile->value->reference;
+                }
+            }
+
+            return null;
+        };
+
+        self::assertSame($bleibt, $zeigt($k1, $wovon->id), 'the purchase points at the record that stays');
+        self::assertSame([$wovon->id => 1], $antwort['moved']);
+        self::assertSame([$lWeg, $doppelt], $antwort['trashed']);
+        self::assertNull($this->records->find($doppelt), 'the double went to the trash');
+        self::assertNull($this->records->find($lWeg), 'its stock record went with it');
+        self::assertSame($bleibt, $zeigt($lBleibt, $furWas->id));
+    }
+
     /** ⚠️ *D-999: die Feldwahl eines Wählers an einer Aggregation setzt nichts zusammen — sonst stand «Gerber» als Text in den Quellen einer Quelle.* */
     #[Test]
     public function a_field_choice_at_an_aggregation_is_a_chooser_not_a_composition(): void

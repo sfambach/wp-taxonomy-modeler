@@ -1238,6 +1238,69 @@ final class NodesScreen
         return $this->data;
     }
 
+    /** D-1478: the records become the variants of a new parent; answers the parent. One act when called inside the apply bracket. */
+    public function makeVariants(array $recordIds): int
+    {
+        return (new \Taxmod\Core\Service\VariantMaker(
+            $this->data,
+            new \Taxmod\WordPress\Persistence\WpdbRelationRepository(),
+            new \Taxmod\WordPress\Persistence\WpdbNodeRepository(),
+            $this->framework,
+            $this->types ?? throw new \LogicException('No type nodes.'),
+            $this->rendering
+        ))->make($recordIds);
+    }
+
+    /**
+     * D-1480: a doubled record merged into the one that stays; the modules answer through the filter, applied in the same act.
+     *
+     * @return array{moved: array<int, int>, dropped: int, trashed: list<int>}
+     */
+    public function mergeRecords(int $from, int $into): array
+    {
+        $answer = (new \Taxmod\Core\Service\RecordMerger(
+            new \Taxmod\WordPress\Persistence\WpdbRecordRepository(),
+            $this->data,
+            new \Taxmod\WordPress\Persistence\WpdbRelationRepository(),
+            new \Taxmod\WordPress\Persistence\WpdbNodeRepository(),
+            $this->framework,
+            $this->types ?? throw new \LogicException('No type nodes.'),
+            $this->rendering,
+            $this->changelog,
+            [new \Taxmod\WordPress\FilterMergeParticipant()]
+        ))->merge($from, $into);
+
+        \Taxmod\WordPress\Persistence\RecordReviews::clear($from);
+
+        return $answer;
+    }
+
+    /**
+     * D-1478: a new variant beside `$recordId` — of its parent when it is a variant, of itself when it has variants, else the
+     * record first becomes the only variant of a new parent. Answers the new variant; its values come in a set_values after.
+     */
+    public function addVariant(int $recordId): int
+    {
+        $record    = $this->data->find($recordId) ?? throw new \InvalidArgumentException("No record {$recordId}.");
+        $variantOf = $this->data->variantFieldsOf($record->nodeId)['variantOf'];
+        $parent    = 0;
+
+        foreach ($this->data->valuesOf($recordId) as $row) {
+            $parent = $row->relationId === $variantOf && $row->value->reference !== null ? $row->value->reference : $parent;
+        }
+
+        if ($parent === 0) {
+            $parent = in_array($variantOf, array_map(static fn ($row): int => $row->relationId, $this->data->referrersOf($recordId)), true)
+                ? $recordId
+                : $this->makeVariants([$recordId]);
+        }
+
+        $variant = $this->data->create($record->nodeId)->id;
+        $this->data->put($variant, $variantOf, \Taxmod\Core\Model\TypedValue::ofRecordReference($parent));
+
+        return $variant;
+    }
+
     public function render(): string
     {
         // ⚠️ *Beim Zeichnen merkt sich das Repository die Beschriftungen, die es gelesen hat — nur für diesen Lauf (D-814).*
@@ -2781,7 +2844,7 @@ final class NodesScreen
                 . '<h4>' . esc_html($title) . '</h4>'
                 . ($formId === '' ? '' : self::reviewNote($satz))
                 // D-1308: the buttons above the form, as the toolbar.
-                . ($formId === '' ? '' : $this->previewActs($selected, $satz, $formId) . $this->claimedRows($satz, $relations, $claimed))
+                . ($formId === '' ? '' : $this->previewActs($selected, $satz, $formId) . $this->variantsLine($selected, $satz) . $this->claimedRows($satz, $relations, $claimed))
                 . \Taxmod\WordPress\Draw\Markup::of($this->rendering->withPartActs(__('Add row', 'taxmod'), __('Remove this row', 'taxmod'), __('Add several', 'taxmod'), __('Insert a row below this one', 'taxmod'), __('Remove from this list — the record itself stays', 'taxmod'))->withRecordLinks(
                     // ⚠️ *Die Seite des Knotens, dem der Satz gehört, mit ihm in der Vorschau (D-852).*
                     fn (int $satz): string => $this->recordAddress($satz)
@@ -2897,8 +2960,42 @@ final class NodesScreen
             ),
             $satz === null ? '' : $this->recordTypeChoice($satz->recordType, $formId, $this->framework->branchOf($selected)),
             ControlMarkup::button(new Control('do', 'add_record', __('New record', 'taxmod'), __('Start a new record against this node and open it here', 'taxmod'), true, false, 'plus-alt2', $formId, address: Address::ofNode($selected->id))),
+            // D-1478: «Variante anlegen» where the node has a field «Variante von»; the new variant opens here to fill its own values.
+            $satz === null || $this->data->variantFieldsOf($selected->id)['variantOf'] === 0 ? '' : ControlMarkup::button(new Control('do', 'add_variant', __('New variant', 'taxmod'), __('Add a variant of this material: it reads every field from the parent except the ones marked «Je Variante»', 'taxmod'), true, false, 'networking', $formId, address: Address::ofRecord($selected->id, $recordId))),
             $this->moduleActions($selected->id, $recordId),
         ]) . '</div>';
+    }
+
+    /**
+     * D-1478: at a parent its variants, at a variant its parent — each a link that opens it here. One read for the links, one
+     * for the words (CD-7).
+     */
+    private function variantsLine(Node $selected, int $recordId): string
+    {
+        $variantOf = $recordId > 0 ? $this->data->variantFieldsOf($selected->id)['variantOf'] : 0;
+
+        if ($variantOf === 0) {
+            return '';
+        }
+
+        $parent = 0;
+
+        foreach ($this->data->valuesOf($recordId) as $row) {
+            $parent = $row->relationId === $variantOf && $row->value->reference !== null ? $row->value->reference : $parent;
+        }
+
+        $variants = $parent > 0 ? [] : $this->data->referrersVia($recordId, $variantOf);
+        $ids      = $parent > 0 ? [$parent] : $variants;
+
+        if ($ids === []) {
+            return '';
+        }
+
+        $words = $this->recordWords($ids, $selected->id);
+        $links = array_map(fn (int $id): string => '<a href="' . esc_url($this->recordAddress($id)) . '">#' . $id . ' ' . esc_html($words[$id] ?? '') . '</a>', $ids);
+
+        return '<p class="description taxmod-variants"><strong>' . esc_html($parent > 0 ? __('Variant of', 'taxmod') : __('Variants', 'taxmod')) . '</strong> '
+            . implode(' · ', $links) . '</p>';
     }
 
     /** The actions modules offer on this record, as link buttons beside the modeller's own (D-998). */
@@ -8104,6 +8201,9 @@ final class NodesScreen
             $acts->listen(ControlPressed::class, fn (ControlPressed $e): mixed => $e->answer($this->data->duplicate(
                     isset($_POST['node_record_id']) ? absint($_POST['node_record_id']) : 0
                 )), 'duplicate_record');
+            $acts->listen(ControlPressed::class, fn (ControlPressed $e): mixed => $e->answer($this->data->find($this->addVariant(
+                    isset($_POST['node_record_id']) ? absint($_POST['node_record_id']) : 0
+                ))), 'add_variant');
             $acts->listen(ControlPressed::class, fn (ControlPressed $e): mixed => $e->answer($this->claimed()->data->removeRecord(
                     isset($_POST['node_record_id']) ? absint($_POST['node_record_id']) : 0
                 )), 'delete_record');
@@ -8172,12 +8272,12 @@ final class NodesScreen
 
         // ⚠️ *Ein neuer Satz steht hinten — ohne diese Zeile landete er auf einer Seite, die niemand ansieht,
         // und «New record» sähe aus wie «nichts passiert» (D-763).*
-        if (in_array($do, ['add_record', 'add_example', 'duplicate_record'], true)) {
+        if (in_array($do, ['add_record', 'add_example', 'duplicate_record', 'add_variant'], true)) {
             $extra[self::RECORD_PAGE] = 'last';
         }
 
         // ⚠️ *Ein neuer Satz öffnet sich in der Vorschau, dort wird er ausgefüllt; ein gelöschter verlässt sie (D-785).*
-        if (in_array($do, ['add_record', 'duplicate_record'], true) && isset($outcome) && $outcome instanceof NodeRecord) {
+        if (in_array($do, ['add_record', 'duplicate_record', 'add_variant'], true) && isset($outcome) && $outcome instanceof NodeRecord) {
             $extra[self::PREVIEW_RECORD] = (string) $outcome->id;
         }
 

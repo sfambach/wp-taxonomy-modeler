@@ -209,6 +209,18 @@ final class NotYetStorable extends DomainError
         return new self(sprintf('«%s» is read from the parent #%d — change it there, or mark the field «Je Variante».', $attribute, $parent));
     }
 
+    /** D-1480: why `from` cannot be merged into `into`. */
+    public static function thatCannotMergeRecords(int $from, int $into, string $why): self
+    {
+        return new self(sprintf('#%d not merged into #%d: %s', $from, $into, $why));
+    }
+
+    /** D-1478: why these records cannot become the variants of one new parent. */
+    public static function thatCannotMakeVariants(string $why): self
+    {
+        return new self('No variants made: ' . $why);
+    }
+
     public static function thatCannotBeAVariant(int $record, int $parent, \Taxmod\Core\Model\VariantComplaint $why): self
     {
         return new self(sprintf('#%d cannot be a variant of #%d: %s', $record, $parent, match ($why) {
