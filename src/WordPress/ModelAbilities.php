@@ -282,7 +282,7 @@ final class ModelAbilities
         // His word 2026-11-19: «dass du das mal mitloggst, vielleicht für jede Seite … dann musst du nicht messen».
         wp_register_ability('taxmod/page-times', [
             'label'               => __('Read the page times', 'taxmod'),
-            'description'         => __('What the last Taxmod admin pages took: per page the calls, the middle and the longest time in ms and the middle count of database statements, slowest first; then the last calls themselves (limit, default 50, newest first) and the environment (PHP, OPcache, versions). Measurements only.', 'taxmod'),
+            'description'         => __('What the last Taxmod admin pages took: per page the calls, the middle and the longest time in ms and the middle count of database statements, slowest first; then the last calls themselves (limit, default 50, newest first) and the environment (PHP, OPcache, versions, what one empty database statement costs in microseconds). Per call also: ms until WordPress was loaded, until the page was drawn, and ms waiting for other servers. Measurements only.', 'taxmod'),
             'category'            => self::CATEGORY,
             'input_schema'        => [
                 'type'       => 'object',
@@ -1410,6 +1410,7 @@ final class ModelAbilities
                 'opcache'  => Admin\PageTimesLog::opcache(),
                 'database' => (string) $wpdb->db_version(),
                 'kept'     => count($entries),
+                'db_round_trip_us' => Persistence\Query::roundTripMicroseconds(),
             ],
             'pages'       => array_map(
                 static fn (array $took): array => ['last' => (string) wp_date('Y-m-d H:i:s', (int) $took['last'])] + $took,
@@ -1422,6 +1423,9 @@ final class ModelAbilities
                 'queries' => (int) ($e['q'] ?? 0),
                 'mb'      => (int) ($e['mb'] ?? 0),
                 'opcache' => (int) ($e['o'] ?? 0) === 1,
+                'loaded_ms' => (int) ($e['b'] ?? 0),
+                'drawn_ms'  => (int) ($e['r'] ?? 0),
+                'http_ms'   => (int) ($e['h'] ?? 0),
             ], array_reverse(array_slice($calls, -$limit))),
         ];
     }
