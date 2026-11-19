@@ -1956,7 +1956,7 @@ final class ModelEditor
             throw ImpossibleMove::constantNotRemovable($node->name, 'its uses cannot be read here');
         }
 
-        $verwendet = count($this->records->nodeReferrers($node->id));
+        $verwendet = $this->records->nodeReferrerCounts([$node->id])[$node->id] ?? 0;
 
         if ($verwendet > 0) {
             throw ImpossibleMove::constantNotRemovable($node->name, sprintf('%d value(s) still choose it — merge it into another instead', $verwendet));
