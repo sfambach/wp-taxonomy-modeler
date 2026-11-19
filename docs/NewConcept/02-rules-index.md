@@ -64,7 +64,7 @@ vermutlich im Fliesstext und sollte eine eigene Zeile bekommen.
 | **CD4** | Type everything that can be typed: properties, parameters, returns. mixed needs a reason in a comment. | [CLAUDE.md:65](../../CLAUDE.md) | 1 |
 | **CD5** | At the boundary, in this order, every time: capability check → nonce → validate → sanitize → act → escape on output. No exceptions, not even for ad… | [CLAUDE.md:66](../../CLAUDE.md) | 29 |
 | **CD6** | Custom tables: $wpdb->prefix . 'taxmod_<name>', created via dbDelta() on activation, guarded by a stored schema version option so upgrades are dete… | [CLAUDE.md:67](../../CLAUDE.md) | 21 |
-| **CD7** | No N+1. No SQL inside a loop, no recursive function that queries per level. Tree traversal is solved once, in one place, and every caller uses it. | [CLAUDE.md:68](../../CLAUDE.md) | 204 |
+| **CD7** | No N+1. No SQL inside a loop, no recursive function that queries per level. Tree traversal is solved once, in one place, and every caller uses it. | [CLAUDE.md:68](../../CLAUDE.md) | 205 |
 | **CD8** | Presentation code returns strings. No echo inside renderers, loops, shortcodes or hooks. Use ob_start() / ob_get_clean() only when a third-party AP… | [CLAUDE.md:69](../../CLAUDE.md) | 16 |
 | **CD9** | Names say what the thing is. Rename when the word lies. No abbreviations that need a lookup, and no data / info / manager / helper as a whole name. | [CLAUDE.md:70](../../CLAUDE.md) | 29 |
 | **CD10** | Errors: exceptions inside the core, translated to WP_Error at the boundary. Never a bare false to signal failure. Never silence an exception withou… | [CLAUDE.md:71](../../CLAUDE.md) | 8 |
@@ -222,9 +222,9 @@ vermutlich im Fliesstext und sollte eine eigene Zeile bekommen.
 
 | Regel | Was sie sagt | Steht in | Zitiert |
 |---|---|---|---|
-| **P1** | The nodes are to be stored relationally. | [50-wordpress-persistence.md:26](50-wordpress-persistence.md) | 7 |
-| **P2** | In addition, settings per node, stored generically in a settings table — a node may have settings. | [50-wordpress-persistence.md:27](50-wordpress-persistence.md) | 4 |
-| **P3** | Likewise a table for the relations. | [50-wordpress-persistence.md:28](50-wordpress-persistence.md) | 2 |
+| **P1** | The nodes are to be stored relationally. | [50-wordpress-persistence.md:26](50-wordpress-persistence.md) | 8 |
+| **P2** | In addition, settings per node, stored generically in a settings table — a node may have settings. | [50-wordpress-persistence.md:27](50-wordpress-persistence.md) | 5 |
+| **P3** | Likewise a table for the relations. | [50-wordpress-persistence.md:28](50-wordpress-persistence.md) | 3 |
 | **P4** | These are the base tables for storing the model data later: nodes, settings, relations. → amended to nodes, settings, labels, relations by D-019. | [50-wordpress-persistence.md:29](50-wordpress-persistence.md) | 16 |
 | **P5** | There will not be a database table per model. The data have to be stored some other way. | [50-wordpress-persistence.md:109](50-wordpress-persistence.md) | 9 |
 | **P6** | How exactly is not yet defined. | [50-wordpress-persistence.md:110](50-wordpress-persistence.md) | 1 |

@@ -313,6 +313,9 @@ final class Plugin
         // D-1235: the print jobs as abilities — the print thread reads what CUPS did and prints again.
         add_action('wp_abilities_api_init', static fn () => (new \Taxmod\WordPress\Printing\PrintAbilities())->register());
 
+        // D-1476: what every Taxmod page took, written down after the page is sent.
+        Admin\PageTimesLog::register();
+
         // ⚠️ **Ein Satz aus dem Modell im Beitrag** ([D-912](../../docs/NewConcept/90-decision-log.md)).
         add_action('init', static fn () => (new RecordBlock($plugin->screen(...), $plugin->file))->register());
         add_action('rest_api_init', static fn () => (new RecordBlock($plugin->screen(...), $plugin->file))->registerRoutes());

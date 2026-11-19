@@ -270,6 +270,24 @@ final class ModelAbilities
             'meta'                => ['public' => true, 'annotations' => ['readonly' => false, 'destructive' => false, 'idempotent' => false]],
         ]);
 
+        // His word 2026-11-19: «dass du das mal mitloggst, vielleicht für jede Seite … dann musst du nicht messen».
+        wp_register_ability('taxmod/page-times', [
+            'label'               => __('Read the page times', 'taxmod'),
+            'description'         => __('What the last Taxmod admin pages took: per page the calls, the middle and the longest time in ms and the middle count of database statements, slowest first; then the last calls themselves (limit, default 50, newest first) and the environment (PHP, OPcache, versions). Measurements only.', 'taxmod'),
+            'category'            => self::CATEGORY,
+            'input_schema'        => [
+                'type'       => 'object',
+                'properties' => [
+                    'limit' => ['type' => 'integer', 'minimum' => 0, 'maximum' => \Taxmod\Core\Service\PageTimes::KEEP, 'default' => 50],
+                    'page'  => ['type' => 'string', 'description' => __('Only calls of this page, as the summary names it.', 'taxmod')],
+                ],
+                'additionalProperties' => false,
+            ],
+            'execute_callback'    => fn (mixed $input = null) => $this->guarded(fn (): array => $this->pageTimes(is_array($input) ? $input : [])),
+            'permission_callback' => $this->allowedToRead(...),
+            'meta'                => ['public' => true, 'annotations' => ['readonly' => true, 'destructive' => false, 'idempotent' => true]],
+        ]);
+
         wp_register_ability('taxmod/help', [
             'label'               => __('Explain an op of apply', 'taxmod'),
             'description'         => __('What one op of taxmod/apply takes and refuses; without op, all of them.', 'taxmod'),
@@ -1288,6 +1306,42 @@ final class ModelAbilities
         }
 
         return $id;
+    }
+
+    /**
+     * @param array<string, mixed> $input
+     * @return array{environment: array<string, string|bool|int>, pages: array<string, array<string, int|string>>, calls: list<array<string, int|string|bool>>} times as the site's clock says them
+     */
+    private function pageTimes(array $input): array
+    {
+        global $wpdb;
+
+        $entries = Admin\PageTimesLog::entries();
+        $page    = (string) ($input['page'] ?? '');
+        $calls   = $page === '' ? $entries : array_values(array_filter($entries, static fn (array $e): bool => ($e['p'] ?? '') === $page));
+        $limit   = max(0, min(\Taxmod\Core\Service\PageTimes::KEEP, (int) ($input['limit'] ?? 50)));
+
+        return [
+            'environment' => [
+                'modeller' => Plugin::VERSION,
+                'php'      => PHP_VERSION,
+                'opcache'  => Admin\PageTimesLog::opcache(),
+                'database' => (string) $wpdb->db_version(),
+                'kept'     => count($entries),
+            ],
+            'pages'       => array_map(
+                static fn (array $took): array => ['last' => (string) wp_date('Y-m-d H:i:s', (int) $took['last'])] + $took,
+                \Taxmod\Core\Service\PageTimes::summary($entries)
+            ),
+            'calls'       => $limit === 0 ? [] : array_map(static fn (array $e): array => [
+                'at'      => (string) wp_date('Y-m-d H:i:s', (int) ($e['t'] ?? 0)),
+                'page'    => (string) ($e['p'] ?? ''),
+                'ms'      => (int) ($e['ms'] ?? 0),
+                'queries' => (int) ($e['q'] ?? 0),
+                'mb'      => (int) ($e['mb'] ?? 0),
+                'opcache' => (int) ($e['o'] ?? 0) === 1,
+            ], array_reverse(array_slice($calls, -$limit))),
+        ];
     }
 
     private function node(int $id): Node
