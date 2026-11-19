@@ -1241,7 +1241,7 @@ final class NodesScreen
         return $this->data;
     }
 
-    /** D-1478: the records become the variants of a new parent; answers the parent. One act when called inside the apply bracket. */
+    /** D-1482: the records become the variants of a new parent; answers the parent. One act when called inside the apply bracket. */
     public function makeVariants(array $recordIds): int
     {
         return (new \Taxmod\Core\Service\VariantMaker(
@@ -1279,7 +1279,7 @@ final class NodesScreen
     }
 
     /**
-     * D-1478: a new variant beside `$recordId` — of its parent when it is a variant, of itself when it has variants, else the
+     * D-1482: a new variant beside `$recordId` — of its parent when it is a variant, of itself when it has variants, else the
      * record first becomes the only variant of a new parent. Answers the new variant; its values come in a set_values after.
      */
     public function addVariant(int $recordId): int
@@ -2963,14 +2963,14 @@ final class NodesScreen
             ),
             $satz === null ? '' : $this->recordTypeChoice($satz->recordType, $formId, $this->framework->branchOf($selected)),
             ControlMarkup::button(new Control('do', 'add_record', __('New record', 'taxmod'), __('Start a new record against this node and open it here', 'taxmod'), true, false, 'plus-alt2', $formId, address: Address::ofNode($selected->id))),
-            // D-1478: «Variante anlegen» where the node has a field «Variante von»; the new variant opens here to fill its own values.
+            // D-1482: «Variante anlegen» where the node has a field «Variante von»; the new variant opens here to fill its own values.
             $satz === null || $this->data->variantFieldsOf($selected->id)['variantOf'] === 0 ? '' : ControlMarkup::button(new Control('do', 'add_variant', __('New variant', 'taxmod'), __('Add a variant of this material: it reads every field from the parent except the ones marked «Je Variante»', 'taxmod'), true, false, 'networking', $formId, address: Address::ofRecord($selected->id, $recordId))),
             $this->moduleActions($selected->id, $recordId),
         ]) . '</div>';
     }
 
     /**
-     * D-1478: at a parent its variants, at a variant its parent — each a link that opens it here. One read for the links, one
+     * D-1482: at a parent its variants, at a variant its parent — each a link that opens it here. One read for the links, one
      * for the words (CD-7).
      */
     private function variantsLine(Node $selected, int $recordId): string

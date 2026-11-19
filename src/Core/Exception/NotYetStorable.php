@@ -215,7 +215,7 @@ final class NotYetStorable extends DomainError
         return new self(sprintf('#%d not merged into #%d: %s', $from, $into, $why));
     }
 
-    /** D-1478: why these records cannot become the variants of one new parent. */
+    /** D-1482: why these records cannot become the variants of one new parent. */
     public static function thatCannotMakeVariants(string $why): self
     {
         return new self('No variants made: ' . $why);

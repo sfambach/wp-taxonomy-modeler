@@ -9,7 +9,8 @@ namespace Taxmod\Core\Service;
  * nicht messen.» Measurements only: nothing of the model, nothing a page reads back to decide anything.
  *
  * An entry is kept short, because the ring is written whole with every call: `t` the second it happened, `p` the page,
- * `ms` the time, `q` the database statements, `mb` the peak memory, `o` 1 while OPcache ran.
+ * `ms` the time, `q` the database statements, `mb` the peak memory, `o` 1 while OPcache ran,
+ * `b` the ms until WordPress was loaded, `r` the ms until the page was drawn (0: no page), `h` the ms spent waiting for other servers.
  *
  * @see docs/pakete/ladezeit/konzept.md
  */

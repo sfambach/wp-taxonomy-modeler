@@ -13,7 +13,7 @@ use Taxmod\Core\Repository\RelationRepository;
 use Taxmod\Core\Repository\TypeNodes;
 
 /**
- * Several records of one node become the variants of a new parent (D-1478, D-1208 step 6): the parent takes the values they
+ * Several records of one node become the variants of a new parent (D-1482, D-1208 step 6): the parent takes the values they
  * share, each variant keeps its own «Je Variante» values, its id, its stock and its labels.
  *
  * ```mermaid
