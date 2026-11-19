@@ -1022,7 +1022,7 @@ final class ListPage
             . self::detailsStyle() . '</style>' . self::detailsScript()
             . '<table class="wp-list-table widefat fixed striped table-view-list taxmod-list"' . ($complete ? ' data-taxmod-complete' : '') . '><thead>' . $head . $filterRow . '</thead><tbody>' . $rows . '</tbody>'
             // His screenshot 2026-11-19 05:47: on a table with no rows the foot reads as the head twice; it repeats the head only below rows.
-            . (trim($rows) === '' || str_contains($rows, 'class="no-items"') ? '' : '<tfoot>' . $head . '</tfoot>') . '</table>';
+            . (trim($rows) === '' || str_contains($rows, 'class="no-items') ? '' : '<tfoot>' . $head . '</tfoot>') . '</table>';
     }
 
     /**
@@ -1225,11 +1225,11 @@ final class ListPage
             // D-1462: the bar is one row — nothing floats, nothing wraps; the search takes what is left, on the right.
             . '.tablenav.taxmod-list-bar{display:flex;flex-wrap:nowrap;align-items:center;gap:6px;height:auto;margin:6px 0;padding:0}'
             . '.tablenav.taxmod-list-bar>*,.tablenav.taxmod-list-bar>.actions,.tablenav.taxmod-list-bar>.bulkactions,.tablenav.taxmod-list-bar>.tablenav-pages{float:none;margin:0;padding:0;display:flex;align-items:center;gap:4px;flex:none;overflow:visible}'
-            . '.tablenav.taxmod-list-bar>.taxmod-list-choices{flex:0 1 auto;min-width:0}.wp-core-ui .tablenav.taxmod-list-bar .actions select{flex:0 1 auto;min-width:5.5em}.tablenav.taxmod-list-bar>.tablenav-pages{flex:0 1 auto;white-space:normal;line-height:1.2;min-width:6em;text-align:right}.taxmod-list-bar>br.clear{display:none}.wp-core-ui .tablenav.taxmod-list-bar select{max-width:10em}.wp-core-ui .tablenav.taxmod-list-bar .bulkactions select{max-width:8.5em}.tablenav.taxmod-list-bar .displaying-num{margin:0}.taxmod-list-bar .taxmod-list-fold .button{padding:0 4px}'
-            . '.taxmod-list-bar>form[method="get"]{flex:1 1 10em;min-width:8em;justify-content:flex-end}.taxmod-list-bar .search-box{float:none;margin:0;display:flex;width:100%;max-width:18em;position:static}'
-            . '.taxmod-list-bar>p.search-box{flex:1 1 10em;min-width:8em;max-width:none;justify-content:flex-end}.taxmod-list-bar>p.search-box input{max-width:18em}'
+            . '.tablenav.taxmod-list-bar>.taxmod-list-choices{flex:0 1 auto;min-width:0}.wp-core-ui .tablenav.taxmod-list-bar .taxmod-list-choices select{min-width:0}.wp-core-ui .tablenav.taxmod-list-bar .actions select{flex:0 1 auto;min-width:5.5em}.tablenav.taxmod-list-bar>.tablenav-pages{flex:0 1 auto;white-space:normal;line-height:1.2;min-width:6em;text-align:right}.taxmod-list-bar>br.clear{display:none}.wp-core-ui .tablenav.taxmod-list-bar select{max-width:10em}.wp-core-ui .tablenav.taxmod-list-bar .bulkactions select{max-width:8.5em}.tablenav.taxmod-list-bar .displaying-num{margin:0}.taxmod-list-bar .taxmod-list-fold .button{padding:0 4px}'
+            . '.taxmod-list-bar>form[method="get"]{flex:1 1 12em;min-width:12em;justify-content:flex-end}.taxmod-list-bar .search-box{float:none;margin:0;display:flex;width:100%;max-width:18em;position:static}'
+            . '.taxmod-list-bar>p.search-box{flex:1 1 12em;min-width:12em;max-width:none;justify-content:flex-end}.taxmod-list-bar>p.search-box input{max-width:18em}'
             . '.taxmod-list-bar .search-box input[type="search"]{width:100%;min-width:0;margin:0}'
-            // Architecture gate 19.11.: a toolbar in the bar keeps the bar's line — no margin of its own, no wrapping under the search.
+            // Architecture gate 19.11.: a toolbar in the bar keeps the bar's line — no margin of its own; the search keeps 12em, its input never spills over its box.
             . '.taxmod-list-bar .taxmod-toolbar{margin:0;flex-wrap:nowrap}.taxmod-list-bar .taxmod-toolbar-group{flex-wrap:nowrap}.taxmod-list-bar>.tablenav-pages{color:#50575e}'
             // D-1227: the bar above every list, and the group rows.
             . '.taxmod-list-head{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:6px 0}.taxmod-list-head-search{min-width:16em}'
