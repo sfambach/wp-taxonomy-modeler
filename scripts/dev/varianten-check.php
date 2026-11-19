@@ -179,5 +179,27 @@ $undo   = $apply->execute(['changes' => [['op' => 'undo_act', 'act' => (int) ($a
 $shown  = (new ModelDoor())->records($ref['m']);
 check('undo takes make_variants back as one act', ! is_wp_error($undo) && ($shown[$r['a']][$ref['name']] ?? []) === ['TFT 1,8'] && ! isset($shown[$vater]), $why($undo));
 
+echo "Merging a doubled record (D-1480)\n";
+
+$made   = $apply->execute(['changes' => [
+    ['op' => 'create_record', 'ref' => 'x', 'node' => $ref['m'], 'values' => [(string) $ref['name'] => 'LCD 1602']],
+    ['op' => 'create_record', 'ref' => 'y', 'node' => $ref['m'], 'values' => [(string) $ref['name'] => 'LCD 1602']],
+    ['op' => 'create_record', 'ref' => 'z', 'node' => $ref['m'], 'values' => [(string) $ref['name'] => 'LCD 1602', (string) $ref['farbe'] => 'gelb']],
+]]);
+$r      = is_array($made) ? $made['refs'] : [];
+$answer = $apply->execute(['changes' => [['op' => 'merge_record', 'from' => $r['z'] ?? 0, 'into' => $r['x'] ?? 0]]]);
+check('merge_record refuses a value into lacks, naming the field', is_wp_error($answer) && str_contains($why($answer), '__va Farbe'), $why($answer));
+$veto   = static fn (array $out, int $from): array => $from === ($r['y'] ?? -1) ? ['veto' => 'Mindestbestand differs'] : $out;
+add_filter('taxmod_merge_record', $veto, 10, 2);
+$answer = $apply->execute(['changes' => [['op' => 'merge_record', 'from' => $r['y'] ?? 0, 'into' => $r['x'] ?? 0]]]);
+remove_filter('taxmod_merge_record', $veto, 10);
+check('a module veto refuses the merge', is_wp_error($answer) && str_contains($why($answer), 'Mindestbestand differs'), $why($answer));
+$answer = $apply->execute(['changes' => [['op' => 'merge_record', 'from' => $r['y'] ?? 0, 'into' => $r['x'] ?? 0]]]);
+$shown  = (new ModelDoor())->records($ref['m']);
+check('merge_record trashes from and names it', ! is_wp_error($answer) && ! isset($shown[$r['y'] ?? 0]) && in_array($r['y'] ?? 0, $answer['applied'][0]['merged']['trashed'] ?? [], true), $why($answer));
+$undo   = $apply->execute(['changes' => [['op' => 'undo_act', 'act' => (int) ($answer['act'] ?? 0)]]]);
+$shown  = (new ModelDoor())->records($ref['m']);
+check('undo takes merge_record back as one act', ! is_wp_error($undo) && isset($shown[$r['y'] ?? 0]), $why($undo));
+
 echo "\n$ok ok, $bad failed\n";
 exit($bad === 0 ? 0 : 1);

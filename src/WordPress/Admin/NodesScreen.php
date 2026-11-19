@@ -1252,6 +1252,30 @@ final class NodesScreen
     }
 
     /**
+     * D-1480: a doubled record merged into the one that stays; the modules answer through the filter, applied in the same act.
+     *
+     * @return array{moved: array<int, int>, dropped: int, trashed: list<int>}
+     */
+    public function mergeRecords(int $from, int $into): array
+    {
+        $answer = (new \Taxmod\Core\Service\RecordMerger(
+            new \Taxmod\WordPress\Persistence\WpdbRecordRepository(),
+            $this->data,
+            new \Taxmod\WordPress\Persistence\WpdbRelationRepository(),
+            new \Taxmod\WordPress\Persistence\WpdbNodeRepository(),
+            $this->framework,
+            $this->types ?? throw new \LogicException('No type nodes.'),
+            $this->rendering,
+            $this->changelog,
+            [new \Taxmod\WordPress\FilterMergeParticipant()]
+        ))->merge($from, $into);
+
+        \Taxmod\WordPress\Persistence\RecordReviews::clear($from);
+
+        return $answer;
+    }
+
+    /**
      * D-1478: a new variant beside `$recordId` — of its parent when it is a variant, of itself when it has variants, else the
      * record first becomes the only variant of a new parent. Answers the new variant; its values come in a set_values after.
      */

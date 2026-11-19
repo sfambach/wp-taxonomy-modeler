@@ -2406,6 +2406,88 @@ final class RenderingTest extends TestCase
         $macher->make([$blau]);
     }
 
+    /** D-1480: a doubled record merged — pointers repointed, a module's own record to the trash, nothing of from's own lost silently. */
+    #[Test]
+    public function a_doubled_record_is_merged_and_nothing_of_its_own_is_lost(): void
+    {
+        $this->typeNodes->remember(\Taxmod\Core\Model\SimpleType::Summary, $this->lookalike('Summary')->id);
+        $display    = $this->thing('Display');
+        $text       = $this->type('Text');
+        $controller = $this->editor->addField($display->id, $text->id, 'Controller');
+        $farbe      = $this->editor->addField($display->id, $text->id, 'Farbe');
+        $kauf       = $this->thing('Kauf');
+        $wovon      = $this->editor->addField($kauf->id, $display->id, 'Material', RelationKind::Aggregation);
+        $lager      = $this->thing('Lager');
+        $furWas     = $this->editor->addField($lager->id, $display->id, 'Material', RelationKind::Aggregation);
+        $satz       = function (int $node, array $werte) {
+            $id = $this->records->add(new NodeRecord(0, $node, 1, '2026-11-19 08:00:00', RecordType::User));
+
+            foreach ($werte as $feld => $wert) {
+                $this->records->putValue(RelationRecord::direct($id, $feld, is_int($wert) ? TypedValue::ofRecordReference($wert) : TypedValue::ofText($wert)));
+            }
+
+            return $id;
+        };
+        $bleibt  = $satz($display->id, [$controller->id => 'PCD8544']);
+        $doppelt = $satz($display->id, [$controller->id => 'PCD8544']);
+        $rot     = $satz($display->id, [$farbe->id => 'rot']);
+        $k1      = $satz($kauf->id, [$wovon->id => $doppelt]);
+        $lBleibt = $satz($lager->id, [$furWas->id => $bleibt]);
+        $lWeg    = $satz($lager->id, [$furWas->id => $doppelt]);
+        $this->neuZeichnen();
+
+        $modul = new class ($lWeg) implements \Taxmod\Core\Port\RecordMergeParticipant {
+            public string $veto = '';
+
+            public function __construct(private readonly int $weg)
+            {
+            }
+
+            public function onMerge(int $from, int $into): array
+            {
+                return $this->veto !== '' ? ['veto' => $this->veto] : ['trash' => [$this->weg]];
+            }
+        };
+        $buch   = new \Taxmod\Tests\Core\Fake\RecordedChanges();
+        $daten  = new DataEntry($this->records, $this->relations, $this->nodes, $this->framework, new \Taxmod\Tests\Core\Fake\FixedClock(), $buch);
+        $merger = new \Taxmod\Core\Service\RecordMerger($this->records, $daten, $this->relations, $this->nodes, $this->framework, $this->typeNodes, $this->rendering, $buch, [$modul]);
+
+        try {
+            $merger->merge($rot, $bleibt);
+            self::fail('a colour #bleibt lacks is refused');
+        } catch (\Taxmod\Core\Exception\NotYetStorable $e) {
+            self::assertStringContainsString('«Farbe»', $e->getMessage());
+        }
+
+        $modul->veto = 'Mindestbestand differs';
+
+        try {
+            $merger->merge($doppelt, $bleibt);
+            self::fail('a module veto refuses');
+        } catch (\Taxmod\Core\Exception\NotYetStorable $e) {
+            self::assertStringContainsString('Mindestbestand differs', $e->getMessage());
+        }
+
+        $modul->veto = '';
+        $antwort     = $merger->merge($doppelt, $bleibt);
+        $zeigt       = function (int $id, int $feld): ?int {
+            foreach ($this->records->valuesOf($id) as $zeile) {
+                if ($zeile->relationId === $feld) {
+                    return $zeile->value->reference;
+                }
+            }
+
+            return null;
+        };
+
+        self::assertSame($bleibt, $zeigt($k1, $wovon->id), 'the purchase points at the record that stays');
+        self::assertSame([$wovon->id => 1], $antwort['moved']);
+        self::assertSame([$lWeg, $doppelt], $antwort['trashed']);
+        self::assertNull($this->records->find($doppelt), 'the double went to the trash');
+        self::assertNull($this->records->find($lWeg), 'its stock record went with it');
+        self::assertSame($bleibt, $zeigt($lBleibt, $furWas->id));
+    }
+
     /** ⚠️ *D-999: die Feldwahl eines Wählers an einer Aggregation setzt nichts zusammen — sonst stand «Gerber» als Text in den Quellen einer Quelle.* */
     #[Test]
     public function a_field_choice_at_an_aggregation_is_a_chooser_not_a_composition(): void
