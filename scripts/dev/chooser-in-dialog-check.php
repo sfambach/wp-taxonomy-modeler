@@ -12,7 +12,7 @@
  *
  * ```text
  * CONTRACT
- * Stylesheet   in einem Dialog steht der Baum des Wählers da, Öffner und Baumknopf sind verborgen (D-1467)
+ * Stylesheet   in einem Dialog Feld mit Baumknopf, die Liste klappt darunter auf (D-1488, ersetzt die Fassung von D-1467)
  * Stylesheet   die Tafel steht ohne transform (sonst wäre sie der Rahmen eines Dialogs in ihr)
  * inline       der Baum steht da, ohne Öffner, ohne Baumknopf, ohne zweiten Dialog
  * nicht inline Feld + Baumknopf, der den eigenen Dialog öffnet
@@ -41,8 +41,11 @@ $say    = static function (bool $ok, string $what) use (&$failed): void {
 
 echo "\n== Stylesheet ==\n";
 $css = (string) file_get_contents(dirname(__DIR__, 2) . '/assets/admin.css');
-$say(preg_match('/\.taxmod-dialog-panel \.taxmod-chooser > \.taxmod-dialog-open,\s*\.taxmod-dialog-panel \.taxmod-chooser > \.taxmod-pick-tree,[^{]*\{\s*display:\s*none;/', $css) === 1
-    && preg_match('/\.taxmod-dialog-panel \.taxmod-chooser > \.taxmod-dialog \{\s*display:\s*block;/', $css) === 1, 'D-1467: im Dialog steht der Baum, Öffner und Baumknopf sind verborgen');
+// D-1488 ersetzt die Fassung «Baum steht immer da, Öffner und Baumknopf verborgen» (D-1467): im Dialog bleibt der Wähler an Ort und
+// Stelle, aber als Feld mit dem Baumknopf darin; die Liste klappt mit dem Schalter darunter auf, ohne Mindestbreite.
+$say(preg_match('/\.taxmod-dialog-panel \.taxmod-chooser > \.taxmod-dialog-open,\s*\.taxmod-dialog-panel \.taxmod-chooser > \.taxmod-pick-tree,[^{]*\{\s*display:\s*none;/', $css) !== 1
+    && preg_match('/\.taxmod-dialog-panel \.taxmod-chooser > \.taxmod-dialog \{\s*display:\s*block;/', $css) !== 1
+    && preg_match('/\.taxmod-dialog-panel \.taxmod-chooser > \.taxmod-dialog > \.taxmod-dialog-panel \{[^}]*min-width: 0;/', $css) === 1, 'D-1488: im Dialog Feld mit Baumknopf, die Liste klappt darunter auf, ohne Mindestbreite');
 $say(preg_match('/\.taxmod-dialog-panel\s*\{[^}]*transform\s*:/', $css) !== 1, 'die Tafel steht ohne transform');
 
 echo "\n== Wähler ==\n";

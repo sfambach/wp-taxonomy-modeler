@@ -1074,6 +1074,16 @@ final class ModelAbilities
                 foreach (is_array($change['values'] ?? null) ? $change['values'] : [] as $kante => $wert) {
                     $values[$this->resolve($kante, $refs, 'values')] = $this->resolveValues($wert, $refs);
                 }
+
+                // ⚠️ *A field the record's node does not have is refused by name, never written to nowhere: a list of ops with a wrong
+                // field id reported success and wrote nothing, not even an act (Prüftor 19.11., found by the D-1487 migration run).*
+                $felder = array_flip(array_map(static fn (array $f): int => $f['relation']->id, $screen->fieldsWithTypes($record->nodeId)));
+                $fremd  = array_diff(array_map('intval', array_keys($values)), array_keys($felder));
+
+                if ($fremd !== []) {
+                    throw new \InvalidArgumentException('Record ' . $recordId . ' has no field ' . implode(', ', $fremd) . ' — its node ' . $record->nodeId . ' does not carry it.');
+                }
+
                 $values   = $this->intoHeldParts($recordId, $record->nodeId, $values);
                 $own      = isset($change['own_value']) ? (string) $change['own_value'] : null;
                 $locale   = sanitize_text_field((string) ($change['locale'] ?? ''));
@@ -1435,6 +1445,7 @@ final class ModelAbilities
                 'loaded_ms' => (int) ($e['b'] ?? 0),
                 'drawn_ms'  => (int) ($e['r'] ?? 0),
                 'http_ms'   => (int) ($e['h'] ?? 0),
+                'switches'  => (string) ($e['a'] ?? ''),
             ], array_reverse(array_slice($calls, -$limit))),
         ];
     }

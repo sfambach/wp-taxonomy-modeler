@@ -76,12 +76,12 @@ final class PageTimesLog
         $page = self::subject(is_admin(), wp_unslash($_GET), wp_unslash($_REQUEST));
 
         if ($page !== null) {
-            self::write($page);
+            self::write($page, self::switches(wp_unslash($_GET) + wp_unslash($_POST)));
         }
     }
 
     /** Puts one call of `$page` at the end of the ring, with what this request took up to now. */
-    public static function write(string $page): void
+    public static function write(string $page, string $switches = ''): void
     {
         $started = isset($_SERVER['REQUEST_TIME_FLOAT']) ? (float) $_SERVER['REQUEST_TIME_FLOAT'] : microtime(true);
         $before  = get_option(self::OPTION, []);
@@ -96,8 +96,31 @@ final class PageTimesLog
             'b'  => self::$at['b'],
             'r'  => self::$at['r'],
             'h'  => (int) round(self::$outside),
-        ]), false);
+        ] + ($switches === '' ? [] : ['a' => $switches])), false);
     }
+
+    /**
+     * Which switches a call carried — the **names** of its parameters, sorted, and never a value (addendum to D-1482): the
+     * same page took 0.9 s and 5 s, and the log could not say which view it was. A name is a word of the program
+     * (`taxmod_node`, `s`, `group`); what stood in it — an id, a search word — stays out, and so does a name that is no plain word.
+     *
+     * @param array<array-key, mixed> $parameters `mixed`: what a request carries is not typed
+     */
+    public static function switches(array $parameters): string
+    {
+        $names = array_filter(
+            array_map('strval', array_keys($parameters)),
+            static fn (string $name): bool => preg_match('/^[a-z_]+$/', $name) === 1 && ! in_array($name, self::NAMED_ALREADY, true)
+        );
+        sort($names);
+
+        return implode(',', array_slice($names, 0, self::SWITCHES));
+    }
+
+    /** What the subject says already, and what every form carries. */
+    private const NAMED_ALREADY = ['page', 'tab', 'area', 'action', 'do', '_wpnonce', '_ajax_nonce', '_wp_http_referer'];
+
+    private const SWITCHES = 8;
 
     /** @return list<array<string, int|string>> oldest first */
     public static function entries(): array

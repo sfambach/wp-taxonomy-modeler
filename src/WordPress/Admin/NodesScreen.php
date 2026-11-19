@@ -1896,6 +1896,7 @@ final class NodesScreen
         }
 
         $this->changelog->beginAct();
+        $akt = null;
 
         try {
             $satz = $this->savedWhole(function () use ($gefragt, $namensfeld, $name): NodeRecord {
@@ -1906,13 +1907,15 @@ final class NodesScreen
 
                 return $satz;
             });
+            // D-1488: the record created from a chooser is one change number, undone like any other.
+            $akt = $this->changelog->currentAct();
         } catch (DomainError $error) {
             wp_send_json_error(['message' => $error->getMessage()], 422);
         } finally {
             $this->changelog->endAct();
         }
 
-        wp_send_json_success(['id' => $satz->id, 'word' => $name]);
+        wp_send_json_success(['id' => $satz->id, 'word' => $name, 'act' => $akt]);
     }
 
     // ---------------------------------------------------------------- the tree
@@ -6383,7 +6386,7 @@ final class NodesScreen
             __('Add a new record here — opens in a new tab; reload this page afterwards', 'taxmod'),
             // *Dazu das Feld im Dialog selbst (D-1171): Name tippen, «Anlegen», und der neue Satz ist gewählt.*
             __('New here …', 'taxmod'),
-            __('Create', 'taxmod'),
+            __('Create «%s»', 'taxmod'),
         ];
     }
 
