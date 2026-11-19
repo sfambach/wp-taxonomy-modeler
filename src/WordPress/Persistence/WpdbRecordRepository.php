@@ -111,6 +111,17 @@ final class WpdbRecordRepository implements RecordRepository
      * Angabe. **Gemessen, als sie fehlte: `renderer-choice-check` meldete an sechs Knoten
      * «gespeichert `table`, gezeichnet `plain`».*** Zu ihnen führt {@see self::ofRelation()}.
      */
+    public function countOfNode(int $nodeId): int
+    {
+        global $wpdb;
+
+        // ⚠️ *Dieselbe Bedingung wie {@see self::ofNode()}.*
+        return (int) (Query::column('Datensaetze des Knotens zaehlen', $wpdb->prepare(
+            'SELECT COUNT(*) FROM ' . Schema::table('node_records') . ' WHERE node_id = %d AND relation_id = 0',
+            $nodeId
+        ))[0] ?? 0);
+    }
+
     public function ofNode(int $nodeId): array
     {
         global $wpdb;

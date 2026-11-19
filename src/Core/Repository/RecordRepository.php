@@ -33,6 +33,9 @@ interface RecordRepository
     /** @return list<NodeRecord> Every record entered against one model node. */
     public function ofNode(int $nodeId): array;
 
+    /** How many records {@see self::ofNode()} would give — for who needs the number and not the records. */
+    public function countOfNode(int $nodeId): int;
+
     /**
      * Der Satz dieser Verwendungsstelle, falls einer angelegt ist.
      *
