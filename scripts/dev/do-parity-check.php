@@ -5,7 +5,7 @@
  * [D-633](../../docs/NewConcept/90-decision-log.md)): the `match ($do)` became one listener per name.
  *
  * ⚠️ *Two halves. **Heard**: each of the 39 names from the `match` as it stood on 2026-11-17 is posted and does not come back
- * as «Unknown action.» — and the names the page registers are exactly these, no more. **Same result**: four acts whose effect
+ * as «Unknown action.» — and the names the page registers are exactly these plus the ones a later decision added (`ADDED_ARMS`), no more. **Same result**: four acts whose effect
  * is plain (rename, add a child and stand on it, a new record, duplicate and stand on the copy) are posted and their effect
  * read back. What each of the others does is guarded by the checks that already post them (concurrent-save, claimed-field,
  * einstellungen, pakete …).*
@@ -40,6 +40,9 @@ const FORMER_ARMS = [
     'add_example', 'save_record', 'save_record_anyway', 'filter_records', 'clear_filter', 'add_part', 'add_parts', 'remove_part',
     'unlink_part', 'insert_part', 'duplicate_record', 'delete_record', 'move_record',
 ];
+
+// Names a later decision added; what each does is guarded where it was added (add_variant: varianten-check, D-1478).
+const ADDED_ARMS = ['add_variant'];
 
 $failed = 0;
 
@@ -99,10 +102,10 @@ $konstante = (string) (new ReflectionClass(NodesScreen::class))->getConstant('TO
 preg_match_all("/listen\\(ControlPressed::class,.*?, ('([a-z_]+)'|self::TOGGLE_ROW_SETTINGS)\\);$/ms", $quelle, $treffer);
 $angemeldet = array_map(static fn (string $n): string => $n === '' ? $konstante : $n, $treffer[2]);
 sort($angemeldet);
-$frueher = FORMER_ARMS;
+$frueher = [...FORMER_ARMS, ...ADDED_ARMS];
 sort($frueher);
 
-$say(count($angemeldet) > 0 && $angemeldet === $frueher, 'the page registers exactly the ' . count(FORMER_ARMS) . ' former names', implode(', ', array_merge(array_diff($frueher, $angemeldet), array_map(static fn ($n) => '+' . $n, array_diff($angemeldet, $frueher)))));
+$say(count($angemeldet) > 0 && $angemeldet === $frueher, 'the page registers exactly the ' . count(FORMER_ARMS) . ' former names and the ' . count(ADDED_ARMS) . ' added since', implode(', ', array_merge(array_diff($frueher, $angemeldet), array_map(static fn ($n) => '+' . $n, array_diff($angemeldet, $frueher)))));
 
 $unbekannt = [];
 
