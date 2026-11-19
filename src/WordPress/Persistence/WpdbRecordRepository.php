@@ -225,11 +225,10 @@ final class WpdbRecordRepository implements RecordRepository
         return $nachSatz;
     }
 
-    public function rawValuesOfNode(int $nodeId, array $relationIds = []): array
+    public function rawValuesOfNode(int $nodeId): array
     {
         global $wpdb;
 
-        $felder   = array_values(array_unique(array_filter(array_map('intval', $relationIds))));
         $nachSatz = [];
 
         foreach (Query::column('Satz-Ids eines Knotens lesen', $wpdb->prepare(
@@ -244,9 +243,9 @@ final class WpdbRecordRepository implements RecordRepository
         Query::each('Rohwerte eines Knotens lesen', $wpdb->prepare(
             'SELECT node_record_id, relation_id, value_int, value_decimal, value_text, value_date, value_ref, value_precision
              FROM ' . Schema::table('relation_records') . '
-             WHERE ' . ($felder === [] ? '' : 'relation_id IN (' . implode(',', array_fill(0, count($felder), '%d')) . ') AND ') . 'node_record_id IN (SELECT id FROM ' . Schema::table('node_records') . ' WHERE node_id = %d AND relation_id = 0)
+             WHERE node_record_id IN (SELECT id FROM ' . Schema::table('node_records') . ' WHERE node_id = %d AND relation_id = 0)
              ORDER BY node_record_id ASC, position ASC, id ASC',
-            ...[...$felder, $nodeId]
+            $nodeId
         ), static function (array $r) use (&$nachSatz): void {
             $nachSatz[(int) $r['node_record_id']][(int) $r['relation_id']][] = TypedValue::rawOf(
                 $r['value_int'] === null ? null : (int) $r['value_int'],

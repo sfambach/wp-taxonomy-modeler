@@ -186,7 +186,7 @@ final class InMemoryRecords implements RecordRepository
         return $nachSatz;
     }
 
-    public function rawValuesOfNode(int $nodeId, array $relationIds = []): array
+    public function rawValuesOfNode(int $nodeId): array
     {
         $nachSatz = [];
 
@@ -194,9 +194,7 @@ final class InMemoryRecords implements RecordRepository
             $nachSatz[$satz->id] = [];
 
             foreach ($this->valuesOf($satz->id) as $wert) {
-                if ($relationIds === [] || in_array($wert->relationId, $relationIds, true)) {
-                    $nachSatz[$satz->id][$wert->relationId][] = $wert->value->rawValue();
-                }
+                $nachSatz[$satz->id][$wert->relationId][] = $wert->value->rawValue();
             }
         }
 

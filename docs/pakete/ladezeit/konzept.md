@@ -147,7 +147,7 @@ flowchart LR
 
 Ein Modul nennt die Felder, die es von einem Knoten liest; die Tür liefert dafür dasselbe wie die ganze Lesung. Ein nicht
 genanntes Feld wird nie als leer beantwortet: der Knoten wird einmal ganz gelesen. Gemessen und Zahlen: D-1486. Bewacht von
-`model-door-fields-check` (gleiche Werte, eine Anweisung) und im Lager von `inbound-check` (kein Reiter liest nachträglich ganz).
+`model-door-records-check` (gleiche Werte, eine Anweisung). Live ohne Wirkung; im Lager zurückgebaut (D-1491), die Tür-Methode entfernt (D-1489).
 
 ## Schlanker Lese-Weg ([D-1489](../../NewConcept/90-decision-log.md), 2026-11-19)
 

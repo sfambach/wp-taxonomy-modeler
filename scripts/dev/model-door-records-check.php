@@ -1,19 +1,20 @@
 <?php declare(strict_types=1);
 /**
- * A module reads a node — whole, or only the fields it names — and gets what `read-node` answers for it, the values in one
- * query and folded without holding the answer (D-1486, D-1489).
+ * A module reads the records of a node through the door and gets what `read-node` answers for it — the values in one query,
+ * folded without holding the answer (D-1489).
  *
- *     php scripts/dev/model-door-fields-check.php [path/to/wordpress]
+ *     php scripts/dev/model-door-records-check.php [path/to/wordpress]
  *
- * ⚠️ *Measured 2026-11-19 with purchases as wide as the live ones (some eleven values and three price parts each): a tab of the
- * stock's goods receipt that read every value of every record peaked at 145–157 MB over the base, read narrow at 75–86 MB.
- * His words 18.11. 17:57: «Angekommen ist auch nicht wirklich sauschnell … nur noch mehrere Sekunden».*
+ * ⚠️ *Measured 2026-11-19 on a seed shaped like the live data (3038 purchases, 69,542 value rows): the reading chain cost some
+ * 900 bytes a value held and 1500–1700 at its peak; a tab of the stock's goods receipt peaked at 137–149 MB over the base and
+ * at 46–58 MB folded. The narrow read of D-1486 this check guarded before had no effect live and is gone (D-1491).*
  *
  * ```mermaid
  * flowchart LR
- *   M["module: node + fields"] --> D["ModelDoor::recordsOfFields"]
- *   D -->|"read-node, fields"| A["one query: values of the node in those fields"]
- *   D --> S["same values as records() for those fields"]
+ *   M["module: node"] --> D["ModelDoor::records"]
+ *   D --> R["one query: the value rows of the node, streamed"]
+ *   R --> F["record → field → raw values"]
+ *   F --> S["the same values as read-node answers"]
  * ```
  */
 
@@ -121,15 +122,6 @@ $viaAbility = static function (int $id) use ($node): array {
     return $out;
 };
 $whole = (new ModelDoor())->records($ref['m']);
-$only  = static fn (array $records, array $fields): array => array_map(static fn (array $v): array => array_intersect_key($v, array_flip($fields)), $records);
-$same  = static function (array $fields) use ($ref, $whole, $only): bool {
-    $narrow = (new ModelDoor())->recordsOfFields($ref['m'], $fields);
-    $wanted = $only($whole, $fields);
-    ksort($narrow);
-    ksort($wanted);
-
-    return array_map(static function (array $v): array { ksort($v); return $v; }, $narrow) === array_map(static function (array $v): array { ksort($v); return $v; }, $wanted);
-};
 
 echo "Reading\n";
 
@@ -166,23 +158,19 @@ if (is_wp_error($kinds)) {
     check('a number is not padded with the zeros of its column', ($folded[$k['a']][$k['zahl']] ?? null) === ['1'] && ! str_contains(wp_json_encode($folded), '.0000'), wp_json_encode($folded[$k['a']] ?? null));
 }
 
-$narrow = (new ModelDoor())->recordsOfFields($ref['m'], [$ref['name'], $ref['tags']]);
-check('every record of the node is there, also one without a value in these fields', array_keys($narrow) == array_keys($whole) && ($narrow[$ref['leer']] ?? null) === [] && ($narrow[$ref['nurlang']] ?? null) === [], wp_json_encode(array_keys($narrow)));
-check('a field not asked for is not there', ! isset($narrow[$ref['p']][$ref['lang']]) && ! isset($narrow[$ref['p']][$ref['farbe']]));
-check('several values of a field in their order', ($narrow[$ref['p']][$ref['tags']] ?? []) === ['i2c', 'spi', 'klein'], wp_json_encode($narrow[$ref['p']] ?? null));
-check('the same values as records() — name and several values', $same([$ref['name'], $ref['tags']]));
-check('the same values as records() — a variant shows its parent\'s name though «Variante von» was not asked', $same([$ref['name']]) && ($narrow[$ref['v1']][$ref['name']] ?? []) === ['OLED 0,91'], wp_json_encode($narrow[$ref['v1']] ?? null));
-check('the same values as records() — a «Je Variante» field, own and inherited', $same([$ref['farbe']]));
-check('the same values as records() — the parent link itself', $same([$ref['von'], $ref['name']]));
-check('the same values as records() — every field named', $same([$ref['name'], $ref['farbe'], $ref['tags'], $ref['lang'], $ref['von']]));
+check('every record of the node is there, also one without a value', array_keys($whole) == array_keys($stored) && ($whole[$ref['leer']] ?? null) === []);
+check('several values of a field in their order', ($whole[$ref['p']][$ref['tags']] ?? []) === ['i2c', 'spi', 'klein'], wp_json_encode($whole[$ref['p']] ?? null));
+check('a variant shows its parent\'s name (D-1208)', ($whole[$ref['v1']][$ref['name']] ?? []) === ['OLED 0,91'] && ($whole[$ref['v2']][$ref['name']] ?? []) === ['OLED 0,91'], wp_json_encode([$whole[$ref['v1']] ?? null, $whole[$ref['v2']] ?? null]));
+check('a «Je Variante» field: the variant\'s own value, and the parent\'s where it has none', ($whole[$ref['v1']][$ref['farbe']] ?? []) === ['weiß'] && ($whole[$ref['v2']][$ref['farbe']] ?? []) === ['blau'], wp_json_encode([$whole[$ref['v1']] ?? null, $whole[$ref['v2']] ?? null]));
+check('the parent link of a variant is there', ($whole[$ref['v1']][$ref['von']] ?? []) === [(string) $ref['p']]);
 
 $hidden = $apply->execute(['changes' => [['op' => 'hide_field', 'node' => $ref['m'], 'field' => $ref['farbe'], 'hidden' => true]]]);
 
 if (is_wp_error($hidden)) {
     check('a hidden field can be set up', false, $hidden->get_error_message());
 } else {
-    $whole = (new ModelDoor())->records($ref['m']);
-    check('the same values as records() — with a hidden field', $same([$ref['name'], $ref['farbe'], $ref['tags']]));
+    $now = (new ModelDoor())->records($ref['m']);
+    check('a hidden field keeps its values for a module, as read-node keeps them', ($now[$ref['p']] ?? null) == ($viaAbility($ref['m'])[$ref['p']] ?? []), wp_json_encode($now[$ref['p']] ?? null));
 }
 
 echo "Cost\n";
@@ -191,44 +179,22 @@ $wpdb->query('DO 0');
 $statements = [];
 $listen     = static function (string $sql) use (&$statements): string { $statements[] = $sql; return $sql; };
 add_filter('query', $listen);
-(new ModelDoor())->recordsOfFields($ref['m'], [$ref['name']]);
-remove_filter('query', $listen);
-$values = array_values(array_filter($statements, static fn (string $sql): bool => str_contains($sql, 'relation_records') && str_contains($sql, 'value_text')));
-check('the values come in one statement (CD-7)', count($values) === 1, count($values) . ' statements read values');
-check('that statement names the fields and the node, not a list of record ids', isset($values[0]) && preg_match('/relation_id IN \(\d+(,\d+)*\)\s+AND node_record_id IN \(SELECT/', $values[0]) === 1, substr($values[0] ?? '', 0, 300));
-check('the long text of a field not asked for is not read', isset($values[0]) && ! str_contains(wp_json_encode((new ModelDoor())->recordsOfFields($ref['m'], [$ref['name']])), 'lang lang'));
-
-$door   = new ModelDoor();
-$before = $wpdb->num_queries;
-$door->recordsOfFields($ref['m'], [$ref['name']]);
-$first  = $wpdb->num_queries - $before;
-$before = $wpdb->num_queries;
-$door->recordsOfFields($ref['m'], [$ref['name']]);
-check('a door reads the same fields of a node once', $first > 0 && $wpdb->num_queries === $before, 'second read: ' . ($wpdb->num_queries - $before));
-
-$wpdb->query('DO 0');
-$statements = [];
-add_filter('query', $listen);
 (new ModelDoor())->records($ref['m']);
 remove_filter('query', $listen);
 $values = array_values(array_filter($statements, static fn (string $sql): bool => str_contains($sql, 'relation_records') && str_contains($sql, 'value_text')));
-check('the whole node: its values come in one statement, and a counter of statements sees it (D-1489)', count($values) === 1, count($values) . ' statements read values');
+check('the values of the node come in one statement, and a counter of statements sees it (CD-7)', count($values) === 1, count($values) . ' statements read values');
+check('that statement names the node, not a list of record ids', isset($values[0]) && preg_match('/WHERE node_record_id IN \(SELECT id FROM \S+ WHERE node_id = \d+ AND relation_id = 0\)/', $values[0]) === 1, substr((string) ($values[0] ?? ''), 0, 300));
 
-$door = new ModelDoor();
-$all  = $door->records($ref['m']);
+$door   = new ModelDoor();
 $before = $wpdb->num_queries;
-$from = $door->recordsOfFields($ref['m'], [$ref['name'], $ref['tags']]);
-ksort($from);
-$wanted = $only($all, [$ref['name'], $ref['tags']]);
-ksort($wanted);
-check('a door that read the node whole answers the fields from that, without a statement', $wpdb->num_queries === $before && $from == $wanted, ($wpdb->num_queries - $before) . ' statements');
+$door->records($ref['m']);
+$first  = $wpdb->num_queries - $before;
+$before = $wpdb->num_queries;
+$door->records($ref['m']);
+check('a door reads a node once', $first > 0 && $wpdb->num_queries === $before, 'second read: ' . ($wpdb->num_queries - $before));
 
-try {
-    (new ModelDoor())->recordsOfFields($ref['m'], []);
-    check('no field named is refused, not answered with everything', false);
-} catch (\Taxmod\Core\Exception\ModelDoorRefused $e) {
-    check('no field named is refused, not answered with everything', true);
-}
+$wrote  = $door->write([['op' => 'set_values', 'record' => $ref['leer'], 'values' => [(string) $ref['name'] => 'jetzt mit Namen']]]);
+check('after a write through the door the node is read afresh', ($door->records($ref['m'])[$ref['leer']][$ref['name']] ?? []) === ['jetzt mit Namen'], wp_json_encode($wrote['act'] ?? null));
 
 $page = $node->execute(['node' => $ref['m'], 'fields' => [$ref['name']], 'limit' => 2]);
 check('read-node with fields and a page still answers the page', count($page['records'] ?? []) === 2 && ($page['records'][0]['values'][0]['value'] ?? null) === 'OLED 0,91', wp_json_encode($page['records'] ?? null));

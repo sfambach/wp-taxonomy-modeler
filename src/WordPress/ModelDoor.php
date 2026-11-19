@@ -31,7 +31,7 @@ final class ModelDoor
     /** @var (\Closure(): \Taxmod\Core\Repository\Changelog)|null the modeller's one changelog, handed in at boot (D-1419) */
     private static ?\Closure $changelog = null;
 
-    /** @var array<string, array<int, array<int, list<string>>>> node|fields → its records as read (D-1489); `node|` is the whole node */
+    /** @var array<string, array<int, array<int, list<string>>>> node id → its records as read (D-1489) */
     private array $read = [];
 
     /** @var array<string, array<string, mixed>> node| → the answer of `read-node` without records: the fields of the node */
@@ -50,40 +50,7 @@ final class ModelDoor
      */
     public function records(int $node): array
     {
-        return $this->read[$node . '|'] ??= $this->shown((new WpdbRecordRepository())->rawValuesOfNode($node), $this->addonsAt($node));
-    }
-
-    /**
-     * The records of a node with only the fields named — the same shape and the same values as {@see self::records()} gives
-     * for those fields, read in one query (D-1486). Every record of the node is there, also one without a value in them.
-     *
-     * @param list<int> $relations
-     * @return array<int, array<int, list<string>>> record id → relation id → values
-     */
-    public function recordsOfFields(int $node, array $relations): array
-    {
-        $relations = array_values(array_unique(array_filter(array_map('intval', $relations))));
-
-        if ($relations === []) {
-            throw ModelDoorRefused::because('recordsOfFields needs at least one field — records() reads them all');
-        }
-
-        $asked = array_flip($relations);
-        $only  = static fn (array $records): array => array_map(static fn (array $values): array => array_intersect_key($values, $asked), $records);
-
-        // Read whole already in this request: answered from that — a second read of the same records would only cost.
-        if (isset($this->read[$node . '|'])) {
-            return $only($this->read[$node . '|']);
-        }
-
-        // A variant shows its parent's values (D-1208): the field that names the parent is read with the others, asked or not,
-        // or a variant would answer differently here than in records().
-        $addons    = $this->addonsAt($node);
-        $variantOf = array_keys(array_filter($addons, static fn (array $names): bool => in_array(VariantOfAddon::NAME, $names, true)));
-        $read      = array_values(array_unique([...$relations, ...$variantOf]));
-        sort($read);
-
-        return $only($this->read[$node . '|' . implode(',', $read)] ??= $this->shown((new WpdbRecordRepository())->rawValuesOfNode($node, $read), $addons));
+        return $this->read[$node] ??= $this->shown((new WpdbRecordRepository())->rawValuesOfNode($node), $this->addonsAt($node));
     }
 
     /** @return array<int, list<string>> relation id → the names of the add-ons on that field */
