@@ -105,6 +105,19 @@ interface RecordRepository
     public function valuesOfMany(array $recordIds): array;
 
     /**
+     * Die Werte aller Sätze eines Knotens, aber nur in den genannten Feldern — **eine Abfrage** (`CD-7`,
+     * [D-1486](../../../docs/NewConcept/90-decision-log.md)).
+     *
+     * ⚠️ *Gemessen am 2026-11-18 am Wareneingang des Lagers: die Werte **aller** Felder aller Sätze zu holen war 41 % der Seite,
+     * gebraucht wurde eine Handvoll Felder. Die Sätze selbst liefert {@see self::ofNode()}; ein Satz ohne Wert in diesen
+     * Feldern hat hier keinen Eintrag.*
+     *
+     * @param  list<int>                    $relationIds
+     * @return array<int, list<RelationRecord>> Satz-Id → Werte, in der Reihenfolge von {@see self::valuesOfMany()}.
+     */
+    public function valuesOfNode(int $nodeId, array $relationIds): array;
+
+    /**
      * Wer diese Datensätze **hält** — je Satz die Wertzeile, die auf ihn zeigt, oder kein Eintrag.
      *
      * ⚠️ **Ein Teil ist ein Datensatz wie jeder andere, und genau das macht ihn ununterscheidbar.**

@@ -189,25 +189,61 @@ final class WpdbRecordRepository implements RecordRepository
         ));
 
         foreach ($rows ?: [] as $r) {
-            $nachSatz[(int) $r['node_record_id']][] = new RelationRecord(
-                (int) $r['node_record_id'],
-                (int) $r['relation_id'],
-                (string) $r['locale'],
-                TypedValue::fromStorage(
-                    $r['value_int'] === null ? null : (int) $r['value_int'],
-                    StoredDecimal::read($r['value_decimal']),
-                    $r['value_text'] === null ? null : (string) $r['value_text'],
-                    $r['value_date'] === null ? null : (string) $r['value_date'],
-                    $r['value_ref'] === null ? null : (int) $r['value_ref'],
-                    ReferenceSpace::tryFrom((string) ($r['value_ref_kind'] ?? '')),
-                    \Taxmod\Core\Model\ValuePrecision::tryFrom((string) ($r['value_precision'] ?? '')),
-                ),
-                (int) $r['id'],
-                (int) $r['position'],
-            );
+            $nachSatz[(int) $r['node_record_id']][] = self::wert($r);
         }
 
         return $nachSatz;
+    }
+
+    public function valuesOfNode(int $nodeId, array $relationIds): array
+    {
+        global $wpdb;
+
+        $felder = array_values(array_unique(array_filter(array_map('intval', $relationIds))));
+
+        if ($felder === []) {
+            return [];
+        }
+
+        // ⚠️ *Die Sätze über die Unterabfrage, nicht über eine Liste ihrer Ids: ein Knoten hat Tausende Sätze, die Feldliste ist
+        // kurz ([D-1486](../../../docs/NewConcept/90-decision-log.md)). Dieselbe Bedingung wie {@see self::ofNode()}, dieselbe
+        // Reihenfolge wie {@see self::valuesOfMany()}.*
+        $rows = Query::rows('Wertzeilen eines Knotens in benannten Feldern lesen', $wpdb->prepare(
+            'SELECT id, node_record_id, relation_id, locale, position, value_int, value_decimal, value_text, value_date, value_ref, value_ref_kind, value_precision
+             FROM ' . Schema::table('relation_records') . '
+             WHERE relation_id IN (' . implode(',', array_fill(0, count($felder), '%d')) . ')
+               AND node_record_id IN (SELECT id FROM ' . Schema::table('node_records') . ' WHERE node_id = %d AND relation_id = 0)
+             ORDER BY node_record_id ASC, position ASC, id ASC',
+            ...[...$felder, $nodeId]
+        ));
+        $nachSatz = [];
+
+        foreach ($rows ?: [] as $r) {
+            $nachSatz[(int) $r['node_record_id']][] = self::wert($r);
+        }
+
+        return $nachSatz;
+    }
+
+    /** @param array<string, string|null> $r eine Zeile aus `relation_records` */
+    private static function wert(array $r): RelationRecord
+    {
+        return new RelationRecord(
+            (int) $r['node_record_id'],
+            (int) $r['relation_id'],
+            (string) $r['locale'],
+            TypedValue::fromStorage(
+                $r['value_int'] === null ? null : (int) $r['value_int'],
+                StoredDecimal::read($r['value_decimal']),
+                $r['value_text'] === null ? null : (string) $r['value_text'],
+                $r['value_date'] === null ? null : (string) $r['value_date'],
+                $r['value_ref'] === null ? null : (int) $r['value_ref'],
+                ReferenceSpace::tryFrom((string) ($r['value_ref_kind'] ?? '')),
+                \Taxmod\Core\Model\ValuePrecision::tryFrom((string) ($r['value_precision'] ?? '')),
+            ),
+            (int) $r['id'],
+            (int) $r['position'],
+        );
     }
 
     public function valuesOf(int $recordId): array
