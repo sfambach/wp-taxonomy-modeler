@@ -35,4 +35,6 @@ enum ValueKind: string
     case Record = 'record';
     /** Points at something that is gone: the text is its number. */
     case Dangling = 'dangling';
+    /** A text that leads outside, the address in `target` — a provider's link template filled with it (D-1484). */
+    case Link = 'link';
 }

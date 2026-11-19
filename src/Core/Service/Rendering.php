@@ -1023,7 +1023,7 @@ final class Rendering implements Presets, \Taxmod\Core\Port\FieldAddons
         return true;
     }
 
-    /** @var \Closure(int): string|null Satz-Id ⇒ Adresse seiner Seite, vom Rand (D-852). */
+    /** @var \Closure(int, int): string|null Satz-Id und Zielknoten ⇒ Adresse seiner Seite, vom Rand (D-852, D-1483). */
     private ?\Closure $recordLink = null;
 
     /**
@@ -1031,7 +1031,7 @@ final class Rendering implements Presets, \Taxmod\Core\Port\FieldAddons
      * *sein Wort: «wäre gut wenn man unten in der ansicht dann auf octek (link) klicken könnte und landet im entsprechenden knoten mit
      * aktiviertem datensatz».* Der Kern baut keine Adressen (`CD-1`); die Naht bekommt die Satznummer und antwortet mit der Adresse.
      *
-     * @param \Closure(int): string $url
+     * @param \Closure(int, int): string $url Satz-Id, Knoten des Verweisziels (D-1483)
      */
     public function withRecordLinks(\Closure $url): static
     {
@@ -1199,6 +1199,19 @@ final class Rendering implements Presets, \Taxmod\Core\Port\FieldAddons
 
                 if ($ziel !== null) {
                     return $felderVon($ziel, '');
+                }
+            }
+
+            return [];
+        }
+
+        if ($quelle === \Taxmod\Core\Model\NodeClass\FieldSource::ChosenProvider) {
+            // *Der gewählte Anbieter-Ast derselben Stelle, erstes aktives Glied von `link_anbieter` (D-1484).*
+            foreach ($this->resolver?->listOf($knoten, \Taxmod\Core\Model\Type\TextType::LINK_ANBIETER, $kante) ?? [] as $glied) {
+                $ast = $glied->aktiv && $glied->reference !== null ? $this->gemerkterKnoten($glied->reference) : null;
+
+                if ($ast !== null) {
+                    return $felderVon($ast, '');
                 }
             }
 
@@ -2259,10 +2272,10 @@ final class Rendering implements Presets, \Taxmod\Core\Port\FieldAddons
                         ? (isset($this->adressenVon([$value->reference])[$value->reference])
                             ? (\Taxmod\Core\Renderer\MediaRenderer::fileOf($this->adressenVon([$value->reference])[$value->reference], $this->media)?->url
                                 ?? \Taxmod\Core\Renderer\MediaRenderer::absolute($this->adressenVon([$value->reference])[$value->reference]))
-                            : ($this->recordLink === null ? null : ($this->recordLink)($value->reference)))
+                            : ($this->recordLink === null ? null : ($this->recordLink)($value->reference, $relation->toNodeId)))
                         // D-1255: in the form, the chosen record opens beside the chooser, so a record created with its name only can be completed.
                         : ($purpose === Purpose::Edit && $value->referenceSpace === ReferenceSpace::Record && $value->reference !== null && $this->recordLink !== null
-                            ? ($this->recordLink)($value->reference)
+                            ? ($this->recordLink)($value->reference, $relation->toNodeId)
                             : null),
                     // ⚠️ *Ohne Knotenangebot die Sätze des Ziels, zusammengefasst — der Wähler der Zusammenfassung (D-753).*
                     options: $angebot !== [] ? $angebot : ($saetze['angebot'][$relation->id] ?? []),
@@ -2309,6 +2322,12 @@ final class Rendering implements Presets, \Taxmod\Core\Port\FieldAddons
                 $tiefer = $this->valueListBelow($relation, $context, $purpose, $fieldPrefix, $formId, $editable, $recordId, $saetze['mehrfach'][$relation->id] ?? []);
             }
 
+            // D-1484: a shown text with a link template becomes a link — the provider's template, `{nr}` = this text.
+            $feldLink = $purpose === Purpose::Display && $tiefer === null && $type === SimpleType::Text && ! $value->isNothing()
+                ? $this->fieldLinkFor($relation, $settings, $values, $value)
+                : null;
+            $feldLink = $feldLink === null ? null : RenderResult::described(new \Taxmod\Core\Description\ShownValue($this->convertedCharacters($value, $settings, $type) ?? $value->rawValue(), \Taxmod\Core\Description\ValueKind::Link, $feldLink));
+
             $fields[] = new RenderedField(
                 $relation,
                 $type,
@@ -2317,14 +2336,14 @@ final class Rendering implements Presets, \Taxmod\Core\Port\FieldAddons
                 // wird, und daneben die Felder des Gewaehlten (D-583: "einfach rechts davon
                 // anhaengen finde ich am schoensten"). Vorher ersetzte der Abstieg den Kasten,
                 // und der Renderer liess sich nicht mehr wechseln.
-                $tiefer === null
+                $feldLink ?? ($tiefer === null
                     // ⚠️ *Das Ziel wird nur für einen Wähler-Renderer nachgeschlagen — sonst wäre es eine Abfrage je Feld (CD-7).*
                     // ⚠️ *Auch ein Auswahlfeld bietet nur die erlaubten an (D-783): in «Abmessung» stand an der Einheit `choice`, und es bot
                     // die Gruppen «With prefix / Without prefix» statt «m» an — sein Befund: «das auswahlfeld wird nicht richtig gerendert» (D-1140).*
                     ? (($renderer instanceof ChooserRenderer || ($renderer instanceof ChoiceRenderer && isset($allowedChoices[$relation->id]))
                         ? $this->chooserMarkup($this->gemerkterKnoten($relation->toNodeId), $renderer, $context->settings, $value, $context->fieldName, $formId, $locale, $level, $allowedChoices[$relation->id] ?? null, $relation->multiplicity->requiresOne())
                         : null) ?? $renderer->render($relation, $context))
-                    : $this->chosenAndItsFields($relation, $type, $renderer, $context, $tiefer['result']),
+                    : $this->chosenAndItsFields($relation, $type, $renderer, $context, $tiefer['result'])),
                 // Carried for the **layout**: R75 puts read-only values first, as context rather
                 // than as something to fill in. A container must not resolve the chain again.
                 $context->setting(EdgeColumn::READ_ONLY)?->asBool() ?? false,
@@ -4773,6 +4792,117 @@ final class Rendering implements Presets, \Taxmod\Core\Port\FieldAddons
         }
 
         return TypedValue::ofText(($this->jumpUrl)((int) $ziel, $filterFeld, $wert));
+    }
+
+    /** @var array<string, array{namen: array<string, int>, werte: array<int, array<int, string>>}> Je Anbieter-Ast und Vorlage seine Sätze, einmal gelesen (CD-7). */
+    private array $anbieter = [];
+
+    /**
+     * D-1484: die Adresse, zu der ein angezeigter Text führt — die Vorlage des Anbieters, `{nr}` = der Inhalt. Der Anbieter kommt aus einem
+     * Feld desselben Satzes (ein Verweis auf ihn, oder sein Name als Text wie in der Logistik, D-1249) oder ist fest benannt.
+     *
+     * @param array<string, ResolvedSetting> $settings
+     * @param array<int, TypedValue>          $values
+     */
+    private function fieldLinkFor(Relation $relation, array $settings, array $values, TypedValue $value): ?string
+    {
+        $inhalt = $value->isNothing() ? '' : trim($value->rawValue());
+
+        if ($inhalt === '' || $this->resolver === null || $this->records === null) {
+            return null;
+        }
+
+        $typKnoten = $this->gemerkterKnoten($relation->toNodeId);
+
+        if ($typKnoten === null) {
+            return null;
+        }
+
+        $erstes = static function (iterable $glieder): ?int {
+            foreach ($glieder as $glied) {
+                if ($glied->aktiv && $glied->reference !== null) {
+                    return (int) $glied->reference;
+                }
+            }
+
+            return null;
+        };
+
+        $ast     = $erstes($this->resolver->listOf($typKnoten, \Taxmod\Core\Model\Type\TextType::LINK_ANBIETER, $relation));
+        $vorlage = $erstes($this->resolver->listOf($typKnoten, \Taxmod\Core\Model\Type\TextType::LINK_VORLAGE, $relation));
+
+        if ($ast === null || $vorlage === null) {
+            return null;
+        }
+
+        $quelle  = $erstes($this->resolver->listOf($typKnoten, \Taxmod\Core\Model\Type\TextType::LINK_QUELLE, $relation));
+        $genannt = $quelle === null ? null : ($values[$quelle] ?? null);
+        $bekannt = $this->anbieterVon($ast, $vorlage);
+
+        if ($genannt !== null && $genannt->referenceSpace === \Taxmod\Core\Model\ReferenceSpace::Record && $genannt->reference !== null) {
+            $satz = (int) $genannt->reference;
+        } else {
+            $name = $quelle === null
+                ? trim((string) (($settings[\Taxmod\Core\Model\Type\TextType::LINK_FESTER_ANBIETER] ?? null)?->value->rawValue() ?? ''))
+                : ($genannt === null || $genannt->isNothing() ? '' : trim($genannt->rawValue()));
+            $satz = $bekannt['namen'][mb_strtolower($name)] ?? null;
+        }
+
+        return $satz === null ? null : \Taxmod\Core\Model\Type\TextType::linkFrom($bekannt['werte'][$satz][$vorlage] ?? '', $inhalt);
+    }
+
+    /**
+     * Die Sätze unter einem Anbieter-Ast: je Name — sein Satzwort, klein geschrieben — der Satz, und je Satz seine Vorlage. ⚠️ *Ein Name, den
+     * zwei Sätze tragen, findet keinen (Prüftor 19.11.): lieber kein Link als einer zum falschen Anbieter.*
+     *
+     * @return array{namen: array<string, int>, werte: array<int, array<int, string>>}
+     */
+    private function anbieterVon(int $ast, int $vorlage): array
+    {
+        if (isset($this->anbieter[$ast . ':' . $vorlage])) {
+            return $this->anbieter[$ast . ':' . $vorlage];
+        }
+
+        $knoten = $this->gemerkterKnoten($ast);
+        $kante  = $this->relations?->byId($vorlage);
+        $ids    = [];
+
+        foreach ($knoten === null || $kante === null ? [] : $this->records?->ofNodes([$knoten->id, ...array_map(static fn (Node $n): int => $n->id, $this->nodes->subtreeOf($knoten))]) ?? [] as $saetze) {
+            foreach ($saetze as $satz) {
+                $ids[] = $satz->id;
+            }
+        }
+
+        $namen = [];
+        $werte = [];
+        $doppelt = [];
+
+        if ($ids !== [] && $kante !== null) {
+            foreach ($this->records->valuesOfMany($ids) as $id => $zeilen) {
+                foreach ($zeilen as $zeile) {
+                    if ($zeile->relationId === $vorlage && $zeile->value->text !== null) {
+                        $werte[$id][$vorlage] ??= $zeile->value->text;
+                    }
+                }
+            }
+
+            // *Das Satzwort, das auch der Wähler zeigt (D-885) — der Name des Anbieters, nicht irgendein Text von ihm.*
+            foreach ($this->summaryTextsOf([['relation' => $kante, 'records' => $ids, 'ownWords' => true]])[$kante->id] ?? [] as $id => $wort) {
+                $name = mb_strtolower(trim((string) $wort));
+
+                if ($name === '') {
+                    continue;
+                }
+
+                if (isset($namen[$name])) {
+                    $doppelt[$name] = true;
+                }
+
+                $namen[$name] ??= (int) $id;
+            }
+        }
+
+        return $this->anbieter[$ast . ':' . $vorlage] = ['namen' => array_diff_key($namen, $doppelt), 'werte' => $werte];
     }
 
     public function pathTextFor(Relation $relation, int $forNode): TypedValue
@@ -7841,7 +7971,7 @@ final class Rendering implements Presets, \Taxmod\Core\Port\FieldAddons
                     continue;
                 }
 
-                $ziel = $this->recordLink === null || $wert->reference === null ? '' : ($this->recordLink)($wert->reference);
+                $ziel = $this->recordLink === null || $wert->reference === null ? '' : ($this->recordLink)($wert->reference, $relation->toNodeId);
                 $teile[] = new \Taxmod\Core\Description\ShownValue($roh, \Taxmod\Core\Description\ValueKind::Record, $ziel);
             }
 

@@ -243,6 +243,9 @@ final class NodesScreen
     /** Ein Satz, der über seinen Link geöffnet wird — der Knoten dazu wird beim Öffnen nachgeschlagen (D-852). */
     private const OPEN_RECORD = 'taxmod_open_record';
 
+    /** D-1483: `(?string $url, int $recordId, int $nodeId)` — the page of the module that owns a record, for every record link. */
+    public const RECORD_HOME_FILTER = 'taxmod_record_home';
+
     /** Der Akt, der eine Feldzeile auf- oder zuklappt. */
     private const TOGGLE_ROW_SETTINGS = 'toggle_field_settings';
 
@@ -402,7 +405,7 @@ final class NodesScreen
             ), ...$toolbar]) . '</div>'
             . $this->claimedRows($recordId, $felder, $claimed)
             . \Taxmod\WordPress\Draw\Markup::of($this->rendering->withoutSharedRecordBodies()->withoutSharedPicker()->withPartActs(__('Add row', 'taxmod'), __('Remove this row', 'taxmod'), __('Add several', 'taxmod'), __('Insert a row below this one', 'taxmod'), __('Remove from this list — the record itself stays', 'taxmod'))
-                ->withRecordLinks(fn (int $andererSatz): string => $this->recordAddress($andererSatz))
+                ->withRecordLinks(fn (int $andererSatz, int $knoten = 0): string => $this->recordAddress($andererSatz, $knoten))
                 // ⚠️ *Ohne die Adresse blieb ein Sprung (D-769) im Formular eines Moduls eine leere Zeile — gemessen an Satz 46700, «Kompatibilität».*
                 ->withJumps($this->jumpAddress(...), __('Open the matching records', 'taxmod'))
                 ->withRecordCreation(...$this->recordCreation())
@@ -2847,7 +2850,7 @@ final class NodesScreen
                 . ($formId === '' ? '' : $this->previewActs($selected, $satz, $formId) . $this->variantsLine($selected, $satz) . $this->claimedRows($satz, $relations, $claimed))
                 . \Taxmod\WordPress\Draw\Markup::of($this->rendering->withPartActs(__('Add row', 'taxmod'), __('Remove this row', 'taxmod'), __('Add several', 'taxmod'), __('Insert a row below this one', 'taxmod'), __('Remove from this list — the record itself stays', 'taxmod'))->withRecordLinks(
                     // ⚠️ *Die Seite des Knotens, dem der Satz gehört, mit ihm in der Vorschau (D-852).*
-                    fn (int $satz): string => $this->recordAddress($satz)
+                    fn (int $satz, int $knoten = 0): string => $this->recordAddress($satz, $knoten)
                 )->withRecordCreation(...$this->recordCreation())->nodeAsForm(
                     $selected,
                     $gezeigte,
@@ -2992,7 +2995,7 @@ final class NodesScreen
         }
 
         $words = $this->recordWords($ids, $selected->id);
-        $links = array_map(fn (int $id): string => '<a href="' . esc_url($this->recordAddress($id)) . '">#' . $id . ' ' . esc_html($words[$id] ?? '') . '</a>', $ids);
+        $links = array_map(fn (int $id): string => '<a href="' . esc_url($this->recordAddress($id, $selected->id)) . '">#' . $id . ' ' . esc_html($words[$id] ?? '') . '</a>', $ids);
 
         return '<p class="description taxmod-variants"><strong>' . esc_html($parent > 0 ? __('Variant of', 'taxmod') : __('Variants', 'taxmod')) . '</strong> '
             . implode(' · ', $links) . '</p>';
@@ -3001,7 +3004,7 @@ final class NodesScreen
     /** The actions modules offer on this record, as link buttons beside the modeller's own (D-998). */
     private function moduleActions(int $nodeId, int $recordId): string
     {
-        $html = '';
+        $html = $this->recordHomeButton($recordId, $nodeId);
 
         foreach ((array) apply_filters(self::RECORD_ACTIONS_FILTER, [], $nodeId, $recordId) as $action) {
             if (! is_array($action) || ! is_string($action['label'] ?? null) || ! is_string($action['url'] ?? null) || $action['url'] === '') {
@@ -6435,7 +6438,7 @@ final class NodesScreen
 
             foreach (array_slice(array_values($saetze), 0, self::VERWEISE_HOECHSTENS) as $satz) {
                 $wort    = trim((string) ($worte[$kante][$satz] ?? ''));
-                $links[] = '<a class="taxmod-record-link" href="' . esc_url($this->recordAddress($satz)) . '">' . esc_html($wort === '' ? '#' . $satz : $wort) . '</a>';
+                $links[] = '<a class="taxmod-record-link" href="' . esc_url($this->recordAddress($satz, $relation?->fromNodeId ?? 0)) . '">' . esc_html($wort === '' ? '#' . $satz : $wort) . '</a>';
             }
 
             $rest = count($saetze) - self::VERWEISE_HOECHSTENS;
@@ -6452,10 +6455,29 @@ final class NodesScreen
         return '<div class="description taxmod-referrers"><strong>' . esc_html__('Referred to by', 'taxmod') . '</strong><br>' . implode('<br>', $teile) . '</div>';
     }
 
-    private function recordAddress(int $satzId): string
+    private function recordAddress(int $satzId, int $knotenId = 0): string
     {
-        // *Keine Abfrage hier: die Adresse nennt den Satz, die Seite schlägt beim Öffnen seinen Knoten nach.*
-        return $this->satzAdressen[$satzId] ??= add_query_arg(['page' => 'taxmod', self::OPEN_RECORD => (string) $satzId], admin_url('admin.php')) . '#taxmod-preview-edit';
+        return $this->satzAdressen[$satzId] ??= $this->recordHome($satzId, $knotenId)
+            // *Keine Abfrage hier: die Adresse nennt den Satz, die Seite schlägt beim Öffnen seinen Knoten nach.*
+            ?? add_query_arg(['page' => 'taxmod', self::OPEN_RECORD => (string) $satzId], admin_url('admin.php')) . '#taxmod-preview-edit';
+    }
+
+    /** D-1483: in the one toolbar (D-1403) the module page of a record a module owns, so the record is one click from its process. */
+    private function recordHomeButton(int $satzId, int $knotenId): string
+    {
+        $home = $satzId > 0 ? $this->recordHome($satzId, $knotenId) : null;
+
+        // *Ein Icon-Quadrat mit Tooltip wie die anderen Knöpfe der Toolbar (seine Regel 18.11.: «Buttons einheitliche Größe, Icon-Quadrate mit Tooltip»).*
+        return $home === null ? '' : ' <a class="button taxmod-icon-button taxmod-record-home" href="' . esc_url($home) . '" title="' . esc_attr__('Open in its module', 'taxmod') . '">'
+            . ListPage::icon('external', __('Open in its module', 'taxmod')) . '</a>';
+    }
+
+    /** D-1483: a module that owns the record (orders, stock, sales) names its own page; null leaves the Modeller's. */
+    private function recordHome(int $satzId, int $knotenId): ?string
+    {
+        $home = apply_filters(self::RECORD_HOME_FILTER, null, $satzId, $knotenId);
+
+        return is_string($home) && $home !== '' ? $home : null;
     }
 
     /** @var array<int, string> Der Weg eines Knotens, je Seite einmal gelesen — für den Filter über Unterbäume (D-791, D-1477). */

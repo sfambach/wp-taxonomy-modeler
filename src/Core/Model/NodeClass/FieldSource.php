@@ -22,4 +22,7 @@ enum FieldSource: string
 
     /** Nur die Felder des Knotens, von dem die Kante ausgeht — «das Feld dieses Satzes» des Sprungs (D-769), ohne die haltenden Sätze. */
     case Owner = 'owner';
+
+    /** Die Felder des Anbieter-Asts, der in `link_anbieter` derselben Stelle gewählt ist — die Vorlage eines Links (D-1484). */
+    case ChosenProvider = 'chosen_provider';
 }
