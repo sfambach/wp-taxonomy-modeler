@@ -1020,7 +1020,9 @@ final class ListPage
             // D-1230: a row opened by its link (#id) stands out, e.g. a lot from the Platzbestand.
             . '.taxmod-list tr:target > *{background:#fff8c5}'
             . self::detailsStyle() . '</style>' . self::detailsScript()
-            . '<table class="wp-list-table widefat fixed striped table-view-list taxmod-list"' . ($complete ? ' data-taxmod-complete' : '') . '><thead>' . $head . $filterRow . '</thead><tbody>' . $rows . '</tbody><tfoot>' . $head . '</tfoot></table>';
+            . '<table class="wp-list-table widefat fixed striped table-view-list taxmod-list"' . ($complete ? ' data-taxmod-complete' : '') . '><thead>' . $head . $filterRow . '</thead><tbody>' . $rows . '</tbody>'
+            // His screenshot 2026-11-19 05:47: on a table with no rows the foot reads as the head twice; it repeats the head only below rows.
+            . (trim($rows) === '' || str_contains($rows, 'class="no-items"') ? '' : '<tfoot>' . $head . '</tfoot>') . '</table>';
     }
 
     /**

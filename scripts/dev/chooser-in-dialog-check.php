@@ -70,5 +70,14 @@ $say(str_contains((string) file_get_contents(dirname(__DIR__, 2) . '/src/WordPre
 $say(str_contains($js('admin.js'), '.taxmod-chooser-tree\' ).forEach') && str_contains($js('admin.js'), 'liste.scrollTop'), 'D-1470: ein Baum im Dialog zeigt beim Öffnen die gewählte Zeile');
 $say(str_contains($js('live.js'), "[data-taxmod-morph][id]") && str_contains($js('side-tree.js'), "addEventListener( 'taxmod:replaced', start )"), 'D-1470: ein Akt zeichnet auch die Seitenspalte (data-taxmod-morph) und ihren Baum neu');
 
+// His screenshots 2026-11-19 05:47/05:49: in a dialog the tree's search sits at the top of its list and the tree takes the field's
+// width; a click on the group already chosen in a module's side tree opens it again, and the page starts at its top; a table
+// without rows repeats no head below.
+$say((bool) preg_match('/\.taxmod-dialog-panel \.taxmod-chooser > \.taxmod-dialog \.taxmod-chooser-tree \{\s*padding-top: 0;/', $css), '19.11.: das Suchfeld steht im Dialogbaum oben, nichts darüber');
+$say(str_contains($js('admin.js'), 'feld.defaultChecked') && str_contains($js('admin.js'), "setItem( 'taxmod.sprung', '1' )"), '19.11.: ein Klick auf die schon gewählte Gruppe öffnet sie, die Seite beginnt oben');
+$leer = \Taxmod\WordPress\Admin\ListPage::table([['A']], '<tr class="no-items"><td>x</td></tr>');
+$voll = \Taxmod\WordPress\Admin\ListPage::table([['A']], '<tr><td>x</td></tr>');
+$say(! str_contains($leer, '<tfoot>') && str_contains($voll, '<tfoot>'), '19.11.: eine Tabelle ohne Zeilen zeigt ihren Kopf nur einmal');
+
 echo $failed === 0 ? "\nall green\n" : "\n{$failed} FAIL\n";
 exit($failed === 0 ? 0 : 1);

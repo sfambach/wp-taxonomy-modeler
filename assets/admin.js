@@ -3415,6 +3415,25 @@
 		zeilenVorbereiten();
 	}
 
+	// *His report 2026-11-19 05:49: «wenn ich nochmal auf 7 Segment Anzeige klicke … lädt aber nicht» — a click on the row already
+	// chosen sends no change, so the click opens it too; and the page opened from the tree starts at its top («scrollt nach unten
+	// und bleibt unten»), as after a jump of the modeller's own tree (D-807).*
+	function oeffnen( baum, feld ) {
+		if ( baum.hasAttribute( 'data-taxmod-going' ) ) {
+			return;
+		}
+
+		baum.setAttribute( 'data-taxmod-going', '' );
+
+		try {
+			window.sessionStorage.setItem( 'taxmod.sprung', '1' );
+		} catch ( e ) {
+			// Ohne Speicher bleibt die Stelle — die Vorgabe.
+		}
+
+		window.location.href = baum.getAttribute( 'data-taxmod-pick' ).split( '__ID__' ).join( encodeURIComponent( feld.value ) );
+	}
+
 	document.addEventListener( 'change', function ( ereignis ) {
 		var feld  = ereignis.target;
 		var baum  = feld && feld.closest ? feld.closest( '.taxmod-record-tree[data-taxmod-pick]' ) : null;
@@ -3423,7 +3442,17 @@
 			return;
 		}
 
-		window.location.href = baum.getAttribute( 'data-taxmod-pick' ).split( '__ID__' ).join( encodeURIComponent( feld.value ) );
+		oeffnen( baum, feld );
+	} );
+
+	document.addEventListener( 'click', function ( ereignis ) {
+		var feld = ereignis.target instanceof HTMLInputElement ? ereignis.target : null;
+		var baum = feld && feld.type === 'radio' ? feld.closest( '.taxmod-record-tree[data-taxmod-pick]' ) : null;
+
+		// A click on the row already chosen: the browser sends no change.
+		if ( baum && feld.defaultChecked ) {
+			oeffnen( baum, feld );
+		}
 	} );
 
 	document.addEventListener( 'dragstart', function ( ereignis ) {
