@@ -316,6 +316,9 @@ final class Plugin
         // D-1476: what every Taxmod page took, written down after the page is sent.
         Admin\PageTimesLog::register();
 
+        // D-1488: the chooser's words in German where the site speaks it — the plugin's own translations (AR-2: through the text domain).
+        add_action('init', static fn () => load_plugin_textdomain('taxmod', false, dirname(plugin_basename($plugin->file)) . '/languages'), 1);
+
         // ⚠️ **Ein Satz aus dem Modell im Beitrag** ([D-912](../../docs/NewConcept/90-decision-log.md)).
         add_action('init', static fn () => (new RecordBlock($plugin->screen(...), $plugin->file))->register());
         add_action('rest_api_init', static fn () => (new RecordBlock($plugin->screen(...), $plugin->file))->registerRoutes());

@@ -22,6 +22,8 @@ final class RecordPicker implements Describes
         public readonly string $word = '',
         public readonly string $searchWord = '',
         public readonly string $treeWord = '',
+        public readonly bool $wrap = false,
+        public readonly string $opens = '',
     ) {
     }
 
@@ -30,8 +32,14 @@ final class RecordPicker implements Describes
         return new self($dialog, $taken, $href, $openWord, $clearWord);
     }
 
-    /** ⚠️ *The tree beside the search carries no tree: the script fetches nodes and records when it is pressed (D-1011).* */
-    public static function bySearch(string $name, string $form, ?int $chosen, string $word, ?string $href, array $words): self
+    /**
+     * ⚠️ *The tree beside the search carries no tree: the script fetches nodes and records when it is pressed (D-1011).*
+     *
+     * @param array<string, string> $words open, clear, search, tree
+     * @param bool   $wrap  the chosen word breaks into lines instead of ending in «…» (D-1448)
+     * @param string $opens the id of a dialog switch the chosen word opens — a module's own view of the record (D-1111, D-1488)
+     */
+    public static function bySearch(string $name, string $form, ?int $chosen, string $word, ?string $href, array $words, bool $wrap = false, string $opens = ''): self
     {
         return new self(
             null,
@@ -44,7 +52,9 @@ final class RecordPicker implements Describes
             $chosen,
             $word,
             (string) ($words['search'] ?? ''),
-            (string) ($words['tree'] ?? '')
+            (string) ($words['tree'] ?? ''),
+            $wrap,
+            $opens
         );
     }
 
@@ -62,6 +72,8 @@ final class RecordPicker implements Describes
             'word'          => $this->word,
             'search_word'   => $this->searchWord,
             'tree_word'     => $this->treeWord,
+            'wrap'          => $this->wrap,
+            'opens'         => $this->opens,
         ];
     }
 }
