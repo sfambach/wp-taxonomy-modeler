@@ -2,6 +2,7 @@
 
 namespace Taxmod\Core\Service;
 
+use Taxmod\Core\Listing\ChoiceFilter;
 use Taxmod\Core\Model\RecordInTree;
 
 /**
@@ -16,6 +17,9 @@ use Taxmod\Core\Model\RecordInTree;
  *   S --> V["words of the asked fields only"]
  * ```
  *
+ * ⚠️ *`fits` on a field choosing a node keeps what {@see ChoiceFilter} keeps: the node, below it, and its ancestors up to the
+ * field's target (D-1477).*
+ *
  * ⚠️ *A condition compares the **stored** value: text, number, date or the id a reference points at. A part (a composition)
  * is a record of its own; its inner values are not reached from here.*
  *
@@ -23,7 +27,7 @@ use Taxmod\Core\Model\RecordInTree;
  */
 final class RecordQuery
 {
-    public const OPS = ['eq', 'in', 'contains', 'empty', 'not_empty', 'within'];
+    public const OPS = ['eq', 'in', 'contains', 'empty', 'not_empty', 'within', 'fits'];
 
     public const DEFAULT_LIMIT = 50;
 
@@ -73,7 +77,7 @@ final class RecordQuery
                 throw new \InvalidArgumentException(sprintf('where[%d]: %s needs a value.', $i, $op));
             }
 
-            if (in_array($op, ['eq', 'contains', 'within'], true) && count($values) > 1) {
+            if (in_array($op, ['eq', 'contains', 'within', 'fits'], true) && count($values) > 1) {
                 throw new \InvalidArgumentException(sprintf('where[%d]: %s takes one value; use in for several.', $i, $op));
             }
 
@@ -81,6 +85,10 @@ final class RecordQuery
 
             if ($op === 'within' && ($parent < 1 || ! ctype_digit($values[0]))) {
                 throw new \InvalidArgumentException(sprintf('where[%d]: within needs a record id as value and parent_field, the field its records hang under.', $i));
+            }
+
+            if ($op === 'fits' && ! ctype_digit($values[0])) {
+                throw new \InvalidArgumentException(sprintf('where[%d]: fits needs a node id as value.', $i));
             }
 
             $conditions[] = ['field' => $field, 'op' => $op, 'values' => $values, 'parent_field' => $parent];
@@ -126,9 +134,29 @@ final class RecordQuery
     }
 
     /**
-     * The conditions as the record table reads them: `within` has become `in`, the search word a condition on any text.
+     * `fits` as the plain list it means: of the nodes that could fit — the wanted one, its ancestors and what lies below
+     * it — those {@see ChoiceFilter} keeps (D-1477).
      *
-     * @param array<int, list<string>> $resolved condition index → ids `within` stands for
+     * @param list<\Taxmod\Core\Model\Node> $candidates
+     * @return list<string> node ids as the condition compares them
+     */
+    public static function fitting(array $candidates, string $wantedPath, string $targetPath): array
+    {
+        $ids = [];
+
+        foreach ($candidates as $node) {
+            if (ChoiceFilter::fits($node->path, $wantedPath, $targetPath)) {
+                $ids[] = (string) $node->id;
+            }
+        }
+
+        return array_values(array_unique($ids));
+    }
+
+    /**
+     * The conditions as the record table reads them: `within` and `fits` have become `in`, the search word a condition on any text.
+     *
+     * @param array<int, list<string>> $resolved condition index → ids `within` or `fits` stands for
      * @return list<array{field: int, op: string, values: list<string>}> field 0 with op contains = any text of the record
      */
     public function forTable(array $resolved = []): array
@@ -136,7 +164,7 @@ final class RecordQuery
         $out = [];
 
         foreach ($this->conditions as $i => $c) {
-            $out[] = $c['op'] === 'within'
+            $out[] = in_array($c['op'], ['within', 'fits'], true)
                 ? ['field' => $c['field'], 'op' => 'in', 'values' => $resolved[$i] ?? $c['values']]
                 : ['field' => $c['field'], 'op' => $c['op'], 'values' => $c['values']];
         }

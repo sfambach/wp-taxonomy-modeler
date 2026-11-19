@@ -8630,77 +8630,73 @@ final class Rendering implements Presets, \Taxmod\Core\Port\FieldAddons
     }
 
     /**
-     * Woraus unter diesen Knoten gewählt werden kann — **durch markierte Knoten hindurch**.
-     *
-     * ⚠️ **[D-540](../../../docs/NewConcept/90-decision-log.md) sagt «sichtbare, unmarkierte Kinder»,
-     * und «unmarkiert» ist dort ausdrücklich die Bedingung:** *«nur weil sie markiert waren, war
-     * `Integer` keine Auswahl aus seinen eigenen Einstellungen».*
-     *
-     * ⚠️ **Was die Entscheidung noch nicht kannte, ist der Zwischenknoten.** *Der Eigentümer hat am
-     * 2026-08-30 «render label roles» und «render with label» zu einem zusammengelegt und die Renderer
-     * darunter geschoben — danach sind `form`, `table`, `compact` **Enkel** von `Renderer`. Auf die
-     * Kinderreihe allein war «render with label» wählbar und `table` nicht; er: **«table, form, compact
-     * muss wählbar bleiben, warum auch nicht?»***
-     *
-     * ⚠️ **Die Erweiterung folgt aus den eigenen Worten der Regel:** *markiert heisst «kein Wert, nur
-     * Struktur» — also ist ein markierter Knoten **keine** Möglichkeit und die Auswahl sieht durch ihn
-     * hindurch. Ein unmarkierter ist eine Möglichkeit und wird nicht weiter aufgeklappt.*
-     *
-     * ⚠️ **Die **eigene** Sorte entscheidet, nicht die aufgelöste.** *`resolvedFieldTypes()` erbt nach unten:
-     * wäre sie gefragt, gälten `form`, `table`, `compact` als markiert, weil ihr Elternteil es ist —
-     * und die Auswahl wäre leer statt vollständig.*
-     *
-     * ⚠️ *Eine Abfrage je Stufe, drei Stufen (`CD-7`).*
+     * Woraus unter diesen Knoten gewählt werden kann: unter einer **Konstante** das Ziel selbst und alles darunter
+     * ([D-1477](../../../docs/NewConcept/90-decision-log.md)), sonst die sichtbaren Kinder ([D-540](../../../docs/NewConcept/90-decision-log.md)).
      *
      * @param  list<int>                       $parentIds
      * @return array<int, array<int, string>>  Eltern-Id => (Knoten-Id => Name)
      */
     private function offeredUnder(array $parentIds): array
     {
-        $angebot = array_fill_keys($parentIds, []);
-        $offen   = [];
+        $angebot    = array_fill_keys($parentIds, []);
+        $konstanten = [];
 
-        foreach ($parentIds as $id) {
-            $offen[$id] = [$id];
+        foreach ($this->nodes->byIds($parentIds) as $id => $ziel) {
+            if ($this->framework->branchOf($ziel) === Branch::Constants) {
+                $konstanten[$id] = $ziel;
+            }
         }
 
-        for ($stufe = 0; $stufe < self::TIEFSTENS && $offen !== []; $stufe++) {
-            $alle = [];
+        // ⚠️ **Eine Konstante wählt auch das Ziel selbst und jede Ebene darunter** ([D-1477](../../../docs/NewConcept/90-decision-log.md)).
+        // *Sein Wort: «sodass man auch den Vaterknoten auswählen könnte … Dann weiß man, dass es alles ist.» Das Ziel steht
+        // vorn und heisst, wie es heisst; tiefere Knoten tragen den Weg ab dem Ziel («PC › XT»), damit gleiche Namen
+        // unterscheidbar bleiben. Eine Abfrage je Ebene für alle Ziele zusammen (`CD-7`).*
+        $kinder = [];
+        $ebene  = array_keys($konstanten);
 
-            foreach ($offen as $ids) {
-                foreach ($ids as $id) {
-                    $alle[$id] = true;
-                }
-            }
+        for ($tiefe = 0; $tiefe < self::KONSTANTEN_TIEFE && $ebene !== []; $tiefe++) {
+            $gelesen = $this->gemerkteSichtbareKinder($ebene);
+            $ebene   = [];
 
-            $kinder = $this->gemerkteSichtbareKinder(array_keys($alle));
-            $weiter = [];
+            foreach ($gelesen as $vater => $reihe) {
+                $kinder[$vater] = $reihe;
 
-            // ⚠️ **Die eigene Sorte kommt jetzt aus den eingehenden Kanten**
-            // ([D-621](../../../docs/NewConcept/90-decision-log.md)). *Eine Abfrage je Stufe für alle
-            // Kinder zusammen (`CD-7`) — und weiter die **eigene**, nicht die aufgelöste, sonst gälte
-            // alles unter `Renderer` als markiert und die Auswahl wäre leer.*
-            $eigene = [];
-
-            foreach ($kinder as $reihe) {
                 foreach ($reihe as $kind) {
-                    $eigene[$kind->id] = true;
+                    $ebene[] = $kind->id;
                 }
             }
+        }
 
-            foreach ($offen as $wurzel => $ids) {
-                foreach ($ids as $id) {
-                    foreach ($kinder[$id] ?? [] as $kind) {
+        foreach ($konstanten as $id => $ziel) {
+            $angebot[$id] = [$id => $ziel->name];
+            $this->unterMitWeg($id, '', $kinder, $angebot[$id]);
+        }
 
-                        $angebot[$wurzel][$kind->id] = $kind->name;
-                    }
-                }
+        $sonst = array_values(array_diff($parentIds, array_keys($konstanten)));
+
+        foreach ($sonst === [] ? [] : $this->gemerkteSichtbareKinder($sonst) as $vater => $reihe) {
+            foreach ($reihe as $kind) {
+                $angebot[$vater][$kind->id] = $kind->name;
             }
-
-            $offen = $weiter;
         }
 
         return $angebot;
+    }
+
+    /** Wie tief eine Konstantenauswahl hinabsteigt — eine Grenze gegen einen Fehler im Baum, keine des Modells (D-1477). */
+    private const KONSTANTEN_TIEFE = 12;
+
+    /**
+     * @param array<int, list<Node>> $kinder
+     * @param array<int, string>     $angebot
+     */
+    private function unterMitWeg(int $vater, string $weg, array $kinder, array &$angebot): void
+    {
+        foreach ($kinder[$vater] ?? [] as $kind) {
+            $name               = $weg === '' ? $kind->name : $weg . ' › ' . $kind->name;
+            $angebot[$kind->id] = $name;
+            $this->unterMitWeg($kind->id, $name, $kinder, $angebot);
+        }
     }
 
     private function typeOf(Node $target): ?SimpleType
