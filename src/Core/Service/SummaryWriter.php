@@ -68,6 +68,9 @@ final class SummaryWriter
             $knotenJeSatz[$satz->id] = $satz->nodeId;
         }
 
+        // D-1478: a variant is named after its parent, so a parent's change renames its variants, and a variant needs its parent's name.
+        $vaterJeVariante = $this->variantsAround($knotenJeSatz);
+
         foreach (array_unique(array_values($knotenJeSatz)) as $knotenId) {
             $knoten = $this->nodes->find($knotenId);
 
@@ -111,7 +114,7 @@ final class SummaryWriter
         }
 
         // ⚠️ *Erst vergessen, dann rechnen: geschrieben wurde eben, und der Zeichenlauf merkt sich jeden Satz (D-885).*
-        $this->rendering->forgetRecords($betroffen);
+        $this->rendering->forgetRecords(array_keys($knotenJeSatz));
 
         $geaendert = 0;
 
@@ -121,7 +124,10 @@ final class SummaryWriter
         foreach ($saetzeJeFeld as $eintrag) {
             $kanteId = $eintrag['relation']->id;
 
-            foreach ($this->rendering->summaryTextsOf([$eintrag])[$kanteId] ?? [] as $satzId => $text) {
+            $texte   = $this->rendering->summaryTextsOf([$eintrag])[$kanteId] ?? [];
+            $texte   = $this->namedAfterParents($eintrag, $texte, $vaterJeVariante, $knotenJeSatz);
+
+            foreach ($texte as $satzId => $text) {
                 // ⚠️ *Ohne einen einzigen Wert bleibt das Feld leer. Gemessen an einem Kabel ohne Hersteller und Teilenummer: da
                 // stand «#24621» — die Notnummer, mit der ein Wähler einen namenlosen Satz zeigt. Im Satz ist sie kein Name.*
                 $text = preg_match('/^#\d+$/', trim($text)) === 1 ? '' : $text;
@@ -130,12 +136,119 @@ final class SummaryWriter
                     continue;
                 }
 
-                $this->data->put($satzId, $kanteId, TypedValue::ofText($text));
+                $this->data->putDerived($satzId, $kanteId, TypedValue::ofText($text));
                 ++$geaendert;
             }
         }
 
         return $geaendert;
+    }
+
+    /**
+     * The parents and variants of these records, added to `$knotenJeSatz`; answers variant → parent (D-1478). Two reads at most
+     * for all records together (CD-7).
+     *
+     * @param array<int, int> $knotenJeSatz record → node, extended in place
+     * @return array<int, int> variant → parent
+     */
+    private function variantsAround(array &$knotenJeSatz): array
+    {
+        $vaterFeld = [];
+
+        foreach (array_unique(array_values($knotenJeSatz)) as $knotenId) {
+            $feld = $this->data->variantFieldsOf($knotenId)['variantOf'];
+
+            if ($feld > 0) {
+                $vaterFeld[$knotenId] = $feld;
+            }
+        }
+
+        if ($vaterFeld === []) {
+            return [];
+        }
+
+        $ids    = array_keys(array_filter($knotenJeSatz, static fn (int $knoten): bool => isset($vaterFeld[$knoten])));
+        $vater  = [];
+        $felder = array_flip(array_values($vaterFeld));
+
+        foreach ($this->records->valuesOfMany($ids) as $satzId => $zeilen) {
+            foreach ($zeilen as $zeile) {
+                if ($zeile->relationId === ($vaterFeld[$knotenJeSatz[$satzId]] ?? 0) && $zeile->value->reference !== null) {
+                    $vater[(int) $satzId] = $zeile->value->reference;
+                }
+            }
+        }
+
+        foreach ($this->records->referrersOfMany($ids) as $zeilen) {
+            foreach ($zeilen as $zeile) {
+                if (isset($felder[$zeile->relationId]) && $zeile->value->reference !== null) {
+                    $vater[$zeile->recordId] = $zeile->value->reference;
+                }
+            }
+        }
+
+        $fehlen = array_values(array_diff(array_unique(array_merge(array_keys($vater), array_values($vater))), array_keys($knotenJeSatz)));
+
+        foreach ($fehlen === [] ? [] : $this->records->byIds($fehlen) as $satz) {
+            $knotenJeSatz[$satz->id] = $satz->nodeId;
+        }
+
+        return array_filter($vater, static fn (int $parent, int $variant): bool => isset($knotenJeSatz[$parent], $knotenJeSatz[$variant]), ARRAY_FILTER_USE_BOTH);
+    }
+
+    /**
+     * D-1478: a variant's name is its parent's name and the words of its own «Je Variante» fields — only fields that say a word
+     * (a choice, a text, a number); pictures and parts such as a pin assignment stay out (D-1473).
+     *
+     * @param array{relation: Relation, fields: list<int>, records: list<int>} $eintrag
+     * @param array<int, string> $texte record → text, as computed from the stored values
+     * @param array<int, int>    $vaterJeVariante
+     * @param array<int, int>    $knotenJeSatz
+     * @return array<int, string>
+     */
+    private function namedAfterParents(array $eintrag, array $texte, array $vaterJeVariante, array $knotenJeSatz): array
+    {
+        $varianten = array_values(array_filter($eintrag['records'], static fn (int $id): bool => isset($vaterJeVariante[$id])));
+
+        if ($varianten === []) {
+            return $texte;
+        }
+
+        $knotenId = $knotenJeSatz[$varianten[0]];
+        $worte    = $this->wordFields($knotenId, $eintrag['relation']->id);
+        $eigene   = $worte === [] ? [] : ($this->rendering->summaryTextsOf([['relation' => $eintrag['relation'], 'records' => $varianten, 'fields' => $worte]])[$eintrag['relation']->id] ?? []);
+
+        foreach ($varianten as $variante) {
+            $vater   = $vaterJeVariante[$variante];
+            $name    = $texte[$vater] ?? (string) $this->steht($vater, $eintrag['relation']->id);
+            $eigenes = preg_match('/^#\d+$/', trim($eigene[$variante] ?? '')) === 1 ? '' : trim($eigene[$variante] ?? '');
+
+            $texte[$variante] = implode(' · ', array_filter([$name, $eigenes], static fn (string $teil): bool => $teil !== ''));
+        }
+
+        return $texte;
+    }
+
+    /** @return list<int> the «Je Variante» fields of a node that say a word, in the node's field order */
+    private function wordFields(int $knotenId, int $ausser): array
+    {
+        $eigen  = $this->data->variantFieldsOf($knotenId)['own'];
+        $knoten = $this->nodes->find($knotenId);
+        $aus    = [];
+
+        foreach ($knoten === null || $eigen === [] ? [] : $this->relations->fieldRelationsOf($this->framework->inheritanceOwnersOf($knoten)) as $kante) {
+            if (! isset($eigen[$kante->id]) || $kante->id === $ausser) {
+                continue;
+            }
+
+            $typ = $this->typeNodes->typeOf($kante->toNodeId);
+
+            if ($kante->kind === \Taxmod\Core\Model\RelationKind::Aggregation || ($typ !== null && $typ !== SimpleType::Media && $typ !== SimpleType::Summary)) {
+                $aus[] = $kante->id;
+            }
+        }
+
+        return $aus;
     }
 
     /** Was heute in diesem Feld steht, oder null. */

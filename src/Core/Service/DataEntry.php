@@ -132,7 +132,7 @@ final class DataEntry
     {
         ['variantOf' => $variantOf, 'own' => $own] = $this->variantFieldsOf($record->nodeId);
 
-        if ($variantOf === 0 || isset($own[$relation->id])) {
+        if ($variantOf === 0 || isset($own[$relation->id]) || $this->derived) {
             return;
         }
 
@@ -184,8 +184,12 @@ final class DataEntry
     /** @var array<int, int> record id → its parent, 0 for none; read once per record and write path (CD-7) */
     private array $parentOf = [];
 
-    /** @return array{variantOf: int, own: array<int, true>} */
-    private function variantFieldsOf(int $nodeId): array
+    /**
+     * Which field of a node is «Variante von» and which carry «Je Variante» (D-1208); 0 and none without variants.
+     *
+     * @return array{variantOf: int, own: array<int, true>}
+     */
+    public function variantFieldsOf(int $nodeId): array
     {
         if (isset($this->variantFields[$nodeId])) {
             return $this->variantFields[$nodeId];
@@ -609,6 +613,21 @@ final class DataEntry
      *
      * @param string $locale Only ever non-empty for an attribute declared translatable (D-317).
      */
+    /** D-1478: set while a derived value (a name, a calculation) is written — a variant holds those itself, no person types them. */
+    private bool $derived = false;
+
+    /** {@see self::put()} for a value the model derives; a variant's lock does not apply (D-1478). */
+    public function putDerived(int $recordId, int $relationId, TypedValue $value, string $locale = ''): void
+    {
+        $this->derived = true;
+
+        try {
+            $this->put($recordId, $relationId, $value, $locale);
+        } finally {
+            $this->derived = false;
+        }
+    }
+
     public function put(int $recordId, int $relationId, TypedValue $value, string $locale = ''): void
     {
         $relation      = $this->writableRelation($recordId, $relationId, $value);

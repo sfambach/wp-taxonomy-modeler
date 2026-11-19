@@ -74,6 +74,8 @@ final class ModelAbilities
         'move_field' => '{node, field, to} — declares the field at another node, values stay; refused if a record with values would end up outside it',
         'retarget_field' => '{node, field, target, drop_values?} — points the field at another node and keeps its kind; refused while stored values would not fit the new target (a plain value on a part field or the reverse), unless drop_values: true removes them (D-1371)',
         'drop_unfit_values' => '{node, field} — removes the stored values of the field that do not fit its target, e.g. numbers left on a field that now holds unit-value parts (D-1371)',
+        'make_variants' => '{records} — records of one node become the variants of a new parent: the parent takes the values they share, each keeps its «Je Variante» values, id, stock and labels; refused naming field and records where they differ elsewhere, or where one already is or has a variant; the node needs a field with «Variante von»; one change number (D-1478)',
+        'add_variant' => '{record, values?} — a new variant beside record (of its parent, of itself when it has variants, else record first becomes the only variant of a new parent); values only on «Je Variante» fields (D-1478)',
         'merge_constant' => '{from, into} — a doubled constant: every value (records and settings) that chose from chooses into, a value that would then stand twice in the same field falls, from goes to the trash; one change number, so undo_act takes it back. Refused if from has children, is a field target, or a field holding it cannot choose into (retarget_field first) (D-1458)',
         'merge_field' => '{node, field, into, under?, first?} — moves the values of the field onto another field with the same target and parks it; refused if a record would end up outside «into» or already holds values there; with under only records below that node, and the field stays; with first the values go to the front of the other field\'s list, its own values move back and a value already there stands only once (D-1205)',
         'create_record' => '{node, record_type?, values?, locale?} — values as for set_values, written in the same act',
@@ -109,7 +111,8 @@ final class ModelAbilities
     // D-1073: moving a record is data too — the stock's material page moves a material to another group.
     // D-1098: a part changing its head is data too — the stock moves a purchase between a requirement and a supplier draft.
     // D-1135: copying a record is data too — the stock copies a material and a storage place.
-    private const DATA_OPS = ['create_record', 'set_values', 'remove_record', 'move_record', 'move_part', 'reorder_values', 'duplicate_record', 'undo_act'];
+    // D-1478: making variants changes records only — the stock asks it of its own material list.
+    private const DATA_OPS = ['create_record', 'set_values', 'remove_record', 'make_variants', 'add_variant', 'move_record', 'move_part', 'reorder_values', 'duplicate_record', 'undo_act'];
 
     /** Whether the running change list came through `write-data` — an undo there may only take back record rows (D-1410). */
     private bool $onlyRecords = false;
@@ -211,7 +214,7 @@ final class ModelAbilities
         wp_register_ability('taxmod/apply', [
             'label'               => __('Change the model', 'taxmod'),
             'description'         => __(
-                'Applies a list of changes as one act (one change number, all or nothing). The answer names its change number as "act"; undo_act {act} takes a change back. Ops: create_node, rename_node, trash_node, trash_unused_constant, move_node, add_field, rename_field, remove_field, move_field, retarget_field, merge_field, create_record, set_values, remove_record, move_part, reorder_values, duplicate_record, set_kind, set_multiplicity, move_record, set_list, set_label, set_addons, set_setting, hide_field. Fields and rules of one op: taxmod/help {op}. Any op may carry "ref"; later ops use "@ref" in place of an id. Values are typed as on the admin screen. brief: true answers with the count and the refs only. dry_run: true writes nothing and answers what each merge_field would move (records, both, duplicates); only merge_field.',
+                'Applies a list of changes as one act (one change number, all or nothing). The answer names its change number as "act"; undo_act {act} takes a change back. Ops: create_node, rename_node, trash_node, trash_unused_constant, move_node, add_field, rename_field, remove_field, move_field, retarget_field, merge_field, create_record, set_values, remove_record, make_variants, add_variant, move_part, reorder_values, duplicate_record, set_kind, set_multiplicity, move_record, set_list, set_label, set_addons, set_setting, hide_field. Fields and rules of one op: taxmod/help {op}. Any op may carry "ref"; later ops use "@ref" in place of an id. Values are typed as on the admin screen. brief: true answers with the count and the refs only. dry_run: true writes nothing and answers what each merge_field would move (records, both, duplicates); only merge_field.',
                 'taxmod'
             ),
             'category'            => self::CATEGORY,
@@ -225,7 +228,7 @@ final class ModelAbilities
                         'items'    => [
                             'type'       => 'object',
                             'properties' => [
-                                'op'          => ['type' => 'string', 'enum' => ['create_node', 'rename_node', 'set_class', 'trash_node', 'trash_unused_constant', 'move_node', 'add_field', 'rename_field', 'remove_field', 'move_field', 'merge_field', 'merge_constant', 'retarget_field', 'drop_unfit_values', 'create_record', 'set_values', 'remove_record', 'move_record', 'move_part', 'reorder_values', 'duplicate_record', 'set_kind', 'set_multiplicity', 'set_list', 'set_setting', 'hide_field', 'set_label', 'set_addons', 'undo_act']],
+                                'op'          => ['type' => 'string', 'enum' => ['create_node', 'rename_node', 'set_class', 'trash_node', 'trash_unused_constant', 'move_node', 'add_field', 'rename_field', 'remove_field', 'move_field', 'merge_field', 'merge_constant', 'retarget_field', 'drop_unfit_values', 'create_record', 'set_values', 'remove_record', 'make_variants', 'add_variant', 'move_record', 'move_part', 'reorder_values', 'duplicate_record', 'set_kind', 'set_multiplicity', 'set_list', 'set_setting', 'hide_field', 'set_label', 'set_addons', 'undo_act']],
                                 'act'         => ['type' => 'integer', 'minimum' => 1],
                                 'ref'         => ['type' => 'string', 'pattern' => '^[A-Za-z0-9_-]+$'],
                                 'name'        => ['type' => 'string'],
@@ -1066,6 +1069,20 @@ final class ModelAbilities
                 );
 
                 return $recordId;
+
+            case 'make_variants':
+                // D-1478: «Als Varianten zusammenfassen» — refused with field and records named where they differ outside «Je Variante».
+                return $screen->makeVariants(array_map(fn (mixed $one): int => $this->resolve($one, $refs, 'records'), is_array($change['records'] ?? null) ? $change['records'] : []));
+
+            case 'add_variant':
+                // D-1478: «Variante anlegen» at a record; its own values in the same act.
+                $variant = $screen->addVariant($at('record'));
+
+                if (is_array($change['values'] ?? null) && $change['values'] !== []) {
+                    $this->applyOne(['op' => 'set_values', 'record' => $variant, 'values' => $change['values']], $refs);
+                }
+
+                return $variant;
 
             case 'remove_record':
                 $recordId = $at('record');

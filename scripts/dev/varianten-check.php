@@ -154,5 +154,28 @@ $answer = $set($ref['p'], [(string) $ref['name'] => 'OLED 0,96']);
 $shown  = (new ModelDoor())->records($ref['m']);
 check('a change at the parent shows at every variant', ! is_wp_error($answer) && ($shown[$ref['v2']][$ref['name']] ?? []) === ['OLED 0,96'], $why($answer));
 
+echo "Making variants (D-1478)\n";
+
+$made = $apply->execute(['changes' => [
+    ['op' => 'create_record', 'ref' => 'a', 'node' => $ref['m'], 'values' => [(string) $ref['name'] => 'TFT 1,8', (string) $ref['farbe'] => 'rot']],
+    ['op' => 'create_record', 'ref' => 'b', 'node' => $ref['m'], 'values' => [(string) $ref['name'] => 'TFT 1,8', (string) $ref['farbe'] => 'grün']],
+    ['op' => 'create_record', 'ref' => 'c', 'node' => $ref['m'], 'values' => [(string) $ref['name'] => 'TFT 2,4']],
+]]);
+$r      = is_array($made) ? $made['refs'] : [];
+$answer = $apply->execute(['changes' => [['op' => 'make_variants', 'records' => [$r['a'] ?? 0, $r['c'] ?? 0]]]]);
+check('make_variants refuses a difference outside «Je Variante», naming the field', is_wp_error($answer) && str_contains($why($answer), '__va Name'), $why($answer));
+$answer = $apply->execute(['changes' => [['op' => 'make_variants', 'ref' => 'vater', 'records' => [$r['a'] ?? 0, $r['b'] ?? 0]]]]);
+$vater  = is_array($answer) ? (int) ($answer['refs']['vater'] ?? 0) : 0;
+$shown  = (new ModelDoor())->records($ref['m']);
+check('make_variants: a new parent holds the shared name', $vater > 0 && ($shown[$vater][$ref['name']] ?? []) === ['TFT 1,8'], $why($answer));
+check('make_variants: each keeps its id and its own colour', ($shown[$r['a']][$ref['farbe']] ?? []) === ['rot'] && ($shown[$r['b']][$ref['von']] ?? []) === [(string) $vater]);
+$added  = $apply->execute(['changes' => [['op' => 'add_variant', 'ref' => 'neu', 'record' => $r['a'] ?? 0, 'values' => [(string) $ref['farbe'] => 'blau']]]]);
+$neu    = is_array($added) ? (int) ($added['refs']['neu'] ?? 0) : 0;
+$shown  = (new ModelDoor())->records($ref['m']);
+check('add_variant at a variant adds a sibling under the same parent', $neu > 0 && ($shown[$neu][$ref['von']] ?? []) === [(string) $vater] && ($shown[$neu][$ref['farbe']] ?? []) === ['blau'], $why($added));
+$undo   = $apply->execute(['changes' => [['op' => 'undo_act', 'act' => (int) ($answer['act'] ?? 0)]]]);
+$shown  = (new ModelDoor())->records($ref['m']);
+check('undo takes make_variants back as one act', ! is_wp_error($undo) && ($shown[$r['a']][$ref['name']] ?? []) === ['TFT 1,8'] && ! isset($shown[$vater]), $why($undo));
+
 echo "\n$ok ok, $bad failed\n";
 exit($bad === 0 ? 0 : 1);

@@ -2273,6 +2273,131 @@ final class RenderingTest extends TestCase
         self::assertSame('IC-Sockel · DIP-14', $steht);
     }
 
+    /** D-1478: a variant is named after its parent plus the words of its own «Je Variante» fields; a parent's change renames it. */
+    #[Test]
+    public function a_variant_is_named_after_its_parent_and_its_own_values(): void
+    {
+        $this->typeNodes->remember(\Taxmod\Core\Model\SimpleType::Summary, $this->lookalike('Summary')->id);
+        $display     = $this->thing('Display');
+        $text        = $this->type('Text');
+        $bezeichnung = $this->editor->addField($display->id, $text->id, 'Bezeichnung');
+        $controller  = $this->editor->addField($display->id, $text->id, 'Controller');
+        $farbe       = $this->editor->addField($display->id, $text->id, 'Farbe');
+        $vonFeld     = $this->editor->addField($display->id, $display->id, 'Variante von', RelationKind::Aggregation);
+
+        $vater   = $this->records->add(new NodeRecord(0, $display->id, 1, '2026-11-19 08:00:00', RecordType::User));
+        $weiss   = $this->records->add(new NodeRecord(0, $display->id, 1, '2026-11-19 08:00:00', RecordType::User));
+        $einfach = $this->records->add(new NodeRecord(0, $display->id, 1, '2026-11-19 08:00:00', RecordType::User));
+        $this->records->putValue(RelationRecord::direct($vater, $controller->id, TypedValue::ofText('SSD1306')));
+        $this->records->putValue(RelationRecord::direct($weiss, $farbe->id, TypedValue::ofText('weiß')));
+        $this->records->putValue(RelationRecord::direct($weiss, $vonFeld->id, TypedValue::ofRecordReference($vater)));
+        $this->records->putValue(RelationRecord::direct($einfach, $vonFeld->id, TypedValue::ofRecordReference($vater)));
+
+        $editor = new SettingsEditor($this->settings, $this->nodes, $this->resolver, ShippedRenderers::registry(), ShippedConverters::registry());
+        $editor->setMembers($display, SummaryRenderer::FIELDS, [$controller->id], $bezeichnung);
+        $this->neuZeichnen();
+
+        $addons = new class ([$vonFeld->id => ['variant_of'], $farbe->id => ['variant']]) implements \Taxmod\Core\Port\FieldAddons {
+            /** @param array<int, list<string>> $names */
+            public function __construct(private readonly array $names)
+            {
+            }
+
+            public function addonNamesAt(array $relations): array
+            {
+                return array_intersect_key($this->names, array_flip(array_map(static fn ($r): int => $r->id, $relations)));
+            }
+        };
+        $daten   = new DataEntry($this->records, $this->relations, $this->nodes, $this->framework, new \Taxmod\Tests\Core\Fake\FixedClock(), new \Taxmod\Tests\Core\Fake\RecordedChanges(), null, $addons);
+        $schreib = new \Taxmod\Core\Service\SummaryWriter($this->records, $this->relations, $this->nodes, $this->framework, $this->typeNodes, $this->rendering, $daten);
+        $name    = function (int $satz) use ($bezeichnung): string {
+            foreach ($this->records->valuesOf($satz) as $zeile) {
+                if ($zeile->relationId === $bezeichnung->id) {
+                    return (string) $zeile->value->text;
+                }
+            }
+
+            return '';
+        };
+
+        $schreib->refresh([$vater]);
+
+        self::assertSame('SSD1306', $name($vater));
+        self::assertSame('SSD1306 · weiß', $name($weiss), 'parent name plus its own colour');
+        self::assertSame('SSD1306', $name($einfach), 'a variant without own words carries the parent name');
+    }
+
+    /** D-1478: «Als Varianten zusammenfassen» — a new parent takes the shared values, a difference outside «Je Variante» refuses. */
+    #[Test]
+    public function records_become_variants_of_a_new_parent_with_their_shared_values(): void
+    {
+        $this->typeNodes->remember(\Taxmod\Core\Model\SimpleType::Summary, $this->lookalike('Summary')->id);
+        $display     = $this->thing('Display');
+        $text        = $this->type('Text');
+        $bezeichnung = $this->editor->addField($display->id, $text->id, 'Bezeichnung');
+        $controller  = $this->editor->addField($display->id, $text->id, 'Controller');
+        $farbe       = $this->editor->addField($display->id, $text->id, 'Farbe');
+        $vonFeld     = $this->editor->addField($display->id, $display->id, 'Variante von', RelationKind::Aggregation);
+        $satz        = function (array $werte) use ($display): int {
+            $id = $this->records->add(new NodeRecord(0, $display->id, 1, '2026-11-19 08:00:00', RecordType::User));
+
+            foreach ($werte as $feld => $wert) {
+                $this->records->putValue(RelationRecord::direct($id, $feld, TypedValue::ofText($wert)));
+            }
+
+            return $id;
+        };
+        $blau  = $satz([$controller->id => 'SSD1306', $farbe->id => 'blau', $bezeichnung->id => 'SSD1306 blau']);
+        $weiss = $satz([$controller->id => 'SSD1306', $farbe->id => 'weiß', $bezeichnung->id => 'SSD1306 weiß']);
+        $leer  = $satz([$farbe->id => 'gelb']);
+        $fremd = $satz([$controller->id => 'SH1106']);
+
+        $editor = new SettingsEditor($this->settings, $this->nodes, $this->resolver, ShippedRenderers::registry(), ShippedConverters::registry());
+        $editor->setMembers($display, SummaryRenderer::FIELDS, [$controller->id], $bezeichnung);
+        $this->neuZeichnen();
+
+        $addons = new class ([$vonFeld->id => ['variant_of'], $farbe->id => ['variant']]) implements \Taxmod\Core\Port\FieldAddons {
+            /** @param array<int, list<string>> $names */
+            public function __construct(private readonly array $names)
+            {
+            }
+
+            public function addonNamesAt(array $relations): array
+            {
+                return array_intersect_key($this->names, array_flip(array_map(static fn ($r): int => $r->id, $relations)));
+            }
+        };
+        $daten = new DataEntry($this->records, $this->relations, $this->nodes, $this->framework, new \Taxmod\Tests\Core\Fake\FixedClock(), new \Taxmod\Tests\Core\Fake\RecordedChanges(), null, $addons);
+        $macher = new \Taxmod\Core\Service\VariantMaker($daten, $this->relations, $this->nodes, $this->framework, $this->typeNodes, $this->rendering);
+        $wert   = function (int $id, int $feld): ?string {
+            foreach ($this->records->valuesOf($id) as $zeile) {
+                if ($zeile->relationId === $feld) {
+                    return (string) ($zeile->value->text ?? $zeile->value->reference);
+                }
+            }
+
+            return null;
+        };
+
+        try {
+            $macher->make([$blau, $fremd]);
+            self::fail('a different controller is refused');
+        } catch (\Taxmod\Core\Exception\NotYetStorable $e) {
+            self::assertStringContainsString('«Controller» differs between #' . $blau . ' and #' . $fremd, $e->getMessage());
+        }
+
+        $vater = $macher->make([$blau, $weiss, $leer]);
+
+        self::assertSame('SSD1306', $wert($vater, $controller->id), 'the parent takes the shared value');
+        self::assertNull($wert($vater, $farbe->id), 'a «Je Variante» value stays with the variant');
+        self::assertNull($wert($blau, $controller->id), 'cleared at the variant, it is read from the parent');
+        self::assertSame('blau', $wert($blau, $farbe->id));
+        self::assertSame((string) $vater, $wert($leer, $vonFeld->id));
+
+        $this->expectException(\Taxmod\Core\Exception\NotYetStorable::class);
+        $macher->make([$blau]);
+    }
+
     /** ⚠️ *D-999: die Feldwahl eines Wählers an einer Aggregation setzt nichts zusammen — sonst stand «Gerber» als Text in den Quellen einer Quelle.* */
     #[Test]
     public function a_field_choice_at_an_aggregation_is_a_chooser_not_a_composition(): void
