@@ -37,6 +37,8 @@ final class TargetModel
      * @param array<string, int> $paidStates 'open' and 'paid' => constant node id of the choice «Zahlstatus»
      * @param list<int> $compositions relation ids among the fields above that are compositions, as the model says at load
      *        time (D-1097) — read, never configured: the kind belongs to the relation
+     * @param PlatformFirms|null $platformFirms the firms «platform» points at when it is a reference (D-1487); `null` while it is
+     *        text — read from the model like the compositions, never configured
      */
     public function __construct(
         public readonly int $ordersNode,
@@ -58,7 +60,50 @@ final class TargetModel
         public readonly array $invoiceFields = [],
         public readonly array $paidStates = [],
         public readonly array $compositions = [],
+        public readonly ?PlatformFirms $platformFirms = null,
     ) {
+    }
+
+    /** The same targets with the firms «platform» points at (D-1487), read where the orders are read. */
+    public function withPlatformFirms(?PlatformFirms $firms): self
+    {
+        return new self(
+            $this->ordersNode,
+            $this->purchasesNode,
+            $this->originDocumented,
+            $this->amountField,
+            $this->unitField,
+            $this->orderFields,
+            $this->purchaseFields,
+            $this->currencies,
+            $this->requiredParts,
+            $this->rateField,
+            $this->salesNode,
+            $this->soldItemsNode,
+            $this->saleFields,
+            $this->soldItemFields,
+            $this->saleRequiredParts,
+            $this->invoicesNode,
+            $this->invoiceFields,
+            $this->paidStates,
+            $this->compositions,
+            $firms,
+        );
+    }
+
+    /**
+     * What «platform» is written as (D-1487): the name while the field is text, the firm's id once it is a reference — and
+     * nothing for a name that names no firm, so the field stays empty instead of holding text it cannot hold.
+     */
+    public function platformValue(string $name): ?string
+    {
+        if ($this->platformFirms === null) {
+            return $name;
+        }
+
+        $id = $this->platformFirms->idOf($name);
+
+        return $id === null ? null : (string) $id;
     }
 
     /**

@@ -123,6 +123,7 @@ interface EnrichingSource extends ImportSource   // JLC: ergänzt Vorschläge an
 ### 3.4 Doppelte und Zuständigkeit
 
 - **Doppelt = gleiche Plattform + gleiche Bestellnummer**, im Modell oder im Eingang. Einmal gebaut, ein Lesezugriff je Lauf (`CD-7`).
+- **Plattform als Firma** ([D-1487](../../NewConcept/90-decision-log.md)): ist «Plattform» ein Verweis, gilt als Plattform die Firma, auf die der Name der Quelle zeigt (`PlatformFirms`: genaues Wort, sonst eine einzige Firma, die mit ihm beginnt). Doppelt = gleiche Firma + gleiche Bestellnummer.
 - **Zuständigkeit je Plattform als Tabelle statt Filter zwischen Modulen — im Code, nicht im Reiter** ([D-961](../../NewConcept/90-decision-log.md), ersetzt «im Reiter General»): `DutyTable::initial()`, ein Modul ergänzt seine Zeile über den Filter `taxmod_import_duties`.
 
 | Plattform | neue Bestellungen | Status (versandt, zugestellt) | Preise ergänzen |

@@ -34,6 +34,12 @@ final class OrderComparison
         foreach (self::ROLES as $role) {
             $source = self::sourceValue($proposal, $role);
 
+            // D-1487: a name that names no firm says nothing about a field that holds firms.
+            if ($role === 'platform' && $source !== null && $existing->platformFirms !== null) {
+                $source = $existing->platformFirms->canonical($source);
+                $source = $source === '' ? null : $source;
+            }
+
             // D-1405: the platform is compared only where the model reports it — an order found by platform and number has it.
             if ($source === null || ($role === 'platform' && ! array_key_exists('platform', $existing->values))) {
                 continue;

@@ -826,11 +826,16 @@ final class InboxScreen
             return __('Sales cannot be taken over — set the sale targets in the «Import» tab.', 'taxmod');
         }
 
-        $targets = $model->target;
         $existing = self::existing($root, $proposal);
 
         if ($existing instanceof WP_Error) {
             return $existing->get_error_message();
+        }
+
+        $targets = $model->writingTarget();
+
+        if ($targets instanceof WP_Error) {
+            return $targets->get_error_message();
         }
 
         $verdict = (new Intake(Duties::load(), array_keys(Sources::all())))->decide(self::leadSource($rows), $proposal, $existing);

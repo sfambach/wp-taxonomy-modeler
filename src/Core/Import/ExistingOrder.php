@@ -28,6 +28,8 @@ final class ExistingOrder
         public readonly array $invoiceNumbers = [],
         /** When the order left the seller: '' = the field is empty, null = the target has no such field (both: not known as shipped). */
         public readonly ?string $shippedAt = null,
+        /** The firms «platform» points at once it is a reference (D-1487): values['platform'] is then the firm's word. */
+        public readonly ?PlatformFirms $platformFirms = null,
     ) {
     }
 }
