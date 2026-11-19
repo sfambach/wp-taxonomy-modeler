@@ -121,6 +121,9 @@ final class RecordMerger
         $addons  = $this->rendering->addonNamesAt(array_values($fields));
         $values  = $this->records->valuesOfMany([$from, $into]);
         $lost    = [];
+        // D-1481: a quantity is a part of its own in each record — compared by what it holds.
+        $compare = new ValueComparison($this->nodes, array_values($fields));
+        $compare->load(fn (array $ids): array => $this->records->valuesOfMany($ids), $values);
 
         foreach ($fields as $field) {
             if ($field->isSetting() || $this->typeNodes->typeOf($field->toNodeId) === SimpleType::Summary
@@ -128,9 +131,9 @@ final class RecordMerger
                 continue;
             }
 
-            $own = self::keyOf($values[$from] ?? [], $field->id);
+            $own = $compare->keyOf($values[$from] ?? [], $field);
 
-            if ($own !== '' && $own !== self::keyOf($values[$into] ?? [], $field->id)) {
+            if ($own !== '' && $own !== $compare->keyOf($values[$into] ?? [], $field)) {
                 $lost[] = '«' . $field->name . '»';
             }
         }
@@ -138,21 +141,5 @@ final class RecordMerger
         if ($lost !== []) {
             throw NotYetStorable::thatCannotMergeRecords($from, $into, sprintf('#%d holds values #%d lacks or holds differently: %s — make them equal first.', $from, $into, implode(', ', $lost)));
         }
-    }
-
-    /** @param list<RelationRecord> $rows */
-    private static function keyOf(array $rows, int $field): string
-    {
-        $keys = [];
-
-        foreach ($rows as $row) {
-            if ($row->relationId === $field) {
-                $keys[] = $row->locale . "\x1F" . json_encode($row->value->rawValue());
-            }
-        }
-
-        sort($keys);
-
-        return implode("\x1E", $keys);
     }
 }

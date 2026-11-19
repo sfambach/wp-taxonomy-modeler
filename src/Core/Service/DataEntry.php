@@ -2201,6 +2201,20 @@ final class DataEntry
         return $kopie;
     }
 
+    /** D-1481: a part copied with its own parts, for another holder — {@see self::attachPart()} hangs it there. Answers the copy's id. */
+    public function copyPart(int $partId): int
+    {
+        $teil = $this->records->find($partId) ?? throw NotYetStorable::noSuchRecord($partId);
+
+        $this->changelog?->beginAct();
+
+        try {
+            return $this->satzKopieren($teil)->id;
+        } finally {
+            $this->changelog?->endAct();
+        }
+    }
+
     private function satzKopieren(NodeRecord $satz): NodeRecord
     {
         $neu = new NodeRecord(0, $satz->nodeId, $satz->nodeVersion, $this->clock->now()->format('Y-m-d H:i:s'), $satz->recordType);
