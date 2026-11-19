@@ -66,6 +66,7 @@ final class ModelAbilities
         'rename_node' => '{node, name}',
         'set_class' => '{node, class} — switches the node to another class, as the page does; refused unless the parent allows it and it allows every child; settings the new class does not declare fall (D-733)',
         'trash_node' => '{node}',
+        'trash_unused_constant' => '{node} — a value of a choice list into the trash, one act; refused if it has children, is a field target, is a framework node, or any record or setting still chooses it (then merge_constant) (D-1474)',
         'move_node' => '{node, parent} — hangs the node and its subtree under another parent',
         'add_field' => '{node, target, name?, kind?, multiplicity?}',
         'rename_field' => '{node, field, name}',
@@ -210,7 +211,7 @@ final class ModelAbilities
         wp_register_ability('taxmod/apply', [
             'label'               => __('Change the model', 'taxmod'),
             'description'         => __(
-                'Applies a list of changes as one act (one change number, all or nothing). The answer names its change number as "act"; undo_act {act} takes a change back. Ops: create_node, rename_node, trash_node, move_node, add_field, rename_field, remove_field, move_field, retarget_field, merge_field, create_record, set_values, remove_record, move_part, reorder_values, duplicate_record, set_kind, set_multiplicity, move_record, set_list, set_label, set_addons, set_setting, hide_field. Fields and rules of one op: taxmod/help {op}. Any op may carry "ref"; later ops use "@ref" in place of an id. Values are typed as on the admin screen. brief: true answers with the count and the refs only. dry_run: true writes nothing and answers what each merge_field would move (records, both, duplicates); only merge_field.',
+                'Applies a list of changes as one act (one change number, all or nothing). The answer names its change number as "act"; undo_act {act} takes a change back. Ops: create_node, rename_node, trash_node, trash_unused_constant, move_node, add_field, rename_field, remove_field, move_field, retarget_field, merge_field, create_record, set_values, remove_record, move_part, reorder_values, duplicate_record, set_kind, set_multiplicity, move_record, set_list, set_label, set_addons, set_setting, hide_field. Fields and rules of one op: taxmod/help {op}. Any op may carry "ref"; later ops use "@ref" in place of an id. Values are typed as on the admin screen. brief: true answers with the count and the refs only. dry_run: true writes nothing and answers what each merge_field would move (records, both, duplicates); only merge_field.',
                 'taxmod'
             ),
             'category'            => self::CATEGORY,
@@ -224,7 +225,7 @@ final class ModelAbilities
                         'items'    => [
                             'type'       => 'object',
                             'properties' => [
-                                'op'          => ['type' => 'string', 'enum' => ['create_node', 'rename_node', 'set_class', 'trash_node', 'move_node', 'add_field', 'rename_field', 'remove_field', 'move_field', 'merge_field', 'merge_constant', 'retarget_field', 'drop_unfit_values', 'create_record', 'set_values', 'remove_record', 'move_record', 'move_part', 'reorder_values', 'duplicate_record', 'set_kind', 'set_multiplicity', 'set_list', 'set_setting', 'hide_field', 'set_label', 'set_addons', 'undo_act']],
+                                'op'          => ['type' => 'string', 'enum' => ['create_node', 'rename_node', 'set_class', 'trash_node', 'trash_unused_constant', 'move_node', 'add_field', 'rename_field', 'remove_field', 'move_field', 'merge_field', 'merge_constant', 'retarget_field', 'drop_unfit_values', 'create_record', 'set_values', 'remove_record', 'move_record', 'move_part', 'reorder_values', 'duplicate_record', 'set_kind', 'set_multiplicity', 'set_list', 'set_setting', 'hide_field', 'set_label', 'set_addons', 'undo_act']],
                                 'act'         => ['type' => 'integer', 'minimum' => 1],
                                 'ref'         => ['type' => 'string', 'pattern' => '^[A-Za-z0-9_-]+$'],
                                 'name'        => ['type' => 'string'],
@@ -950,6 +951,10 @@ final class ModelAbilities
 
             case 'trash_node':
                 return $editor->moveToTrash($at('node'))->id;
+
+            case 'trash_unused_constant':
+                // D-1474: «Löschen» of a choice-list value in Stammdaten — only what nothing chooses (merge_constant for the rest).
+                return $editor->trashUnusedConstant($at('node'))->id;
 
             case 'move_node':
                 // ⚠️ *Built so a currency can hang under «Base units» without a hand in the admin (D-928).*

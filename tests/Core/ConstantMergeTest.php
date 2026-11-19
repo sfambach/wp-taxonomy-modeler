@@ -21,7 +21,8 @@ use Taxmod\Tests\Core\Fake\InMemoryRelations;
 use Taxmod\Tests\Core\Fake\RecordedChanges;
 
 /**
- * Merging a doubled constant: every value that chose it chooses the other, nothing stands twice, the double goes to the trash (D-1458).
+ * Merging a doubled constant: every value that chose it chooses the other, nothing stands twice, the double goes to the trash (D-1458);
+ * deleting a value only when nothing chooses it (D-1474).
  *
  * @see docs/NewConcept/90-decision-log.md D-1458
  */
@@ -111,6 +112,58 @@ final class ConstantMergeTest extends TestCase
 
         $this->expectException(ImpossibleMove::class);
         $this->editor->mergeConstant($dip->id, $tht->id);
+    }
+
+    #[Test]
+    public function an_unused_value_goes_to_the_trash(): void
+    {
+        $liste  = $this->editor->createNode('Farben', $this->model->id);
+        $silber = $this->editor->createNode('Silber', $liste->id);
+
+        $this->editor->trashUnusedConstant($silber->id);
+
+        self::assertTrue($this->nodes->byId($silber->id)->isDescendantOf($this->trash));
+    }
+
+    #[Test]
+    public function a_value_still_chosen_is_not_deleted_and_says_how_often(): void
+    {
+        $liste = $this->editor->createNode('Farben', $this->model->id);
+        $rot   = $this->editor->createNode('Rot', $liste->id);
+        $chip  = $this->editor->createNode('Chip', $this->model->id);
+        $feld  = $this->editor->addField($chip->id, $liste->id, 'Farbe');
+        $this->satz($chip, $feld, [$rot]);
+        $this->satz($chip, $feld, [$rot]);
+
+        self::assertSame([$rot->id => 2], $this->records->nodeReferrerCounts([$rot->id, $liste->id]));
+
+        try {
+            $this->editor->trashUnusedConstant($rot->id);
+            self::fail('two records still choose «Rot»');
+        } catch (ImpossibleMove $e) {
+            self::assertStringContainsString('2 value(s)', $e->getMessage());
+        }
+
+        self::assertFalse($this->nodes->byId($rot->id)->isDescendantOf($this->trash));
+    }
+
+    #[Test]
+    public function a_list_with_values_or_a_field_target_is_not_deleted(): void
+    {
+        $liste = $this->editor->createNode('Farben', $this->model->id);
+        $this->editor->createNode('Rot', $liste->id);
+        $leer  = $this->editor->createNode('Leer', $this->model->id);
+        $chip  = $this->editor->createNode('Chip', $this->model->id);
+        $this->editor->addField($chip->id, $leer->id, 'Leer');
+
+        foreach ([$liste, $leer] as $knoten) {
+            try {
+                $this->editor->trashUnusedConstant($knoten->id);
+                self::fail($knoten->name . ' was deleted');
+            } catch (ImpossibleMove) {
+                self::assertFalse($this->nodes->byId($knoten->id)->isDescendantOf($this->trash));
+            }
+        }
     }
 
     /** @param list<Node> $gewaehlt */
