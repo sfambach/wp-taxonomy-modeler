@@ -39,6 +39,25 @@ final class RecordPick
     }
 
     /**
+     * The search field with its tree button for a module's records that the module finds itself (D-958, D-1011) — the one chooser
+     * for them; a module draws no copy of its own (D-1488). Hits, nodes and branch come from the endpoints on the module's
+     * `#taxmod-words`.
+     *
+     * @param array<string, string> $words search, tree, clear — a module's own words; missing ones are the modeller's
+     * @param string                $opens the id of a dialog switch the chosen word opens; '' for a plain word
+     */
+    public static function remote(string $name, ?int $chosen, string $word, array $words = [], bool $wrap = false, string $opens = '', string $formId = ''): string
+    {
+        $words += [
+            'search' => __('Search', 'taxmod'),
+            'tree'   => __('Show the tree', 'taxmod'),
+            'clear'  => __('Remove this choice', 'taxmod'),
+        ];
+
+        return (new \Taxmod\WordPress\Draw\EdgeDrawer())->draw(\Taxmod\Core\Description\RecordPicker::bySearch($name, $formId, $chosen, $word, null, $words, $wrap, $opens));
+    }
+
+    /**
      * The modeller's script and stylesheet, and where the script creates a record from the dialog — once per page. Every module
      * form that can draw a record dialog draws this carrier (D-1271): without it «Create» in the dialog did nothing at all.
      */

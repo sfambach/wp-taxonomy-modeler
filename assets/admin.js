@@ -410,7 +410,9 @@
 			return null;
 		}
 
-		for ( var i = 0; i < switches.length; i++ ) {
+		// *From the innermost: a chooser standing inside a dialog (D-1467) is later in the page than the dialog around it, and both
+		// hold the focus — Escape closes the list, not the dialog (D-1488).*
+		for ( var i = switches.length - 1; i >= 0; i-- ) {
 			var panel = panelOf( switches[ i ] );
 
 			if ( panel && panel.contains( document.activeElement ) ) {
@@ -1588,7 +1590,8 @@
 		var oeffner = wahl.querySelector( '.taxmod-dialog-open, .taxmod-record-dialog-open' );
 
 		if ( oeffner && fern ) {
-			oeffner.textContent = treffer.getAttribute( 'data-taxmod-word' ) || treffer.textContent;
+			// *Ein Satz ohne Namen zeigt seine Nummer — sonst stand nur der Mülleimer da (D-1488).*
+			oeffner.textContent = ( treffer.getAttribute( 'data-taxmod-word' ) || treffer.textContent ).trim() || '#' + treffer.getAttribute( 'data-taxmod-value' );
 			oeffner.hidden = false;
 			// *Gewählt: Wort und Mülleimer, Suche und Baum treten zurück — wie beim Laden einer gesetzten Referenz (D-851, D-1011).*
 			wahl.classList.add( 'taxmod-record-taken' );
@@ -3119,15 +3122,15 @@
 	// *Name tippen, «Anlegen» oder Enter: der Server legt den Satz am Knoten der Gruppe an, er steht in der Liste und ist gewählt — wie ein
 	// Klick auf einen vorhandenen. Gespeichert wird die Wahl wie jede andere mit «OK»; der Satz selbst ist schon da und lässt sich auf
 	// seiner Seite ergänzen oder löschen.*
-	function neuAnlegen( feld ) {
-		var platz   = feld.closest( '.taxmod-record-new' );
-		var baum    = feld.closest( '.taxmod-record-tree' );
+	function neuAnlegen( platz, name ) {
+		var baum    = platz ? platz.closest( '.taxmod-record-tree' ) : null;
 		// *Die Adresse steht am Wortträger der Seite oder, in einem Modul, an einem eigenen (D-1182).*
 		var worte   = document.querySelector( '[data-record-create]' ) || document.getElementById( 'taxmod-words' );
 		var adresse = worte ? worte.getAttribute( 'data-record-create' ) || '' : '';
-		var name    = feld.value.trim();
 
-		if ( ! platz || ! baum || adresse === '' || name === '' || platz.classList.contains( 'is-busy' ) ) {
+		name = name.trim();
+
+		if ( ! baum || adresse === '' || name === '' || platz.classList.contains( 'is-busy' ) ) {
 			return;
 		}
 
@@ -3137,11 +3140,13 @@
 		daten.append( 'node', platz.getAttribute( 'data-taxmod-node' ) || '' );
 		daten.append( 'name', name );
 		platz.classList.add( 'is-busy' );
+		baum.classList.add( 'is-busy' );
 
 		fetch( adresse, { method: 'POST', body: daten, credentials: 'same-origin' } ).then( function ( antwort ) {
 			return antwort.json();
 		} ).then( function ( antwort ) {
 			platz.classList.remove( 'is-busy' );
+			baum.classList.remove( 'is-busy' );
 
 			if ( ! antwort || ! antwort.success || ! vorbild ) {
 				window.alert( antwort && antwort.data && antwort.data.message ? antwort.data.message : ( worte.getAttribute( 'data-save-failed' ) || '' ) );
@@ -3159,27 +3164,159 @@
 			huelle.appendChild( knopf );
 			huelle.appendChild( document.createTextNode( ' ' + antwort.data.word ) );
 			platz.parentNode.insertBefore( huelle, platz );
-			feld.value = '';
+
+			var suche = baum.querySelector( '.taxmod-record-search' );
+
+			if ( suche ) {
+				suche.dispatchEvent( new Event( 'input', { bubbles: true } ) );
+			}
+
 			knopf.dispatchEvent( new Event( 'change', { bubbles: true } ) );
 		} ).catch( function () {
 			platz.classList.remove( 'is-busy' );
+			baum.classList.remove( 'is-busy' );
 			window.alert( worte.getAttribute( 'data-save-failed' ) || '' );
 		} );
 	}
 
-	document.addEventListener( 'click', function ( ereignis ) {
-		var knopf = ereignis.target instanceof Element ? ereignis.target.closest( '.taxmod-record-new-go' ) : null;
+	// ⚠️ **«+ «Wort» anlegen» statt der Zeile «New here …»** (D-1488) — sein Wort 19.11. 20:48 «neuer hersteller ?», 20:57 «Neuanlage
+	// manufacturer nicht möglich». *Getippt wird in die Suche; hat kein Satz genau dieses Wort (Gross/klein egal, ohne Ränder), steht
+	// unter den Treffern ein Knopf, der es am Zielknoten anlegt (D-1477: der erste Ast mit Anlegen). Wo der Server kein Anlegen erlaubt,
+	// gibt es keinen Ast mit Anlegen — und keinen Knopf.*
+	function anlegenZeigen( baum ) {
+		var suche = baum.querySelector( '.taxmod-record-search' );
+		var platz = baum.querySelector( '.taxmod-record-new' );
+		var liste = baum.querySelector( '.taxmod-record-list' );
 
-		if ( knopf ) {
-			ereignis.preventDefault();
-			neuAnlegen( knopf.parentNode.querySelector( '.taxmod-record-new-name' ) );
+		if ( ! suche || ! platz || ! liste ) {
+			return;
+		}
+
+		var knopf = liste.querySelector( ':scope > .taxmod-record-create' );
+		var wort  = suche.value.trim();
+		var klein = wort.toLowerCase();
+		var genau = klein === '' || Array.prototype.some.call( baum.querySelectorAll( '.taxmod-record-choice' ), function ( wahl ) {
+			return wahl.textContent.trim().toLowerCase() === klein;
+		} );
+
+		if ( ! knopf ) {
+			var tat = platz.querySelector( '.taxmod-record-new-go' );
+
+			knopf = document.createElement( 'button' );
+			knopf.type = 'button';
+			knopf.className = 'button taxmod-record-create';
+			knopf.setAttribute( 'data-taxmod-word', tat ? tat.textContent : '' );
+			liste.appendChild( knopf );
+		}
+
+		knopf.hidden = genau;
+		knopf.textContent = '+ ' + knopf.getAttribute( 'data-taxmod-word' ) + ' «' + wort + '»';
+	}
+
+	document.addEventListener( 'input', function ( ereignis ) {
+		var feld = ereignis.target;
+		var baum = feld instanceof HTMLInputElement && feld.classList.contains( 'taxmod-record-search' ) ? feld.closest( '.taxmod-record-tree' ) : null;
+
+		if ( baum ) {
+			anlegenZeigen( baum );
+			markeSetzen( baum, null );
 		}
 	} );
 
-	document.addEventListener( 'keydown', function ( ereignis ) {
-		if ( ereignis.key === 'Enter' && ereignis.target instanceof HTMLInputElement && ereignis.target.classList.contains( 'taxmod-record-new-name' ) ) {
+	document.addEventListener( 'click', function ( ereignis ) {
+		var knopf = ereignis.target instanceof Element ? ereignis.target.closest( '.taxmod-record-create' ) : null;
+		var baum  = knopf ? knopf.closest( '.taxmod-record-tree' ) : null;
+		var suche = baum ? baum.querySelector( '.taxmod-record-search' ) : null;
+
+		if ( suche ) {
 			ereignis.preventDefault();
-			neuAnlegen( ereignis.target );
+			neuAnlegen( baum.querySelector( '.taxmod-record-new' ), suche.value );
+		}
+	} );
+
+	// ⚠️ **Die Tastatur in einem Wähler** (D-1488): *Pfeile wandern über die sichtbaren Zeilen und den Anlegen-Knopf, Enter nimmt die
+	// markierte (oder die einzige), Escape schliesst — das schon oben über `topmost()`.*
+	var ZEILEN = '.taxmod-record-choice, .taxmod-record-create, .taxmod-chooser-row';
+
+	function markeSetzen( kasten, zeile ) {
+		kasten.querySelectorAll( '.is-current' ).forEach( function ( alt ) {
+			alt.classList.remove( 'is-current' );
+		} );
+
+		if ( zeile ) {
+			zeile.classList.add( 'is-current' );
+			zeile.scrollIntoView( { block: 'nearest' } );
+		}
+	}
+
+	document.addEventListener( 'keydown', function ( ereignis ) {
+		var feld = ereignis.target;
+
+		if ( ! ( feld instanceof HTMLInputElement ) || ! ( feld.classList.contains( 'taxmod-record-search' ) || feld.classList.contains( 'taxmod-tree-filter' ) ) ) {
+			return;
+		}
+
+		if ( [ 'ArrowDown', 'ArrowUp', 'Enter' ].indexOf( ereignis.key ) < 0 ) {
+			return;
+		}
+
+		var kasten = feld.closest( '.taxmod-dialog-panel' ) || feld.closest( '.taxmod-record-tree' );
+
+		if ( ! kasten ) {
+			return;
+		}
+
+		var zeilen = Array.prototype.filter.call( kasten.querySelectorAll( ZEILEN ), function ( zeile ) {
+			var leer = zeile.querySelector( 'input[value=""]' );
+
+			// *Beim Suchen ist «—» kein Treffer.*
+			return zeile.offsetParent !== null && ! zeile.hidden && ! ( leer && feld.value.trim() !== '' );
+		} );
+		var jetzt  = zeilen.indexOf( kasten.querySelector( '.is-current' ) );
+
+		ereignis.preventDefault();
+
+		if ( ereignis.key !== 'Enter' ) {
+			var weiter = ereignis.key === 'ArrowDown' ? jetzt + 1 : jetzt - 1;
+
+			markeSetzen( kasten, zeilen[ Math.max( 0, Math.min( zeilen.length - 1, weiter ) ) ] || null );
+
+			return;
+		}
+
+		var ziel = jetzt >= 0 ? zeilen[ jetzt ] : ( zeilen.length === 1 ? zeilen[ 0 ] : null );
+
+		if ( ! ziel ) {
+			return;
+		}
+
+		var knopf = ziel.classList.contains( 'taxmod-record-create' ) ? ziel : ziel.querySelector( 'input' );
+
+		if ( knopf ) {
+			var schon = knopf.checked === true;
+
+			knopf.click();
+
+			// *Die schon gewählte Zeile ändert nichts — geschlossen wird trotzdem.*
+			if ( schon ) {
+				knopf.dispatchEvent( new Event( 'change', { bubbles: true } ) );
+			}
+		}
+	} );
+
+	// ⚠️ *Ein Wähler, der im Dialog unter seinem Feld steht (D-1467), schliesst nach einer Einzelwahl wie eine Auswahlliste (D-1488);
+	// seine Fussleiste ist ausgeblendet, «OK» ist die Wahl selbst.*
+	document.addEventListener( 'change', function ( ereignis ) {
+		var knopf   = ereignis.target;
+		var chooser = knopf instanceof HTMLInputElement && knopf.type === 'radio' ? knopf.closest( '.taxmod-chooser' ) : null;
+		var drin    = chooser && chooser.parentElement ? chooser.parentElement.closest( '.taxmod-dialog-panel' ) : null;
+		var schalter = drin ? chooser.querySelector( ':scope > .taxmod-dialog-switch' ) : null;
+
+		if ( schalter && schalter.checked ) {
+			window.setTimeout( function () {
+				schalter.checked = false;
+				schalter.focus();
+			}, 0 );
 		}
 	} );
 

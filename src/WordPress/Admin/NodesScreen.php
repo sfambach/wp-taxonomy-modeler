@@ -1896,6 +1896,7 @@ final class NodesScreen
         }
 
         $this->changelog->beginAct();
+        $akt = null;
 
         try {
             $satz = $this->savedWhole(function () use ($gefragt, $namensfeld, $name): NodeRecord {
@@ -1906,13 +1907,15 @@ final class NodesScreen
 
                 return $satz;
             });
+            // D-1488: the record created from a chooser is one change number, undone like any other.
+            $akt = $this->changelog->currentAct();
         } catch (DomainError $error) {
             wp_send_json_error(['message' => $error->getMessage()], 422);
         } finally {
             $this->changelog->endAct();
         }
 
-        wp_send_json_success(['id' => $satz->id, 'word' => $name]);
+        wp_send_json_success(['id' => $satz->id, 'word' => $name, 'act' => $akt]);
     }
 
     // ---------------------------------------------------------------- the tree
