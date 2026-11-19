@@ -1228,7 +1228,9 @@ final class ListPage
             . '.tablenav.taxmod-list-bar>.taxmod-list-choices{flex:0 1 auto;min-width:0}.wp-core-ui .tablenav.taxmod-list-bar .actions select{flex:0 1 auto;min-width:5.5em}.tablenav.taxmod-list-bar>.tablenav-pages{flex:0 1 auto;white-space:normal;line-height:1.2;min-width:6em;text-align:right}.taxmod-list-bar>br.clear{display:none}.wp-core-ui .tablenav.taxmod-list-bar select{max-width:10em}.wp-core-ui .tablenav.taxmod-list-bar .bulkactions select{max-width:8.5em}.tablenav.taxmod-list-bar .displaying-num{margin:0}.taxmod-list-bar .taxmod-list-fold .button{padding:0 4px}'
             . '.taxmod-list-bar>form[method="get"]{flex:1 1 10em;min-width:8em;justify-content:flex-end}.taxmod-list-bar .search-box{float:none;margin:0;display:flex;width:100%;max-width:18em;position:static}'
             . '.taxmod-list-bar>p.search-box{flex:1 1 10em;min-width:8em;max-width:none;justify-content:flex-end}.taxmod-list-bar>p.search-box input{max-width:18em}'
-            . '.taxmod-list-bar .search-box input[type="search"]{width:100%;margin:0}.taxmod-list-bar>.tablenav-pages{color:#50575e}'
+            . '.taxmod-list-bar .search-box input[type="search"]{width:100%;min-width:0;margin:0}'
+            // Architecture gate 19.11.: a toolbar in the bar keeps the bar's line — no margin of its own, no wrapping under the search.
+            . '.taxmod-list-bar .taxmod-toolbar{margin:0;flex-wrap:nowrap}.taxmod-list-bar .taxmod-toolbar-group{flex-wrap:nowrap}.taxmod-list-bar>.tablenav-pages{color:#50575e}'
             // D-1227: the bar above every list, and the group rows.
             . '.taxmod-list-head{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:6px 0}.taxmod-list-head-search{min-width:16em}'
             . '.taxmod-list-head-count:empty{display:none}.taxmod-list-head-count{color:#50575e}.taxmod-list-head-total{margin-left:auto;color:#50575e}'

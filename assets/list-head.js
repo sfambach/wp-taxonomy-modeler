@@ -426,6 +426,14 @@
 			groupLabel.style.marginBottom = '8px';
 			menu.prepend( groupLabel );
 		} else if ( nav ) {
+			// Architecture gate 19.11.: in the bar the word is not left standing beside the choice — it goes into the choice itself.
+			groupLabel.textContent = '';
+			group.title = word( 'group', 'Group by' );
+			group.setAttribute( 'aria-label', group.title );
+			Array.prototype.forEach.call( group.options, function ( option ) {
+				option.textContent = option.value === '' ? option.textContent : group.title + ': ' + option.textContent;
+			} );
+			groupLabel.appendChild( group );
 			actions = element( 'div', 'alignleft actions' );
 			actions.appendChild( groupLabel );
 			( nav.querySelector( '.tablenav-pages' ) || nav.lastElementChild ).before( actions );
