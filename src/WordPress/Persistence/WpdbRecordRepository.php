@@ -225,6 +225,42 @@ final class WpdbRecordRepository implements RecordRepository
         return $nachSatz;
     }
 
+    public function rawValuesOfNode(int $nodeId, array $relationIds = []): array
+    {
+        global $wpdb;
+
+        $felder   = array_values(array_unique(array_filter(array_map('intval', $relationIds))));
+        $nachSatz = [];
+
+        foreach (Query::column('Satz-Ids eines Knotens lesen', $wpdb->prepare(
+            'SELECT id FROM ' . Schema::table('node_records') . ' WHERE node_id = %d AND relation_id = 0 ORDER BY id ASC',
+            $nodeId
+        )) as $id) {
+            $nachSatz[(int) $id] = [];
+        }
+
+        // ⚠️ *Dieselbe Bedingung und dieselbe Reihenfolge wie {@see self::valuesOfNode()}; was «der Rohwert» einer Zeile ist,
+        // sagt {@see TypedValue::rawOf()} — dieselbe Stelle, aus der auch `rawValue()` liest. Kein Objekt je Zeile.*
+        Query::each('Rohwerte eines Knotens lesen', $wpdb->prepare(
+            'SELECT node_record_id, relation_id, value_int, value_decimal, value_text, value_date, value_ref, value_precision
+             FROM ' . Schema::table('relation_records') . '
+             WHERE ' . ($felder === [] ? '' : 'relation_id IN (' . implode(',', array_fill(0, count($felder), '%d')) . ') AND ') . 'node_record_id IN (SELECT id FROM ' . Schema::table('node_records') . ' WHERE node_id = %d AND relation_id = 0)
+             ORDER BY node_record_id ASC, position ASC, id ASC',
+            ...[...$felder, $nodeId]
+        ), static function (array $r) use (&$nachSatz): void {
+            $nachSatz[(int) $r['node_record_id']][(int) $r['relation_id']][] = TypedValue::rawOf(
+                $r['value_int'] === null ? null : (int) $r['value_int'],
+                StoredDecimal::read($r['value_decimal']),
+                $r['value_text'],
+                $r['value_date'],
+                $r['value_ref'] === null ? null : (int) $r['value_ref'],
+                $r['value_date'] === null ? null : \Taxmod\Core\Model\ValuePrecision::tryFrom((string) ($r['value_precision'] ?? '')),
+            );
+        });
+
+        return $nachSatz;
+    }
+
     /** @param array<string, string|null> $r eine Zeile aus `relation_records` */
     private static function wert(array $r): RelationRecord
     {

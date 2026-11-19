@@ -50,7 +50,7 @@ vermutlich im Fliesstext und sollte eine eigene Zeile bekommen.
 | **PR6** | Documentation style per 98-documentation-style.md: one small mermaid diagram per Sachverhalt, explanation beneath, code only where detail demands i… | [CLAUDE.md:34](../../CLAUDE.md) | 1 |
 | **PR7** | Report faithfully. If something is unverified, say so. If a step was skipped, say so. Never present a plausible reconstruction as a finding. | [CLAUDE.md:35](../../CLAUDE.md) | 5 |
 | **PR8** | Rule hygiene applies to this file — see the last section. | [CLAUDE.md:36](../../CLAUDE.md) | **nie** |
-| **PR9** | What works keeps working: both test runs are green before anything is committed (D-564) — the core run under PHPUnit, which loads no WordPress, and… | [CLAUDE.md:37](../../CLAUDE.md) | 24 |
+| **PR9** | What works keeps working: both test runs are green before anything is committed (D-564) — the core run under PHPUnit, which loads no WordPress, and… | [CLAUDE.md:37](../../CLAUDE.md) | 25 |
 | **PR10** | Look it up before you say it. No claim about the concept without a quotation from it. Whenever an answer turns on what was decided — a mechanism, a… | [CLAUDE.md:39](../../CLAUDE.md) | 26 |
 | **PR13** | The yardstick for a specification is whether a person can check it, not whether the AI can build from it (D-566). If the only reader who can hold t… | [CLAUDE.md:38](../../CLAUDE.md) | 3 |
 

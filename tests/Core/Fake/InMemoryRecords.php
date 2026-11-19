@@ -186,6 +186,23 @@ final class InMemoryRecords implements RecordRepository
         return $nachSatz;
     }
 
+    public function rawValuesOfNode(int $nodeId, array $relationIds = []): array
+    {
+        $nachSatz = [];
+
+        foreach ($this->ofNode($nodeId) as $satz) {
+            $nachSatz[$satz->id] = [];
+
+            foreach ($this->valuesOf($satz->id) as $wert) {
+                if ($relationIds === [] || in_array($wert->relationId, $relationIds, true)) {
+                    $nachSatz[$satz->id][$wert->relationId][] = $wert->value->rawValue();
+                }
+            }
+        }
+
+        return $nachSatz;
+    }
+
     public function valuesOf(int $recordId): array
     {
         $meine = array_filter(

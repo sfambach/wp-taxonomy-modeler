@@ -118,6 +118,19 @@ interface RecordRepository
     public function valuesOfNode(int $nodeId, array $relationIds): array;
 
     /**
+     * Alle Sätze eines Knotens mit ihren Rohwerten je Feld — der Rohwert ist {@see \Taxmod\Core\Model\TypedValue::rawValue()}
+     * ([D-1489](../../../docs/NewConcept/90-decision-log.md)). Ohne Felder alle Felder, sonst nur die genannten.
+     *
+     * ⚠️ *Für den Leser, der Tausende Sätze braucht und nur ihren gespeicherten Text: Wert-Objekte für jede Zeile zu halten
+     * kostete lokal gemessen (2026-11-19, 33.057 Werte) 54 MB in der Spitze, gefaltet sind es 18.*
+     *
+     * @param  list<int> $relationIds
+     * @return array<int, array<int, list<string>>> Satz-Id → Feld-Id → Rohwerte in gespeicherter Reihenfolge; jeder Satz des
+     *                                              Knotens hat einen Eintrag, notfalls leer.
+     */
+    public function rawValuesOfNode(int $nodeId, array $relationIds = []): array;
+
+    /**
      * Wer diese Datensätze **hält** — je Satz die Wertzeile, die auf ihn zeigt, oder kein Eintrag.
      *
      * ⚠️ **Ein Teil ist ein Datensatz wie jeder andere, und genau das macht ihn ununterscheidbar.**

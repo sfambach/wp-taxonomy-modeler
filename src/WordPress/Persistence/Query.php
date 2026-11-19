@@ -158,6 +158,53 @@ final class Query
     }
 
     /**
+     * Zeilen lesen und jede sofort weiterreichen, ohne die Antwort zu halten ([D-1489](../../../docs/NewConcept/90-decision-log.md)).
+     *
+     * ⚠️ *Für die eine Lesung, deren Antwort Zehntausende Zeilen hat: als Liste gehalten kostete jede Wertzeile rund 1600 Byte
+     * in der Spitze, und das Lesegedächtnis hielt die Liste ein zweites Mal. **Nicht behalten** — wer so liest, behält sein
+     * gefaltetes Ergebnis selbst. **`$each` darf die Datenbank nicht fragen**: solange die Antwort strömt, ist die Verbindung
+     * belegt. Ohne mysqli (SQLite in der Cloud) fällt der Weg auf {@see self::rows()} zurück.*
+     *
+     * @param callable(array<string, string|null>): void $each
+     */
+    public static function each(string $doing, ?string $sql, callable $each): void
+    {
+        self::statementIsUsable($doing, $sql);
+
+        global $wpdb;
+
+        $link = $wpdb->dbh ?? null;
+
+        if (! $link instanceof \mysqli) {
+            array_map($each, self::rows($doing, $sql));
+
+            return;
+        }
+
+        $wpdb->flush();
+        $wpdb->last_error = '';
+        // Derselbe Filter, den `$wpdb` für jede Anweisung ruft: wer Anweisungen zählt oder mitliest, sieht auch diese.
+        $sql    = (string) apply_filters('query', (string) $sql);
+        $result = mysqli_query($link, $sql, MYSQLI_USE_RESULT);
+        $wpdb->num_queries++;
+
+        if (! $result instanceof \mysqli_result) {
+            $wpdb->last_error = mysqli_error($link);
+            self::nothingWentWrong($doing);
+
+            return;
+        }
+
+        try {
+            while (($row = mysqli_fetch_assoc($result)) !== null && $row !== false) {
+                $each($row);
+            }
+        } finally {
+            mysqli_free_result($result);
+        }
+    }
+
+    /**
      * Eine Zeile lesen, oder `null`, wenn es sie **wirklich** nicht gibt.
      *
      * @return array<string, mixed>|null
