@@ -34,10 +34,10 @@ wp_set_current_user(1);
 /**
  * Die Decken — **gemessen, nicht gewünscht; sie dürfen fallen und nie steigen.**
  *
- * `repeats`: wörtlich gleiche Lesungen zwischen zwei Schreibanweisungen. `statements`: alle Anweisungen eines Speicherns von
- * fünf Textfeldern. Gemessen am 2026-11-19: ohne Lesegedächtnis 85 Wiederholungen und 155 Anweisungen, mit ihm 0 und 63.
+ * `repeats`: wörtlich gleiche Lesungen zwischen zwei Schreibanweisungen. `statements`: die Anweisungen eines Speicherns von
+ * fünf Textfeldern. Gemessen am 2026-11-19: ohne Lesegedächtnis 85 Wiederholungen und 155 Anweisungen, mit ihm 0 und 63 — 61 davon an die Tabellen des Modellers, und nur die zählt die Decke.
  */
-const SAVE_RECORD_CEILINGS = ['repeats' => 0, 'statements' => 63];
+const SAVE_RECORD_CEILINGS = ['repeats' => 0, 'statements' => 61];
 
 final class SaveRecordReadsStop extends RuntimeException
 {
@@ -150,7 +150,11 @@ foreach ($act as $sql) {
 }
 
 $say($repeats <= SAVE_RECORD_CEILINGS['repeats'], sprintf('zwischen zwei Schreibanweisungen wird keine Lesung wiederholt, kein Knoten zweimal gelesen (%d, Decke %d)', $repeats, SAVE_RECORD_CEILINGS['repeats']));
-$say(count($act) <= SAVE_RECORD_CEILINGS['statements'], sprintf('ein Speichern von fünf Feldern stellt höchstens %d Anweisungen (%d)', SAVE_RECORD_CEILINGS['statements'], count($act)));
+// ⚠️ *Gezählt wird, was an die Tabellen des Modellers geht — nicht, was ein aktives Modul an seinem Haken dazutut (das Lager
+// schreibt z. B. eine eigene Option). Ein Wächter des Modellers darf nicht davon abhängen, welche Module laufen.*
+$own = count(array_filter($act, static fn (string $sql): bool => str_contains($sql, Schema::table(''))));
+
+$say($own <= SAVE_RECORD_CEILINGS['statements'], sprintf('ein Speichern von fünf Feldern stellt höchstens %d Anweisungen an die Tabellen des Modellers (%d, mit allem anderen %d)', SAVE_RECORD_CEILINGS['statements'], $own, count($act)));
 
 echo "\nDie Prüfung am Schreibpunkt liest frisch\n";
 
