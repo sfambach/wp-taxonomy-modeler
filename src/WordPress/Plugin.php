@@ -50,7 +50,7 @@ use Taxmod\WordPress\Persistence\WpdbRelationRepository;
  */
 final class Plugin
 {
-    public const VERSION     = '0.2.161';
+    public const VERSION     = '0.2.162';
 
     /** `apply_filters(RECORD_EDITOR_FILTER, '', $recordId, $returnTo, $toolbar)`: the record's edit form for a module's page (D-1025); `$toolbar` = the module's own button groups (escaped HTML), placed after «Save» in the one toolbar (D-1308). */
     public const RECORD_EDITOR_FILTER = 'taxmod_record_editor';
@@ -895,7 +895,9 @@ final class Plugin
 
     public function handleNodeAction(): void
     {
-        $this->screen()->handlePost();
+        // D-1485: a save read every node and relation once per field — 128 statements for a plain record, 59 of them asked
+        // before. Every writing statement empties the memory by itself, and a locking read never uses it.
+        Persistence\Query::remembering(fn () => $this->screen()->handlePost());
     }
 
     public function handleCleanup(): void

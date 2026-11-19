@@ -227,7 +227,8 @@ final class Query
      */
     private static function remembered(string $kind, string $sql, callable $read): mixed
     {
-        if (self::$depth === 0) {
+        // D-1485: a locking read is the check at the point of writing (D-1148) — it asks the database every time, never the memory.
+        if (self::$depth === 0 || preg_match('/\bFOR\s+UPDATE\s*$/i', $sql) === 1) {
             return $read();
         }
 
