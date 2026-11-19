@@ -3210,7 +3210,9 @@
 		}
 
 		knopf.hidden = genau;
-		knopf.textContent = '+ ' + knopf.getAttribute( 'data-taxmod-word' ) + ' «' + wort + '»';
+		var muster = knopf.getAttribute( 'data-taxmod-word' ) || '';
+
+		knopf.textContent = '+ ' + ( muster.indexOf( '%s' ) >= 0 ? muster.replace( '%s', wort ) : muster + ' «' + wort + '»' );
 	}
 
 	document.addEventListener( 'input', function ( ereignis ) {

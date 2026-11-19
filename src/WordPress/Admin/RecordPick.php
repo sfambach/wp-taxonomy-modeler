@@ -20,7 +20,7 @@ final class RecordPick
     public static function field(string $name, array $tree, ?int $chosen, string $formId = '', bool $mayBeNothing = true): string
     {
         $newWord    = __('New here …', 'taxmod');
-        $createWord = __('Create', 'taxmod');
+        $createWord = __('Create «%s»', 'taxmod');
 
         foreach ($tree as $i => $row) {
             if ((int) ($row['node'] ?? 0) > 0) {

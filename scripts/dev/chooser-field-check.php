@@ -86,6 +86,14 @@ $say($akt > 0, 'die Antwort nennt seinen Akt');
 $undo = $akt > 0 ? wp_get_ability('taxmod/apply')->execute(['changes' => [['op' => 'undo_act', 'act' => $akt]]]) : new WP_Error('x', 'kein Akt');
 $say(! is_wp_error($undo) && ! $da(), 'Undo nimmt den angelegten Satz zurück', is_wp_error($undo) ? $undo->get_error_message() : '');
 
+echo "\n== Deutsch ==\n";
+// Coordinator 19.11. 21:38 for him: the chooser's words in German — through the plugin's own translation (AR-2).
+unload_textdomain('taxmod');
+$geladen = load_textdomain('taxmod', dirname(__DIR__, 2) . '/languages/taxmod-de_DE.mo', 'de_DE');
+$say($geladen && __('Create «%s»', 'taxmod') === '«%s» anlegen' && __('Choose: %s', 'taxmod') === 'Wählen: %s' && __('Cancel', 'taxmod') === 'Abbrechen', 'die deutschen Worte des Wählers sind geladen');
+unload_textdomain('taxmod');
+$say(str_contains((string) file_get_contents(dirname(__DIR__, 2) . '/wp-taxonomy-modeler.php'), 'Domain Path:       /languages'), 'der Kopf nennt den Ordner der Übersetzungen');
+
 echo "\n== Im Browser ==\n";
 $wahl  = \Taxmod\WordPress\Admin\RecordPick::field('cf_hersteller', [['depth' => 0, 'name' => '__cf Hersteller', 'records' => [$refs['r1'] => 'Texas Instruments', $refs['r2'] => 'NXP'], 'node' => $refs['h']]], null, 'f1');
 $knoten = (string) apply_filters('taxmod_node_chooser', '', ['name' => 'cf_gruppe', 'root' => $fw->rootOf(Branch::Model)->id, 'form' => 'f1']);
@@ -158,7 +166,7 @@ $say(($m['closed']['open'] ?? 1) === 0 && ($m['closed']['integrated'] ?? false),
 $say(($m['both']['open'] ?? 0) === 2 && ($m['both']['inside'] ?? false), 'beide Listen offen: nichts reicht über den Dialog hinaus');
 $say(($m['both']['foot'] ?? false) === true, 'die Fussleiste bleibt im Fenster');
 $say(count(array_unique($m['both']['buttons'] ?? [0, 1])) === 1, 'die Knöpfe der Fussleiste sind gleich breit', implode(' / ', $m['both']['buttons'] ?? []));
-$say(str_contains($m['missing']['create'] ?? '', '«Reichelt»'), 'ohne genauen Treffer: «+ … «Reichelt»»', (string) ($m['missing']['create'] ?? ''));
+$say(str_starts_with($m['missing']['create'] ?? '', '+ ') && str_contains($m['missing']['create'] ?? '', '«Reichelt»') && ! str_contains($m['missing']['create'] ?? '', '%s'), 'ohne genauen Treffer: «+ … «Reichelt» …»', (string) ($m['missing']['create'] ?? ''));
 $say(($m['exact']['create'] ?? 'x') === '', 'mit genauem Treffer (nxp = NXP): kein Anlegen');
 $say(($m['picked']['opener'] ?? '') === 'NXP' && ($m['picked']['inner'] ?? true) === false, 'Pfeil + Enter wählt und schliesst die Liste');
 $say(($m['escape']['inner'] ?? true) === false && ($m['escape']['outer'] ?? false) === true, 'Escape schliesst die Liste, nicht den Dialog');

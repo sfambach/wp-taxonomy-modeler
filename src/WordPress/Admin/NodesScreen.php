@@ -6386,7 +6386,7 @@ final class NodesScreen
             __('Add a new record here — opens in a new tab; reload this page afterwards', 'taxmod'),
             // *Dazu das Feld im Dialog selbst (D-1171): Name tippen, «Anlegen», und der neue Satz ist gewählt.*
             __('New here …', 'taxmod'),
-            __('Create', 'taxmod'),
+            __('Create «%s»', 'taxmod'),
         ];
     }
 
