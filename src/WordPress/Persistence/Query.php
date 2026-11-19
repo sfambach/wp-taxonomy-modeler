@@ -77,6 +77,27 @@ final class Query
         return isset($wpdb->num_queries) ? (int) $wpdb->num_queries : 0;
     }
 
+    /**
+     * What one statement costs before it does anything: the middle of `$times` empty questions, in microseconds — for the page
+     * times (D-1482). On a host whose database is another machine this is what every statement of a page pays.
+     */
+    public static function roundTripMicroseconds(int $times = 15): int
+    {
+        global $wpdb;
+
+        $took = [];
+
+        for ($i = 0; $i < max(1, $times); $i++) {
+            $start = hrtime(true);
+            $wpdb->query('SELECT 1');
+            $took[] = (int) ((hrtime(true) - $start) / 1000);
+        }
+
+        sort($took);
+
+        return $took[intdiv(count($took), 2)];
+    }
+
     /** Ob gerade behalten wird — dann lohnt es, eine Frage breiter zu stellen und die Antwort für die nächsten mitzunehmen. */
     public static function isRemembering(): bool
     {

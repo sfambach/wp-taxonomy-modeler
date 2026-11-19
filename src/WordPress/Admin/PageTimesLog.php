@@ -32,9 +32,37 @@ final class PageTimesLog
     /** The switch: on unless somebody turned it off. Its row stands with the developer details. */
     public const SWITCH = 'taxmod_dev_page_times';
 
+    /** @var array{b: int, r: int} milliseconds since the request began, by station: `b` WordPress and the plugins are loaded, `r` the page is drawn. */
+    private static array $at = ['b' => 0, 'r' => 0];
+
+    /** What this request waited for other servers: milliseconds in all, and when the call now running began. */
+    private static float $outside = 0.0;
+
+    private static float $calling = 0.0;
+
     public static function register(): void
     {
         add_action('shutdown', [self::class, 'record']);
+
+        // D-1482: where the time went. A call of 58 s with 139 statements and 12 MB said that it was slow and not why.
+        add_action('admin_init', static function (): void { self::$at['b'] = self::sinceStart(); }, PHP_INT_MIN);
+        add_action('in_admin_footer', static function (): void { self::$at['r'] = self::sinceStart(); }, PHP_INT_MAX);
+        add_filter('pre_http_request', static function (mixed $answer): mixed {
+            self::$calling = microtime(true);
+
+            return $answer;
+        }, PHP_INT_MIN);
+        add_action('http_api_debug', static function (): void {
+            if (self::$calling > 0.0) {
+                self::$outside += (microtime(true) - self::$calling) * 1000;
+                self::$calling  = 0.0;
+            }
+        });
+    }
+
+    private static function sinceStart(): int
+    {
+        return isset($_SERVER['REQUEST_TIME_FLOAT']) ? (int) round((microtime(true) - (float) $_SERVER['REQUEST_TIME_FLOAT']) * 1000) : 0;
     }
 
     /** One entry for this request if it drew a Taxmod page or answered a Taxmod action; nothing otherwise. */
@@ -65,6 +93,9 @@ final class PageTimesLog
             'q'  => Query::asked(),
             'mb' => (int) round(memory_get_peak_usage(true) / 1048576),
             'o'  => self::opcache() ? 1 : 0,
+            'b'  => self::$at['b'],
+            'r'  => self::$at['r'],
+            'h'  => (int) round(self::$outside),
         ]), false);
     }
 

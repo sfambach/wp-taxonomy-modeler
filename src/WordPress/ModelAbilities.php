@@ -74,8 +74,8 @@ final class ModelAbilities
         'move_field' => '{node, field, to} — declares the field at another node, values stay; refused if a record with values would end up outside it',
         'retarget_field' => '{node, field, target, drop_values?} — points the field at another node and keeps its kind; refused while stored values would not fit the new target (a plain value on a part field or the reverse), unless drop_values: true removes them (D-1371)',
         'drop_unfit_values' => '{node, field} — removes the stored values of the field that do not fit its target, e.g. numbers left on a field that now holds unit-value parts (D-1371)',
-        'make_variants' => '{records} — records of one node become the variants of a new parent: the parent takes the values they share, each keeps its «Je Variante» values, id, stock and labels; refused naming field and records where they differ elsewhere, or where one already is or has a variant; the node needs a field with «Variante von»; one change number (D-1478)',
-        'add_variant' => '{record, values?} — a new variant beside record (of its parent, of itself when it has variants, else record first becomes the only variant of a new parent); values only on «Je Variante» fields (D-1478)',
+        'make_variants' => '{records} — records of one node become the variants of a new parent: the parent takes the values they share, each keeps its «Je Variante» values, id, stock and labels; refused naming field and records where they differ elsewhere, or where one already is or has a variant; the node needs a field with «Variante von»; one change number (D-1482)',
+        'add_variant' => '{record, values?} — a new variant beside record (of its parent, of itself when it has variants, else record first becomes the only variant of a new parent); values only on «Je Variante» fields (D-1482)',
         'merge_record' => '{from, into} — a doubled record: every reference to from points at into, a reference that would then stand twice falls, from and the modules\' own records of it (Lager-Stammsatz) go to the trash; one change number. Refused unless both stand in the same node, where from holds a value into lacks or holds differently (fields named), where a module vetoes, or where a taxmod/record block in a post names from (post ids named). The answer names moved per field, dropped, trashed (D-1480)',
         'merge_constant' => '{from, into} — a doubled constant: every value (records and settings) that chose from chooses into, a value that would then stand twice in the same field falls, from goes to the trash; one change number, so undo_act takes it back. Refused if from has children, is a field target, or a field holding it cannot choose into (retarget_field first) (D-1458)',
         'merge_field' => '{node, field, into, under?, first?} — moves the values of the field onto another field with the same target and parks it; refused if a record would end up outside «into» or already holds values there; with under only records below that node, and the field stays; with first the values go to the front of the other field\'s list, its own values move back and a value already there stands only once (D-1205)',
@@ -112,7 +112,7 @@ final class ModelAbilities
     // D-1073: moving a record is data too — the stock's material page moves a material to another group.
     // D-1098: a part changing its head is data too — the stock moves a purchase between a requirement and a supplier draft.
     // D-1135: copying a record is data too — the stock copies a material and a storage place.
-    // D-1478: making variants changes records only — the stock asks it of its own material list.
+    // D-1482: making variants changes records only — the stock asks it of its own material list.
     private const DATA_OPS = ['create_record', 'set_values', 'remove_record', 'make_variants', 'add_variant', 'merge_record', 'move_record', 'move_part', 'reorder_values', 'duplicate_record', 'undo_act'];
 
     /** Whether the running change list came through `write-data` — an undo there may only take back record rows (D-1410). */
@@ -282,7 +282,7 @@ final class ModelAbilities
         // His word 2026-11-19: «dass du das mal mitloggst, vielleicht für jede Seite … dann musst du nicht messen».
         wp_register_ability('taxmod/page-times', [
             'label'               => __('Read the page times', 'taxmod'),
-            'description'         => __('What the last Taxmod admin pages took: per page the calls, the middle and the longest time in ms and the middle count of database statements, slowest first; then the last calls themselves (limit, default 50, newest first) and the environment (PHP, OPcache, versions). Measurements only.', 'taxmod'),
+            'description'         => __('What the last Taxmod admin pages took: per page the calls, the middle and the longest time in ms and the middle count of database statements, slowest first; then the last calls themselves (limit, default 50, newest first) and the environment (PHP, OPcache, versions, what one empty database statement costs in microseconds). Per call also: ms until WordPress was loaded, until the page was drawn, and ms waiting for other servers. Measurements only.', 'taxmod'),
             'category'            => self::CATEGORY,
             'input_schema'        => [
                 'type'       => 'object',
@@ -343,7 +343,7 @@ final class ModelAbilities
                                 'values'    => ['type' => 'object'],
                                 'own_value' => ['type' => 'string'],
                                 'locale'    => ['type' => 'string'],
-                                // D-1478 make_variants, D-1480 merge_record.
+                                // D-1482 make_variants, D-1480 merge_record.
                                 'records'   => ['type' => 'array', 'items' => $ziel],
                                 'from'      => $ziel,
                                 'into'      => $ziel,
@@ -1082,11 +1082,11 @@ final class ModelAbilities
                 return $recordId;
 
             case 'make_variants':
-                // D-1478: «Als Varianten zusammenfassen» — refused with field and records named where they differ outside «Je Variante».
+                // D-1482: «Als Varianten zusammenfassen» — refused with field and records named where they differ outside «Je Variante».
                 return $screen->makeVariants(array_map(fn (mixed $one): int => $this->resolve($one, $refs, 'records'), is_array($change['records'] ?? null) ? $change['records'] : []));
 
             case 'add_variant':
-                // D-1478: «Variante anlegen» at a record; its own values in the same act.
+                // D-1482: «Variante anlegen» at a record; its own values in the same act.
                 $variant = $screen->addVariant($at('record'));
 
                 if (is_array($change['values'] ?? null) && $change['values'] !== []) {
@@ -1261,7 +1261,7 @@ final class ModelAbilities
         }
 
         // *move_part touches two records, the part and its new head; both must be user records. undo_act checks its rows itself.*
-        // *make_variants and merge_record name their records under their own keys; every one must be a user record (D-1478, D-1480).*
+        // *make_variants and merge_record name their records under their own keys; every one must be a user record (D-1482, D-1480).*
         $named = match (true) {
             in_array($op, ['create_record', 'undo_act'], true) => [],
             $op === 'move_part'                               => [['part', $change['part'] ?? null], ['to', $change['to'] ?? null]],
@@ -1410,6 +1410,7 @@ final class ModelAbilities
                 'opcache'  => Admin\PageTimesLog::opcache(),
                 'database' => (string) $wpdb->db_version(),
                 'kept'     => count($entries),
+                'db_round_trip_us' => Persistence\Query::roundTripMicroseconds(),
             ],
             'pages'       => array_map(
                 static fn (array $took): array => ['last' => (string) wp_date('Y-m-d H:i:s', (int) $took['last'])] + $took,
@@ -1422,6 +1423,9 @@ final class ModelAbilities
                 'queries' => (int) ($e['q'] ?? 0),
                 'mb'      => (int) ($e['mb'] ?? 0),
                 'opcache' => (int) ($e['o'] ?? 0) === 1,
+                'loaded_ms' => (int) ($e['b'] ?? 0),
+                'drawn_ms'  => (int) ($e['r'] ?? 0),
+                'http_ms'   => (int) ($e['h'] ?? 0),
             ], array_reverse(array_slice($calls, -$limit))),
         ];
     }

@@ -613,10 +613,10 @@ final class DataEntry
      *
      * @param string $locale Only ever non-empty for an attribute declared translatable (D-317).
      */
-    /** D-1478: set while a derived value (a name, a calculation) is written — a variant holds those itself, no person types them. */
+    /** D-1482: set while a derived value (a name, a calculation) is written — a variant holds those itself, no person types them. */
     private bool $derived = false;
 
-    /** {@see self::put()} for a value the model derives; a variant's lock does not apply (D-1478). */
+    /** {@see self::put()} for a value the model derives; a variant's lock does not apply (D-1482). */
     public function putDerived(int $recordId, int $relationId, TypedValue $value, string $locale = ''): void
     {
         $this->derived = true;
