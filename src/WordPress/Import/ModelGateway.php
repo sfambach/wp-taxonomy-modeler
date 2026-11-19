@@ -7,6 +7,7 @@ use Taxmod\Core\Import\ExistingOrder;
 use Taxmod\Core\Import\LooseMatch;
 use Taxmod\Core\Import\OrderComparison;
 use Taxmod\Core\Import\OrderProposal;
+use Taxmod\Core\Import\PlatformFirms;
 use Taxmod\Core\Import\ProposalKind;
 use Taxmod\Core\Import\TargetModel;
 use Taxmod\WordPress\Persistence\WpdbRecordRepository;
@@ -27,6 +28,9 @@ final class ModelGateway
     private array $platforms = [];
 
     private ?self $sales = null;
+
+    /** The firms «platform» points at once it is a reference (D-1487); `null` while it is text. Read with the orders. */
+    private ?PlatformFirms $firms = null;
 
     public function __construct(public readonly TargetModel $target)
     {
@@ -81,7 +85,39 @@ final class ModelGateway
             $this->orders = $loaded;
         }
 
-        return $this->orders[self::key($platform, $orderNumber)] ?? $this->orderWithoutPlatform($platform, $orderNumber);
+        $canonical = $this->canonical($platform);
+
+        // D-1487: a name that names no firm finds only what D-1405 lets an order without platform be found by.
+        if ($canonical === '' && trim($platform) !== '') {
+            return $this->orderWithoutPlatform($platform, $orderNumber);
+        }
+
+        return $this->orders[self::key($canonical, $orderNumber)] ?? $this->orderWithoutPlatform($platform, $orderNumber);
+    }
+
+    /**
+     * The targets a change list is built for: with the firms «platform» points at (D-1487), so a new order gets the firm,
+     * not text. Reads the orders if they are not read yet.
+     */
+    public function writingTarget(): TargetModel|WP_Error
+    {
+        if ($this->orders === null) {
+            $loaded = $this->loadOrders();
+
+            if ($loaded instanceof WP_Error) {
+                return $loaded;
+            }
+
+            $this->orders = $loaded;
+        }
+
+        return $this->target->withPlatformFirms($this->firms);
+    }
+
+    /** What a platform is compared by: the name while the field is text, the firm's word — or '' — once it is a reference. */
+    private function canonical(string $platform): string
+    {
+        return $this->firms === null ? trim($platform) : $this->firms->canonical($platform);
     }
 
     /**
@@ -119,7 +155,7 @@ final class ModelGateway
         $parcels = [];
 
         foreach ($this->orders as $key => $order) {
-            if (mb_strtolower($this->platforms[$key] ?? '') !== mb_strtolower(trim($proposal->platform))) {
+            if (mb_strtolower($this->platforms[$key] ?? '') !== mb_strtolower($this->canonical($proposal->platform))) {
                 continue;
             }
 
@@ -146,6 +182,13 @@ final class ModelGateway
         }
 
         $platformField = $this->target->orderField('platform');
+        $firms = $this->firmsOf($node, $platformField);
+
+        if ($firms instanceof WP_Error) {
+            return $firms;
+        }
+
+        $this->firms = $firms;
         $numberField = $this->target->orderField('order_number');
         // A role the target does not name (a sale has no «received») matches no relation.
         $trackingField = $this->target->hasOrderField('tracking') ? $this->target->orderField('tracking') : -1;
@@ -189,7 +232,7 @@ final class ModelGateway
                 }
 
                 match ((int) $value['relation_id']) {
-                    $platformField => $platform = (string) $value['value'],
+                    $platformField => $platform = $firms === null ? (string) $value['value'] : (string) $firms->wordOf((int) $value['value']),
                     $numberField   => $number = (string) $value['value'],
                     $trackingField => $tracking[] = (string) $value['value'],
                     $receivedField => $received = (string) $value['value'],
@@ -242,10 +285,50 @@ final class ModelGateway
                 }
             }
 
-            $orders[$key] = new ExistingOrder($id, $tracking, $received, $merchant, $ordered, $title, $values, $existingLines, $invoices[$id] ?? [], $shipped);
+            $orders[$key] = new ExistingOrder($id, $tracking, $received, $merchant, $ordered, $title, $values, $existingLines, $invoices[$id] ?? [], $shipped, $firms);
         }
 
         return $orders;
+    }
+
+    /**
+     * The firms «platform» points at (D-1487): a field with no data type holds records, and its target's records are the
+     * firms, each by its own word — one query, paged. `null` while the field is text.
+     *
+     * @param array<string, mixed> $node the answer of taxmod/read-node; `mixed` because it nests
+     */
+    private function firmsOf(array $node, int $platformField): PlatformFirms|WP_Error|null
+    {
+        $field = null;
+
+        foreach ((array) ($node['fields'] ?? []) as $candidate) {
+            if ((int) ($candidate['relation_id'] ?? 0) === $platformField) {
+                $field = $candidate;
+            }
+        }
+
+        if ($field === null || ($field['type'] ?? null) !== null) {
+            return null;
+        }
+
+        $words = [];
+        $offset = 0;
+
+        do {
+            $page = $this->execute('taxmod/query', ['node' => (int) $field['target'], 'limit' => 500, 'offset' => $offset]);
+
+            if ($page instanceof WP_Error) {
+                return $page;
+            }
+
+            foreach ((array) ($page['records'] ?? []) as $record) {
+                $words[(int) $record['id']] = (string) ($record['word'] ?? '');
+            }
+
+            $offset += 500;
+        } while ($offset < (int) ($page['total'] ?? 0));
+
+        return new PlatformFirms($words);
     }
 
     /**
