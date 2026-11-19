@@ -1447,6 +1447,8 @@ final class ModelAbilities
                 'loaded_ms' => (int) ($e['b'] ?? 0),
                 'drawn_ms'  => (int) ($e['r'] ?? 0),
                 'http_ms'   => (int) ($e['h'] ?? 0),
+                'db_ms'     => (int) ($e['d'] ?? 0),
+                'stream_ms' => (int) ($e['s'] ?? 0),
                 'switches'  => (string) ($e['a'] ?? ''),
             ], array_reverse(array_slice($calls, -$limit))),
         ];

@@ -135,6 +135,7 @@ flowchart LR
 - **Ein Wächterlauf schreibt nicht mit** (`page-times-check.php`).
 - ⚠️ Gemessen wird die Zeit **auf dem Server** bis zum Ende der Anfrage. Was der Browser danach braucht, steht nicht darin.
 - **Wohin die Zeit ging** ([D-1482](../../NewConcept/90-decision-log.md)): je Eintrag die ms bis WordPress geladen ist, bis die Seite gezeichnet ist, und die Wartezeit auf fremde Server (nur ms). Die Fähigkeit nennt dazu, was eine leere Abfrage kostet; gemessen nur beim Lesen der Fähigkeit.
+- **Datenbank oder Programm** ([D-1493](../../NewConcept/90-decision-log.md)): je Eintrag die ms in den Anweisungen des Modells und die ms in seinen gestreamten Lesungen (nur Zahlen).
 
 ## Schmale Lesung ([D-1486](../../NewConcept/90-decision-log.md), 2026-11-19)
 
