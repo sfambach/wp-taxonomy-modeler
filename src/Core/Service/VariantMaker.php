@@ -68,16 +68,37 @@ final class VariantMaker
         $values = $this->data->valuesOfMany($recordIds);
         $this->refuseLinked($recordIds, $values, $variantOf);
 
-        $shared = [];
+        $fields  = $this->sharedFields($nodeId, $variantOf, $own);
+        // D-1481: a quantity is a part of its own in each record — the same when it holds the same.
+        $compare = new ValueComparison($this->nodes, $fields);
+        $compare->load(fn (array $ids): array => $this->data->valuesOfMany($ids), $values);
+        $shared  = [];
+        $copied  = [];
 
-        foreach ($this->sharedFields($nodeId, $variantOf, $own) as $field) {
-            $shared[$field->id] = $this->sharedRows($field, $recordIds, $values);
+        foreach ($fields as $field) {
+            $shared[$field->id] = $this->sharedRows($field, $recordIds, $values, $compare);
+            $copied[$field->id] = $compare->byContent($field);
         }
 
         $parent = $this->data->create($nodeId)->id;
 
         foreach ($shared as $fieldId => $rows) {
+            if ($copied[$fieldId] && $rows !== []) {
+                // A new record may start with an empty part where one is required; the copy takes its place.
+                foreach ($this->data->valuesOf($parent) as $row) {
+                    if ($row->relationId === $fieldId && $row->value->reference !== null) {
+                        $this->data->removeRecord($row->value->reference);
+                    }
+                }
+            }
+
             foreach ($rows as $index => $row) {
+                if ($copied[$fieldId] && $row->value->reference !== null) {
+                    $this->data->attachPart($parent, $fieldId, $this->data->copyPart($row->value->reference));
+
+                    continue;
+                }
+
                 $index === 0 || $this->isFirstOfLocale($rows, $index)
                     ? $this->data->put($parent, $fieldId, $row->value, $row->locale)
                     : $this->data->appendValue($parent, $fieldId, $row->value, $row->locale);
@@ -86,6 +107,17 @@ final class VariantMaker
 
         foreach ($recordIds as $variant) {
             foreach ($shared as $fieldId => $rows) {
+                if ($copied[$fieldId]) {
+                    // The variant's own copy goes, and with it the row that held it.
+                    foreach ($values[$variant] ?? [] as $row) {
+                        if ($row->relationId === $fieldId && $row->value->reference !== null) {
+                            $this->data->removeRecord($row->value->reference);
+                        }
+                    }
+
+                    continue;
+                }
+
                 foreach (array_unique(array_map(static fn (RelationRecord $row): string => $row->locale, $rows)) as $locale) {
                     $this->data->clear($variant, $fieldId, $locale);
                 }
@@ -155,9 +187,9 @@ final class VariantMaker
      * @param array<int, list<RelationRecord>> $values
      * @return list<RelationRecord>
      */
-    private function sharedRows(Relation $field, array $recordIds, array $values): array
+    private function sharedRows(Relation $field, array $recordIds, array $values, ValueComparison $compare): array
     {
-        $parts = $field->kind === RelationKind::Composition && $this->typeNodes->typeOf($field->toNodeId) === null;
+        $parts = $field->kind === RelationKind::Composition && $this->typeNodes->typeOf($field->toNodeId) === null && ! $compare->byContent($field);
         $seen  = null;
         $from  = 0;
         $empty = 0;
@@ -175,9 +207,9 @@ final class VariantMaker
                 throw NotYetStorable::thatCannotMakeVariants(sprintf('«%s» holds parts at #%d — mark the field «Je Variante» first.', $field->name, $id));
             }
 
-            $key = self::keyOf($rows);
+            $key = $compare->keyOf($rows, $field);
 
-            if ($seen !== null && $key !== self::keyOf($seen)) {
+            if ($seen !== null && $key !== $compare->keyOf($seen, $field)) {
                 throw NotYetStorable::thatCannotMakeVariants(sprintf('«%s» differs between #%d and #%d — make them equal, or mark the field «Je Variante».', $field->name, $from, $id));
             }
 
@@ -191,15 +223,6 @@ final class VariantMaker
         }
 
         return $seen ?? [];
-    }
-
-    /** @param list<RelationRecord> $rows */
-    private static function keyOf(array $rows): string
-    {
-        $keys = array_map(static fn (RelationRecord $row): string => $row->locale . "\x1F" . json_encode($row->value->rawValue()), $rows);
-        sort($keys);
-
-        return implode("\x1E", $keys);
     }
 
     /** @param list<RelationRecord> $rows */

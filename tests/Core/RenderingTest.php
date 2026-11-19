@@ -2406,6 +2406,72 @@ final class RenderingTest extends TestCase
         $macher->make([$blau]);
     }
 
+    /** D-1481: a quantity is a part of its own in each record — the same content is shared, a different one differs. */
+    #[Test]
+    public function quantities_with_the_same_content_are_shared_by_the_parent(): void
+    {
+        $this->typeNodes->remember(\Taxmod\Core\Model\SimpleType::Summary, $this->lookalike('Summary')->id);
+        $decimal   = $this->type('Decimal');
+        $text      = $this->type('Text');
+        $laenge    = $this->editor->createNode('Länge', $this->branchRoot['compositions']->id, \Taxmod\Core\Model\NodeClass\UnitValue::class);
+        $zahl      = $this->editor->addField($laenge->id, $decimal->id, 'zahl');
+        $display   = $this->thing('Display');
+        $diagonale = $this->editor->addField($display->id, $laenge->id, 'Diagonale');
+        $farbe     = $this->editor->addField($display->id, $text->id, 'Farbe');
+        $vonFeld   = $this->editor->addField($display->id, $display->id, 'Variante von', RelationKind::Aggregation);
+        $satz      = function (string $zoll, string $f) use ($display, $laenge, $zahl, $diagonale, $farbe): int {
+            $id   = $this->records->add(new NodeRecord(0, $display->id, 1, '2026-11-19 08:00:00', RecordType::User));
+            $teil = $this->records->add(new NodeRecord(0, $laenge->id, 1, '2026-11-19 08:00:00', RecordType::User));
+            $this->records->putValue(RelationRecord::direct($teil, $zahl->id, TypedValue::ofText($zoll)));
+            $this->records->putValue(RelationRecord::direct($id, $diagonale->id, TypedValue::ofRecordReference($teil)));
+            $this->records->putValue(RelationRecord::direct($id, $farbe->id, TypedValue::ofText($f)));
+
+            return $id;
+        };
+        $blau   = $satz('0,91', 'blau');
+        $weiss  = $satz('0,91', 'weiß');
+        $gross  = $satz('0,96', 'blau');
+        $addons = new class ([$vonFeld->id => ['variant_of'], $farbe->id => ['variant']]) implements \Taxmod\Core\Port\FieldAddons {
+            /** @param array<int, list<string>> $names */
+            public function __construct(private readonly array $names)
+            {
+            }
+
+            public function addonNamesAt(array $relations): array
+            {
+                return array_intersect_key($this->names, array_flip(array_map(static fn ($r): int => $r->id, $relations)));
+            }
+        };
+        $daten  = new DataEntry($this->records, $this->relations, $this->nodes, $this->framework, new \Taxmod\Tests\Core\Fake\FixedClock(), new \Taxmod\Tests\Core\Fake\RecordedChanges(), null, $addons);
+        $macher = new \Taxmod\Core\Service\VariantMaker($daten, $this->relations, $this->nodes, $this->framework, $this->typeNodes, $this->rendering);
+        $teilAn = function (int $id) use ($diagonale): ?int {
+            foreach ($this->records->valuesOf($id) as $zeile) {
+                if ($zeile->relationId === $diagonale->id) {
+                    return $zeile->value->reference;
+                }
+            }
+
+            return null;
+        };
+
+        try {
+            $macher->make([$blau, $gross]);
+            self::fail('a different diagonal is refused');
+        } catch (\Taxmod\Core\Exception\NotYetStorable $e) {
+            self::assertStringContainsString('«Diagonale» differs', $e->getMessage());
+        }
+
+        $altBlau = $teilAn($blau);
+        $vater   = $macher->make([$blau, $weiss]);
+        $neu     = $teilAn($vater);
+
+        self::assertNotNull($neu, 'the parent holds a diagonal of its own');
+        self::assertNotSame($altBlau, $neu, 'a copy, not the variant\'s part');
+        self::assertSame(['"0,91"'], array_map(static fn ($z): string => (string) json_encode($z->value->rawValue()), $this->records->valuesOf((int) $neu)));
+        self::assertNull($teilAn($blau), 'the variant\'s own copy went');
+        self::assertNull($this->records->find((int) $altBlau), 'and its part with it');
+    }
+
     /** D-1480: a doubled record merged — pointers repointed, a module's own record to the trash, nothing of from's own lost silently. */
     #[Test]
     public function a_doubled_record_is_merged_and_nothing_of_its_own_is_lost(): void
