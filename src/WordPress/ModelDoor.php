@@ -250,7 +250,7 @@ final class ModelDoor
         return $this->applied([['op' => 'rename_node', 'node' => $node, 'name' => $name]]);
     }
 
-    /** D-1474: the node every choice list hangs below (D-1457: «Konstanten», one category per module) — the framework says which. */
+    /** D-1474: the node every choice list hangs below (D-1474: «Konstanten», one category per module) — the framework says which. */
     public function constantsRoot(): int
     {
         $nodes = new Persistence\WpdbNodeRepository();
