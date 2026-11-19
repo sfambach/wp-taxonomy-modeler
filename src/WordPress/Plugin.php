@@ -50,7 +50,7 @@ use Taxmod\WordPress\Persistence\WpdbRelationRepository;
  */
 final class Plugin
 {
-    public const VERSION     = '0.2.164';
+    public const VERSION     = '0.2.165';
 
     /** `apply_filters(RECORD_EDITOR_FILTER, '', $recordId, $returnTo, $toolbar)`: the record's edit form for a module's page (D-1025); `$toolbar` = the module's own button groups (escaped HTML), placed after «Save» in the one toolbar (D-1308). */
     public const RECORD_EDITOR_FILTER = 'taxmod_record_editor';
@@ -315,6 +315,9 @@ final class Plugin
 
         // D-1476: what every Taxmod page took, written down after the page is sent.
         Admin\PageTimesLog::register();
+
+        // D-1488: the chooser's words in German where the site speaks it — the plugin's own translations (AR-2: through the text domain).
+        add_action('init', static fn () => load_plugin_textdomain('taxmod', false, dirname(plugin_basename($plugin->file)) . '/languages'), 1);
 
         // ⚠️ **Ein Satz aus dem Modell im Beitrag** ([D-912](../../docs/NewConcept/90-decision-log.md)).
         add_action('init', static fn () => (new RecordBlock($plugin->screen(...), $plugin->file))->register());

@@ -386,12 +386,18 @@ final class EdgeDrawer implements Drawer
         $knopf  = fn (string $wert, bool $an): string => '<label class="taxmod-record-choice"><input type="radio" name="' . self::e($p->name) . '" value="' . $wert . '"'
             . ($an ? ' checked' : '') . ($p->form === '' ? '' : ' form="' . self::e($p->form) . '"') . '></label>';
 
-        return '<span class="taxmod-record-pick taxmod-record-remote' . ($nichts ? '' : ' taxmod-record-taken') . '">'
+        // *Ohne Wort steht die Nummer — ein gewählter Satz ohne Namen zeigte sonst nur den Mülleimer (his screenshot 19.11. 20:51).*
+        $wort = trim($p->word) === '' && $p->chosen !== null ? '#' . $p->chosen : $p->word;
+        $zeigt = $p->opens === ''
+            ? '<span class="taxmod-record-dialog-open taxmod-record-word"' . ($nichts ? ' hidden' : '') . '>' . self::e($wort) . '</span>'
+            : '<label class="taxmod-record-dialog-open taxmod-record-word taxmod-record-opens" for="' . self::e($p->opens) . '"' . ($nichts ? ' hidden' : '') . '>' . self::e($wort) . '</label>';
+
+        return '<span class="taxmod-record-pick taxmod-record-remote' . ($nichts ? '' : ' taxmod-record-taken') . ($p->wrap ? ' taxmod-record-wrap' : '') . '">'
             . '<span class="taxmod-record-choices" hidden>' . $knopf('', $nichts) . ($nichts ? '' : $knopf((string) $p->chosen, true)) . '</span>'
             . '<input type="search" class="taxmod-record-quick" autocomplete="off" placeholder="' . self::e($p->searchWord) . '" aria-label="' . self::e($p->searchWord) . '"' . ($nichts ? '' : ' hidden') . '>'
             . ($p->treeWord === '' ? '' : '<button type="button" class="button ' . ControlMarkup::ICON_ONLY . ' taxmod-record-browse"' . ($nichts ? '' : ' hidden') . ' title="' . self::e($p->treeWord) . '">'
                 . IconMarkup::dashicon('networking', $p->treeWord) . '</button>')
-            . '<span class="taxmod-record-dialog-open taxmod-record-word"' . ($nichts ? ' hidden' : '') . '>' . self::e($p->word) . '</span>'
+            . $zeigt
             . $offen . $ende;
     }
 
