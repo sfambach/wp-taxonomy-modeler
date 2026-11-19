@@ -90,4 +90,24 @@ final class RecordQueryTest extends TestCase
         self::assertSame(0, $records->recordsWhere([50], [['field' => 11, 'op' => 'not_empty', 'values' => []]], 10, 0)['total']);
         self::assertSame(4, $records->recordsWhere([50], [['field' => 11, 'op' => 'empty', 'values' => []]], 10, 0)['total']);
     }
+
+    /** D-1477: `fits` takes a node id, and becomes `in` over the candidates the core rule keeps. */
+    #[Test]
+    public function fitsMeansTheNodeBelowItAndItsAncestorsUpToTheTarget(): void
+    {
+        try {
+            RecordQuery::from(['node' => 5, 'where' => [['field' => 7, 'op' => 'fits', 'value' => 'XT']]]);
+            self::fail('a name is no node id');
+        } catch (\InvalidArgumentException $e) {
+            self::assertStringContainsString('node id', $e->getMessage());
+        }
+
+        $knoten = static fn (int $id, string $path): \Taxmod\Core\Model\Node => \Taxmod\Core\Model\Node::fromStorage($id, 1, (string) $id, $path);
+        $kandidaten = [$knoten(21, '1.16.20.21'), $knoten(1, '1'), $knoten(16, '1.16'), $knoten(20, '1.16.20'), $knoten(23, '1.16.20.21.23')];
+
+        self::assertSame(['21', '16', '20', '23'], RecordQuery::fitting($kandidaten, '1.16.20.21', '1.16'), 'not above the target');
+
+        $q = RecordQuery::from(['node' => 5, 'where' => [['field' => 7, 'op' => 'fits', 'value' => '21']]]);
+        self::assertSame([['field' => 7, 'op' => 'in', 'values' => ['21', '20']]], $q->forTable([0 => ['21', '20']]));
+    }
 }

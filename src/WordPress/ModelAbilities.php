@@ -185,7 +185,7 @@ final class ModelAbilities
         // *D-1209: ask for the records that matter instead of reading a whole node — «is anything stored under Alex?» once meant 561 lots.*
         wp_register_ability('taxmod/query', [
             'label'               => __('Query records', 'taxmod'),
-            'description'         => __('Records of a node (and its subtree unless subtree is false) that meet every condition, one page of them with the total. where: list of {field: relation id, op: eq | in | contains | empty | not_empty | within, value or values}; eq and in compare the stored value (text, number, date YYYY-MM-DD, or the id a reference points at), contains a text ignoring case; within {field, value: record id, parent_field} matches a reference to that record or any record below it by its parent field (e.g. a storage place and its sub-places). search: a word in any text value. fields: relation ids or names to answer with, as the words the screen shows; without fields each record comes with its own word only. A part (e.g. a position of a transaction) names its head as part_of. Without node the search covers everything under Model. limit 1–500 (default 50), offset.', 'taxmod'),
+            'description'         => __('Records of a node (and its subtree unless subtree is false) that meet every condition, one page of them with the total. where: list of {field: relation id, op: eq | in | contains | empty | not_empty | within | fits, value or values}; eq and in compare the stored value (text, number, date YYYY-MM-DD, or the id a reference points at), contains a text ignoring case; within {field, value: record id, parent_field} matches a reference to that record or any record below it by its parent field (e.g. a storage place and its sub-places); fits {field, value: node id} on a field choosing a node matches that node, any node below it, and each ancestor of it up to the target of the field (e.g. «all computers» is found for XT). search: a word in any text value. fields: relation ids or names to answer with, as the words the screen shows; without fields each record comes with its own word only. A part (e.g. a position of a transaction) names its head as part_of. Without node the search covers everything under Model. limit 1–500 (default 50), offset.', 'taxmod'),
             'category'            => self::CATEGORY,
             'input_schema'        => [
                 'type'       => 'object',
@@ -689,6 +689,11 @@ final class ModelAbilities
         $resolved = [];
 
         foreach ($q->conditions as $i => $c) {
+            if ($c['op'] === 'fits') {
+                $resolved[$i] = $this->fitting($screen, $nodes, $c['field'], (int) $c['values'][0]);
+                continue;
+            }
+
             if ($c['op'] !== 'within') {
                 continue;
             }
@@ -788,6 +793,27 @@ final class ModelAbilities
     }
 
     /**
+     * `fits` as ids (D-1477): the wanted node, its ancestors and its subtree are the candidates — one read for the ancestors,
+     * one walk below — and the core rule picks among them.
+     *
+     * @param list<int> $nodes
+     * @return list<string>
+     */
+    private function fitting(NodesScreen $screen, array $nodes, int $field, int $wanted): array
+    {
+        $target   = $this->node($this->targetOf($screen, $nodes, $field));
+        $node     = $this->node($wanted);
+        $repo     = new Persistence\WpdbNodeRepository();
+        $candidates = [$node, ...array_values($repo->byIds($node->ancestorIds()))];
+
+        foreach ((new Tree($repo))->rowsUnder($node, [$this->framework()->trash()->id]) as $row) {
+            $candidates[] = $row['node'];
+        }
+
+        return RecordQuery::fitting($candidates, $node->path, $target->path);
+    }
+
+    /**
      * The node a reference field points at, from the fields of the nodes asked — `within` walks that node's records.
      *
      * @param list<int> $nodes
@@ -802,7 +828,7 @@ final class ModelAbilities
             }
         }
 
-        throw new \InvalidArgumentException(sprintf('within: field %d is not a field of node %d or below it.', $field, $nodes[0] ?? 0));
+        throw new \InvalidArgumentException(sprintf('field %d is not a field of node %d or below it.', $field, $nodes[0] ?? 0));
     }
 
     /**

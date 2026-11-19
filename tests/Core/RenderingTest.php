@@ -3575,4 +3575,36 @@ final class RenderingTest extends TestCase
         self::assertNull($rechner->rechnen([[$plus, 1]], [], []), 'ohne einen Wert nichts');
         self::assertNull($rechner->rechnen([[$plus, 1]], [1 => TypedValue::ofText('drei')], []), 'ein Text ist keine Zahl');
     }
+
+    /** D-1477: a field choosing a constant offers its target («all») and every level below, with the way from the target. */
+    #[Test]
+    public function a_constant_chooser_offers_the_target_and_every_level_below(): void
+    {
+        $systeme = $this->editor->createNode('Computer-Systeme', $this->branchRoot['constants']->id);
+        $pc      = $this->editor->createNode('PC', $systeme->id);
+        $xt      = $this->editor->createNode('XT', $pc->id);
+        $at      = $this->editor->createNode('AT', $pc->id);
+        $amiga   = $this->editor->createNode('Amiga', $systeme->id);
+        $a500    = $this->editor->createNode('500', $amiga->id);
+        $feld    = $this->editor->addField($this->thing('Hardware')->id, $systeme->id, 'systeme', RelationKind::Aggregation);
+        $this->neuZeichnen();
+
+        self::assertSame(
+            [$systeme->id => 'Computer-Systeme', $pc->id => 'PC', $xt->id => 'PC › XT', $at->id => 'PC › AT', $amiga->id => 'Amiga', $a500->id => 'Amiga › 500'],
+            $this->rendering->offeredFor($feld)
+        );
+    }
+
+    /** D-540 stays where D-1477 does not reach: a target outside the constants offers its direct children only. */
+    #[Test]
+    public function a_chooser_outside_the_constants_offers_the_direct_children_only(): void
+    {
+        $arten = $this->thing('Bauformen');
+        $smd   = $this->editor->createNode('SMD', $arten->id);
+        $this->editor->createNode('0603', $smd->id);
+        $feld  = $this->editor->addField($this->thing('Teil')->id, $arten->id, 'bauform', RelationKind::Aggregation);
+        $this->neuZeichnen();
+
+        self::assertSame([$smd->id => 'SMD'], $this->rendering->offeredFor($feld));
+    }
 }

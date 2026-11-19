@@ -7,6 +7,7 @@ use Taxmod\Core\Event\ControlPressed;
 use Taxmod\Core\Exception\ConcurrentChange;
 use Taxmod\Core\Exception\DomainError;
 use Taxmod\Core\Exception\NodeNotFound;
+use Taxmod\Core\Listing\ChoiceFilter;
 use Taxmod\Core\Exception\NotYetStorable;
 use Taxmod\Core\Model\Branch;
 use Taxmod\Core\Model\Node;
@@ -5916,9 +5917,15 @@ final class NodesScreen
 
         if ($filterWerte !== []) {
             $alleWerte = $this->data->valuesOfMany(array_map(static fn (NodeRecord $r): int => $r->id, $records));
+            $ziele     = [];
+
+            foreach ($filterFelder as $feld) {
+                $ziele[$feld->id] = $feld->toNodeId;
+            }
+
             $records   = array_values(array_filter(
                 $records,
-                fn (NodeRecord $r): bool => $this->matchesFilter($alleWerte[$r->id] ?? [], $filterWerte)
+                fn (NodeRecord $r): bool => $this->matchesFilter($alleWerte[$r->id] ?? [], $filterWerte, $ziele)
             ));
         }
 
@@ -6354,13 +6361,13 @@ final class NodesScreen
         return $this->satzAdressen[$satzId] ??= add_query_arg(['page' => 'taxmod', self::OPEN_RECORD => (string) $satzId], admin_url('admin.php')) . '#taxmod-preview-edit';
     }
 
-    /** @var array<int, list<int>> Die Vorfahren eines Knotens, je Seite einmal gelesen — für den Filter über Unterbäume (D-791). */
-    private array $vorfahren = [];
+    /** @var array<int, string> Der Weg eines Knotens, je Seite einmal gelesen — für den Filter über Unterbäume (D-791, D-1477). */
+    private array $wege = [];
 
-    /** @return list<int> */
-    private function vorfahrenVon(int $knotenId): array
+    /** Der Weg eines Knotens, je Seite einmal gelesen; leer, wo es ihn nicht mehr gibt. */
+    private function wegVon(int $knotenId): string
     {
-        return $this->vorfahren[$knotenId] ??= array_map('intval', $this->editor->find($knotenId)?->ancestorIds() ?? []);
+        return $this->wege[$knotenId] ??= $this->editor->find($knotenId)?->path ?? '';
     }
 
     /**
@@ -6371,8 +6378,9 @@ final class NodesScreen
      *
      * @param list<\Taxmod\Core\Model\RelationRecord> $werte
      * @param array<int, TypedValue>                   $filter
+     * @param array<int, int>                          $ziele  Kante ⇒ ihr Ziel, für D-1477
      */
-    private function matchesFilter(array $werte, array $filter): bool
+    private function matchesFilter(array $werte, array $filter, array $ziele): bool
     {
         foreach ($filter as $kante => $gesucht) {
             $passt = false;
@@ -6386,11 +6394,12 @@ final class NodesScreen
                     $gesucht->text !== null => mb_stripos($wert->value->rawValue(), $gesucht->text) !== false,
                     $gesucht->date !== null => str_starts_with($wert->value->rawValue(), substr($gesucht->date, 0, 10)),
                     $gesucht->int !== null, $gesucht->decimal !== null => $wert->value->comparedTo($gesucht) === 0,
-                    // ⚠️ **Ein Knotenverweis trifft auch alles unter dem gesuchten Knoten** ([D-791](../../../docs/NewConcept/90-decision-log.md)
-                    // Schritt 2, Zeile 140) — *«SMD» trifft «0603» unter SMD. Die Vorfahren eines Wertes je Seite einmal gelesen.*
+                    // ⚠️ **Ein Knotenverweis trifft, was der Kern sagt** ({@see ChoiceFilter}): *den Knoten, alles darunter
+                    // ([D-791](../../../docs/NewConcept/90-decision-log.md), «SMD» trifft «0603») und jeden Vorfahren bis zum Ziel des
+                    // Feldes ([D-1477](../../../docs/NewConcept/90-decision-log.md), «alle Computer» trifft «XT»). Die Wege je Seite einmal gelesen.*
                     $gesucht->referenceSpace === \Taxmod\Core\Model\ReferenceSpace::Node && $gesucht->reference !== null
                         && $wert->value->referenceSpace === \Taxmod\Core\Model\ReferenceSpace::Node && $wert->value->reference !== null
-                                            => $wert->value->reference === $gesucht->reference || in_array($gesucht->reference, $this->vorfahrenVon($wert->value->reference), true),
+                                            => ChoiceFilter::fits($this->wegVon($wert->value->reference), $this->wegVon($gesucht->reference), isset($ziele[$kante]) ? $this->wegVon($ziele[$kante]) : ''),
                     default                 => $wert->value->rawValue() === $gesucht->rawValue(),
                 };
 
