@@ -2349,7 +2349,8 @@ final class RenderingTest extends TestCase
         };
         $blau  = $satz([$controller->id => 'SSD1306', $farbe->id => 'blau', $bezeichnung->id => 'SSD1306 blau']);
         $weiss = $satz([$controller->id => 'SSD1306', $farbe->id => 'weiß', $bezeichnung->id => 'SSD1306 weiß']);
-        $leer  = $satz([$farbe->id => 'gelb']);
+        $leer  = $satz([$controller->id => 'SSD1306', $farbe->id => 'gelb']);
+        $ohne  = $satz([$farbe->id => 'grün']);
         $fremd = $satz([$controller->id => 'SH1106']);
 
         $editor = new SettingsEditor($this->settings, $this->nodes, $this->resolver, ShippedRenderers::registry(), ShippedConverters::registry());
@@ -2384,6 +2385,13 @@ final class RenderingTest extends TestCase
             self::fail('a different controller is refused');
         } catch (\Taxmod\Core\Exception\NotYetStorable $e) {
             self::assertStringContainsString('«Controller» differs between #' . $blau . ' and #' . $fremd, $e->getMessage());
+        }
+
+        try {
+            $macher->make([$blau, $ohne]);
+            self::fail('an empty controller beside a filled one is refused, not inherited');
+        } catch (\Taxmod\Core\Exception\NotYetStorable $e) {
+            self::assertStringContainsString('«Controller» is filled at #' . $blau . ' and empty at #' . $ohne, $e->getMessage());
         }
 
         $vater = $macher->make([$blau, $weiss, $leer]);

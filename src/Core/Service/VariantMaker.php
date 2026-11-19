@@ -18,7 +18,7 @@ use Taxmod\Core\Repository\TypeNodes;
  *
  * ```mermaid
  * flowchart LR
- *   R["records of one node"] --> C{"each other field: the same value, or empty?"}
+ *   R["records of one node"] --> C{"each other field: the same value in all, or empty in all?"}
  *   C -->|no| X["refused: field and records named"]
  *   C -->|yes| P["new parent holds the value"] --> V["value cleared at the variants, «Variante von» set"]
  * ```
@@ -160,11 +160,14 @@ final class VariantMaker
         $parts = $field->kind === RelationKind::Composition && $this->typeNodes->typeOf($field->toNodeId) === null;
         $seen  = null;
         $from  = 0;
+        $empty = 0;
 
         foreach ($recordIds as $id) {
             $rows = array_values(array_filter($values[$id] ?? [], static fn (RelationRecord $row): bool => $row->relationId === $field->id));
 
             if ($rows === []) {
+                $empty = $empty === 0 ? $id : $empty;
+
                 continue;
             }
 
@@ -180,6 +183,11 @@ final class VariantMaker
 
             $seen ??= $rows;
             $from = $from === 0 ? $id : $from;
+        }
+
+        // Architecture gate 19.11. (PR-4): an empty record would inherit the other's value without anyone saying so — refused.
+        if ($seen !== null && $empty > 0) {
+            throw NotYetStorable::thatCannotMakeVariants(sprintf('«%s» is filled at #%d and empty at #%d — make them equal first, or mark the field «Je Variante».', $field->name, $from, $empty));
         }
 
         return $seen ?? [];
