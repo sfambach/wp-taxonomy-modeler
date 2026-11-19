@@ -599,6 +599,8 @@ final class ModelAbilities
                 'multiplicity' => $r->multiplicity->value,
                 'type'         => $type?->value,
             ] + ($addons === [] ? [] : ['addons' => $addons])
+              // D-1487: a module tells a record reference from text and from a choice of nodes by this, not by the type.
+              + ($screen->choosesRecords($r, $type) ? ['records' => true] : [])
               // D-1288: a computed field says what it is made of here, or a write to it is silently overwritten.
               + (($aus = $screen->composedOf($r, $id)) === [] ? [] : ['composed_of' => $aus]);
         }

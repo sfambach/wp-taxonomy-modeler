@@ -21,7 +21,10 @@ final class ImportPlatformFirmsTest extends TestCase
 
         self::assertSame(46727, $firms->idOf('aliexpress'));
         self::assertSame(46727, $firms->idOf(' AliExpress '));
-        self::assertNull($firms->idOf('Mouser'), 'a part of the word is not the word');
+        self::assertSame(35197, $firms->idOf('Mouser'), 'one firm begins with it as a whole word');
+        self::assertNull($firms->idOf('Mous'), 'a part of a word is not a word');
+        self::assertNull($firms->idOf('Conrad'), 'two firms begin with it: none');
+        self::assertSame(9, $firms->idOf('conrad electronic'), 'the exact word wins over the beginnings');
         self::assertNull($firms->idOf('Doppel'), 'two firms with one word name none');
         self::assertNull($firms->idOf(''));
         self::assertSame('AliExpress', $firms->canonical('ALIEXPRESS'));
@@ -67,7 +70,7 @@ final class ImportPlatformFirmsTest extends TestCase
 
     private static function firms(): PlatformFirms
     {
-        return new PlatformFirms([46727 => 'AliExpress', 46801 => 'eBay', 35197 => 'Mouser Electronics', 7 => 'Doppel', 8 => 'doppel']);
+        return new PlatformFirms([46727 => 'AliExpress', 46801 => 'eBay', 35197 => 'Mouser Electronics', 7 => 'Doppel', 8 => 'doppel', 9 => 'Conrad Electronic', 10 => 'Conrad Electronic SE']);
     }
 
     private static function target(?PlatformFirms $firms = null): TargetModel

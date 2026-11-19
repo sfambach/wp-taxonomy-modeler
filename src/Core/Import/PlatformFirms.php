@@ -6,8 +6,10 @@ namespace Taxmod\Core\Import;
  * The firms an order's «Plattform» may name once the field is a reference ([D-1487](../../../docs/NewConcept/90-decision-log.md)):
  * a source still says «AliExpress», the model keeps the firm record it means.
  *
- * ⚠️ *A name names a firm only when exactly one firm has it as its own word, case ignored — the rule of D-1484. None or two
- * and the name names nothing: the field stays empty rather than pointing at a guess.*
+ * ⚠️ *A name names a firm when exactly one firm has it as its own word, case ignored — the rule of D-1484. Otherwise, and only
+ * for the platform, when exactly one firm's word begins with it as a whole word: the mail readers say «Mouser», the firm is
+ * «Mouser Electronics» (Prüftor 2026-11-19). None or two and the name names nothing: the field stays empty rather than
+ * pointing at a guess. Import, order key and the data change all resolve here.*
  *
  * @see docs/pakete/import/konzept.md §3.6
  */
@@ -38,7 +40,21 @@ final class PlatformFirms
 
     public function idOf(string $name): ?int
     {
-        return $this->byWord[self::key($name)] ?? null;
+        $key = self::key($name);
+
+        if ($key === '' || isset($this->byWord[$key])) {
+            return $key === '' ? null : $this->byWord[$key];
+        }
+
+        $hits = [];
+
+        foreach ($this->words as $id => $word) {
+            if (preg_match('/^' . preg_quote($key, '/') . '(?![\p{L}\p{N}])/u', self::key($word)) === 1) {
+                $hits[] = (int) $id;
+            }
+        }
+
+        return count($hits) === 1 ? $hits[0] : null;
     }
 
     /** The firm's own word; `null` for an id that is no firm of the field. */

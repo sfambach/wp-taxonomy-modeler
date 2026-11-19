@@ -32,6 +32,7 @@ use Taxmod\Core\Import\ChangeListBuilder;
 use Taxmod\Core\Import\OrderComparison;
 use Taxmod\Core\Import\OrderProposal;
 use Taxmod\Core\Import\ProposalKind;
+use Taxmod\Core\Import\ProposalLine;
 use Taxmod\Core\Import\TargetModel;
 use Taxmod\Core\Model\Branch;
 use Taxmod\WordPress\Import\ModelGateway;
@@ -57,6 +58,15 @@ $r    = taxmodBeispiel([
     ['op' => 'add_field', 'ref' => 'datum', 'node' => '@best', 'target' => $text, 'name' => '__pf Datum', 'kind' => 'aggregation', 'multiplicity' => '0..1'],
     ['op' => 'add_field', 'ref' => 'titel', 'node' => '@best', 'target' => $text, 'name' => '__pf Titel', 'kind' => 'aggregation', 'multiplicity' => '0..1'],
     ['op' => 'add_field', 'ref' => 'ktitel', 'node' => '@kauf', 'target' => $text, 'name' => '__pf Kauftitel', 'kind' => 'aggregation', 'multiplicity' => '0..1'],
+    ['op' => 'add_field', 'ref' => 'pos', 'node' => '@best', 'target' => '@kauf', 'name' => '__pf Positionen', 'kind' => 'aggregation', 'multiplicity' => '0..*'],
+    ['op' => 'create_record', 'ref' => 'mouser', 'node' => '@firma'],
+    ['op' => 'set_values', 'record' => '@mouser', 'values' => ['@name' => 'Mouser Electronics']],
+    ['op' => 'create_record', 'ref' => 'paypal', 'node' => '@firma'],
+    ['op' => 'set_values', 'record' => '@paypal', 'values' => ['@name' => 'PayPal']],
+    ['op' => 'create_record', 'ref' => 'conrad1', 'node' => '@firma'],
+    ['op' => 'set_values', 'record' => '@conrad1', 'values' => ['@name' => 'Conrad Electronic']],
+    ['op' => 'create_record', 'ref' => 'conrad2', 'node' => '@firma'],
+    ['op' => 'set_values', 'record' => '@conrad2', 'values' => ['@name' => 'Conrad Electronic SE']],
     ['op' => 'create_record', 'ref' => 'ali', 'node' => '@firma'],
     ['op' => 'set_values', 'record' => '@ali', 'values' => ['@name' => 'AliExpress']],
     ['op' => 'create_record', 'ref' => 'ebay', 'node' => '@firma'],
@@ -68,7 +78,7 @@ $r    = taxmodBeispiel([
 ]);
 
 $ziel = static fn (string $plattform): TargetModel => new TargetModel($r['best'], $r['kauf'], 0, 0, 0, [
-    'title' => $r['titel'], 'order_number' => $r['nr'], 'platform' => $r[$plattform], 'merchant' => $r['haendler'], 'ordered_at' => $r['datum'],
+    'title' => $r['titel'], 'order_number' => $r['nr'], 'platform' => $r[$plattform], 'merchant' => $r['haendler'], 'ordered_at' => $r['datum'], 'lines' => $r['pos'],
 ], ['title' => $r['ktitel']], ['EUR' => 8571]);
 
 // Text: wie bisher.
@@ -95,6 +105,22 @@ $fuellen = $leer === null ? [] : (new ChangeListBuilder($schreiben))->completed(
 $antwort = wp_get_ability('taxmod/write-data')->execute(['changes' => $fuellen]);
 $say($fuellen !== [] && ! is_wp_error($antwort), 'Verweis: die Firma wird geschrieben' . (is_wp_error($antwort) ? ': ' . $antwort->get_error_message() : ''));
 $say((new ModelGateway($ziel('plat')))->findOrder('EBAY', 'E-2')?->values['platform'] === 'eBay', 'Verweis: die Bestellung zeigt danach auf die Firma «eBay»');
+
+// Prüftor 2026-11-19: the readers say «Mouser», the firm is «Mouser Electronics» — one firm beginning with the name names it.
+$say($schreiben instanceof TargetModel && $schreiben->platformValue('Mouser') === (string) $r['mouser'], 'Verweis: «Mouser» nennt «Mouser Electronics» (eine Firma beginnt damit)');
+$say($schreiben instanceof TargetModel && $schreiben->platformValue('Conrad') === null, 'Verweis: «Conrad» nennt keine, zwei Firmen beginnen damit');
+
+// Prüftor 2026-11-19: a second import run makes no second order — for a firm by its beginning, by its word, and PayPal with a merchant.
+foreach ([['Mouser', 'M-1', null], ['AliExpress', 'A-9', null], ['PayPal', 'TX-7', 'Händler GmbH']] as [$quelle, $nummer, $haendler]) {
+    $vorschlag = new OrderProposal($quelle, $nummer, ProposalKind::Ordered, '2026-11-19', 'EUR', [new ProposalLine('Teil', 1, '', '')], counterparty: $haendler);
+    $erster    = new ModelGateway($ziel('plat'));
+    $vorher    = $erster->findOrder($quelle, $nummer);
+    $ziel1     = $erster->writingTarget();
+    $antwort   = $vorher === null && $ziel1 instanceof TargetModel ? wp_get_ability('taxmod/write-data')->execute(['changes' => (new ChangeListBuilder($ziel1))->newOrder($vorschlag, [0], '')]) : null;
+    $zweiter   = (new ModelGateway($ziel('plat')))->findOrder($quelle, $nummer);
+    $say($vorher === null && is_array($antwort) && $zweiter !== null && ($zweiter->values['platform'] ?? '') !== '',
+        sprintf('zweiter Lauf: «%s» %s wird wiedergefunden (%s), keine Dublette', $quelle, $nummer, is_wp_error($antwort) ? $antwort->get_error_message() : ($zweiter->values['platform'] ?? 'nicht gefunden')));
+}
 
 echo $failed === 0 ? "platform-firm-check: ok\n" : "platform-firm-check: {$failed} FAIL\n";
 exit($failed === 0 ? 0 : 1);

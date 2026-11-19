@@ -292,7 +292,7 @@ final class ModelGateway
     }
 
     /**
-     * The firms «platform» points at (D-1487): a field with no data type holds records, and its target's records are the
+     * The firms «platform» points at (D-1487): a field read-node marks as choosing records, and its target's records are the
      * firms, each by its own word — one query, paged. `null` while the field is text.
      *
      * @param array<string, mixed> $node the answer of taxmod/read-node; `mixed` because it nests
@@ -307,7 +307,7 @@ final class ModelGateway
             }
         }
 
-        if ($field === null || ($field['type'] ?? null) !== null) {
+        if ($field === null || empty($field['records'])) {
             return null;
         }
 

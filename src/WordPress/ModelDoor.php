@@ -131,7 +131,7 @@ final class ModelDoor
     /**
      * The fields of a node as the modeller lists them, inherited ones included — from the same read as its records.
      *
-     * @return array<int, array{name: string, target: int, type: string|null, kind: string, multiplicity: string, addons: list<string>}> relation id → field
+     * @return array<int, array{name: string, target: int, type: string|null, kind: string, multiplicity: string, addons: list<string>, records: bool}> relation id → field
      */
     public function fields(int $node): array
     {
@@ -145,6 +145,8 @@ final class ModelDoor
                 'kind'         => (string) ($field['kind'] ?? ''),
                 'multiplicity' => (string) ($field['multiplicity'] ?? ''),
                 'addons'       => array_map('strval', (array) ($field['addons'] ?? [])),
+                // D-1487: whether its value is a record — «Modell» says `node_ref` and holds records.
+                'records'      => ! empty($field['records']),
             ];
         }
 

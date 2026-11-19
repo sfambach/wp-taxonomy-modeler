@@ -342,6 +342,15 @@ final class NodesScreen
     }
 
     /**
+     * Whether a field's chosen value is a record (D-812) — the question the drawing asks, for a module that reads the node
+     * ([D-1487](../../../docs/NewConcept/90-decision-log.md)): «Modell» names its type `node_ref` and still holds records.
+     */
+    public function choosesRecords(Relation $relation, ?SimpleType $type): bool
+    {
+        return $relation->kind === RelationKind::Aggregation && ($type === null || $this->rendering->referencesRecords($relation));
+    }
+
+    /**
      * Die Felder eines Knotens mit ihrem einfachen Typ — für die Abilities, aus demselben Zeichenlauf wie die Maske ([D-911](../../../docs/NewConcept/90-decision-log.md)).
      *
      * @return list<array{relation: Relation, type: SimpleType|null, addons: list<string>}> `addons`: the names of the add-ons chosen at the edge
