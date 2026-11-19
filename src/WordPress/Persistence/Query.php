@@ -79,7 +79,7 @@ final class Query
 
     /**
      * What one statement costs before it does anything: the middle of `$times` empty questions, in microseconds — for the page
-     * times (D-1478). On a host whose database is another machine this is what every statement of a page pays.
+     * times (D-1482). On a host whose database is another machine this is what every statement of a page pays.
      */
     public static function roundTripMicroseconds(int $times = 15): int
     {

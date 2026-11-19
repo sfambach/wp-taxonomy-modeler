@@ -68,7 +68,7 @@ final class SummaryWriter
             $knotenJeSatz[$satz->id] = $satz->nodeId;
         }
 
-        // D-1478: a variant is named after its parent, so a parent's change renames its variants, and a variant needs its parent's name.
+        // D-1482: a variant is named after its parent, so a parent's change renames its variants, and a variant needs its parent's name.
         $vaterJeVariante = $this->variantsAround($knotenJeSatz);
 
         foreach (array_unique(array_values($knotenJeSatz)) as $knotenId) {
@@ -145,7 +145,7 @@ final class SummaryWriter
     }
 
     /**
-     * The parents and variants of these records, added to `$knotenJeSatz`; answers variant → parent (D-1478). Two reads at most
+     * The parents and variants of these records, added to `$knotenJeSatz`; answers variant → parent (D-1482). Two reads at most
      * for all records together (CD-7).
      *
      * @param array<int, int> $knotenJeSatz record → node, extended in place
@@ -197,7 +197,7 @@ final class SummaryWriter
     }
 
     /**
-     * D-1478: a variant's name is its parent's name and the words of its own «Je Variante» fields — only fields that say a word
+     * D-1482: a variant's name is its parent's name and the words of its own «Je Variante» fields — only fields that say a word
      * (a choice, a text, a number); pictures and parts such as a pin assignment stay out (D-1473).
      *
      * @param array{relation: Relation, fields: list<int>, records: list<int>} $eintrag

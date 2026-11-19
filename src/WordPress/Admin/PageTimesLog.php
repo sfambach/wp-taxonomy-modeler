@@ -44,7 +44,7 @@ final class PageTimesLog
     {
         add_action('shutdown', [self::class, 'record']);
 
-        // D-1478: where the time went. A call of 58 s with 139 statements and 12 MB said that it was slow and not why.
+        // D-1482: where the time went. A call of 58 s with 139 statements and 12 MB said that it was slow and not why.
         add_action('admin_init', static function (): void { self::$at['b'] = self::sinceStart(); }, PHP_INT_MIN);
         add_action('in_admin_footer', static function (): void { self::$at['r'] = self::sinceStart(); }, PHP_INT_MAX);
         add_filter('pre_http_request', static function (mixed $answer): mixed {

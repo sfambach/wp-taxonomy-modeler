@@ -76,7 +76,7 @@ PageTimesLog::write('taxmod-probe/b');
 $entries = PageTimesLog::entries();
 
 $say(count($entries) === PageTimes::KEEP && $entries[PageTimes::KEEP - 1]['p'] === 'taxmod-probe/b', 'der Ring bleibt bei ' . PageTimes::KEEP . ' und behält den neuesten');
-$say(strlen((string) maybe_serialize($entries)) < 33000, 'ein voller Ring bleibt unter 33 KB — drei Zahlen mehr je Eintrag seit D-1478 (' . strlen((string) maybe_serialize($entries)) . ' Bytes)');
+$say(strlen((string) maybe_serialize($entries)) < 33000, 'ein voller Ring bleibt unter 33 KB — drei Zahlen mehr je Eintrag seit D-1482 (' . strlen((string) maybe_serialize($entries)) . ' Bytes)');
 
 echo "\nDer Schalter\n";
 
