@@ -1,6 +1,6 @@
 # Material variants: plan (D-1208)
 
-Status: **steps 1–4 built** (Modeller 0.2.32); steps 5–8 open. Basis: [D-1208](../../NewConcept/90-decision-log.md), entry [INF-113](../../neues-konzept-eingang.md).
+Status: **steps 1–4 built** (Modeller 0.2.32), **5–6 built** (Modeller 0.2.154, [D-1478](../../NewConcept/90-decision-log.md)); 7–8 open. Basis: [D-1208](../../NewConcept/90-decision-log.md), entry [INF-113](../../neues-konzept-eingang.md).
 
 ## The model
 
@@ -42,6 +42,14 @@ Each step ends with something the owner can operate, and both test runs stay gre
 - Saving «Variante von» checks the three rules of `Variants::complaints`.
 - Not built: the modeller's form does not yet show the parent's fields locked; that comes with the variant list in step 6.
 - ⚠️ Assumed: «Variante von» is an **aggregation** to the material's own node. Found while building: a *composition* from a node to itself makes `create_record` loop without end (pre-existing, not caused by variants).
+
+## Built in steps 5 and 6 (D-1478)
+
+- Name: the summary writer names a variant «parent's name · its own words» — only «Je Variante» fields that say a word (a choice, a text, a number); pictures and parts such as the pin assignment stay out (D-1473). A parent's change renames its variants. A derived value (name, calculation) is written past the variant's lock (`DataEntry::putDerived`).
+- Op `make_variants {records}`: a new parent takes the values the records share; each keeps its id and its «Je Variante» values; refused naming field and records where they differ elsewhere, where a non-flag field holds parts, or where one already is or has a variant. One act, undo.
+- Op `add_variant {record, values}`: beside a variant, under a parent, or — at a plain record — the record first becomes the only variant of a new parent.
+- Modeller screen: toolbar icon «New variant» at a record of a node with «Variante von»; a line «Variants» / «Variant of» with links.
+- ⚠️ Not built here: the modeller's record list has no ticks, so «Als Varianten zusammenfassen …» as a bulk action comes with the stock's material list (step 7); the form does not yet draw the parent's fields locked (the write refuses them with the parent named).
 
 ## How variants are shown (proposal, his question 2026-11-06: «wie stellen wir die varienten da unter dem vater material als eigenes material ??»)
 
