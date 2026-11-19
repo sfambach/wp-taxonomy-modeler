@@ -222,9 +222,9 @@ vermutlich im Fliesstext und sollte eine eigene Zeile bekommen.
 
 | Regel | Was sie sagt | Steht in | Zitiert |
 |---|---|---|---|
-| **P1** | The nodes are to be stored relationally. | [50-wordpress-persistence.md:26](50-wordpress-persistence.md) | 7 |
-| **P2** | In addition, settings per node, stored generically in a settings table — a node may have settings. | [50-wordpress-persistence.md:27](50-wordpress-persistence.md) | 4 |
-| **P3** | Likewise a table for the relations. | [50-wordpress-persistence.md:28](50-wordpress-persistence.md) | 2 |
+| **P1** | The nodes are to be stored relationally. | [50-wordpress-persistence.md:26](50-wordpress-persistence.md) | 8 |
+| **P2** | In addition, settings per node, stored generically in a settings table — a node may have settings. | [50-wordpress-persistence.md:27](50-wordpress-persistence.md) | 5 |
+| **P3** | Likewise a table for the relations. | [50-wordpress-persistence.md:28](50-wordpress-persistence.md) | 3 |
 | **P4** | These are the base tables for storing the model data later: nodes, settings, relations. → amended to nodes, settings, labels, relations by D-019. | [50-wordpress-persistence.md:29](50-wordpress-persistence.md) | 16 |
 | **P5** | There will not be a database table per model. The data have to be stored some other way. | [50-wordpress-persistence.md:109](50-wordpress-persistence.md) | 9 |
 | **P6** | How exactly is not yet defined. | [50-wordpress-persistence.md:110](50-wordpress-persistence.md) | 1 |
