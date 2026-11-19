@@ -94,6 +94,34 @@ $anfrage($marke, $anlegen);
 $say($kinder() === $vorher + 1, 'derselbe Versuch noch einmal wirkt');
 $say(str_contains((string) file_get_contents(dirname(__DIR__, 2) . '/src/WordPress/Admin/ListPage.php'), 'OnceMark::giveBack();'), 'ListPage::fail gibt die Marke zurück');
 
+echo "\n== wer auf einen gescheiterten Lauf wartet, wartet nicht weiter ==\n";
+// Zwei Anfragen im selben Augenblick gibt es in einem Prozess nicht: geprüft wird die Stelle, an der die zweite wartet.
+$warten = new ReflectionMethod(OnceMark::class, 'awaitFirst');
+$vorher = $kinder();
+$marke  = wp_generate_uuid4();
+$_POST  = [OnceMark::FIELD => $marke];
+OnceMark::enter();
+OnceMark::giveBack();
+$_POST  = [];
+$start  = microtime(true);
+$wohin  = $warten->invoke(null, $marke);
+$say($wohin === '' && microtime(true) - $start < 1.0, sprintf('die Marke ist zurückgegeben: sofort zurück zur Seite (%.2f s)', microtime(true) - $start));
+$say($kinder() === $vorher, 'und ohne zweiten Akt');
+$marke  = wp_generate_uuid4();
+$ziel   = $anfrage($marke, $anlegen);
+$say($warten->invoke(null, $marke) === $ziel, 'Gegenprobe: eine erledigte Marke führt, wohin die erste ging');
+
+echo "\n== ein Download gibt die Marke zurück, eine Seite nicht ==\n";
+$datei = new ReflectionMethod(OnceMark::class, 'isDownload');
+$say($datei->invoke(null, ['Content-Type: application/pdf', 'Content-Disposition: inline; filename="label.pdf"']) === true, 'eine PDF-Antwort ist ein Download');
+$say($datei->invoke(null, ['Content-Type: application/json; charset=utf-8', 'content-disposition: attachment; filename="x.json"']) === true, 'ein Anhang ist ein Download');
+$say($datei->invoke(null, ['Content-Type: application/pdf']) === true, 'eine PDF-Antwort ohne weitere Angabe auch');
+$say($datei->invoke(null, ['Content-Type: text/html; charset=UTF-8', 'Cache-Control: no-cache']) === false, 'eine Seite ist keiner');
+$say($datei->invoke(null, ['Content-Type: application/json; charset=utf-8']) === false, 'eine Antwort an das Skript ist keiner');
+$say($datei->invoke(null, []) === false, 'eine Antwort ohne Angabe ist keiner');
+$quelle = (string) file_get_contents(dirname(__DIR__, 2) . '/src/WordPress/Admin/OnceMark.php');
+$say(preg_match('/if \(self::isDownload\(headers_list\(\)\)\) \{\s+self::giveBack\(\);/', $quelle) === 1, 'am Ende der Anfrage gibt ein Download die Marke zurück');
+
 echo "\n== eine Marke gehört dem, der sie schickt ==\n";
 $marke = wp_generate_uuid4();
 $anfrage($marke, $anlegen);
@@ -123,6 +151,8 @@ $say(str_contains($skript, "form.getAttribute( 'aria-busy' ) === 'true'") && str
 $say(str_contains($skript, 'submitter.disabled = true'), 'sein Knopf ist gesperrt, solange es geht');
 $say(str_contains($skript, "field.name = '_taxmod_once'") && str_contains($skript, "OnceMark::FIELD") === false, 'jedes gesendete Formular trägt die Marke');
 $say(OnceMark::FIELD === '_taxmod_once', 'Skript und Server nennen dasselbe Feld');
+// Ein Server, der länger braucht als die Sperre, fängt den zweiten Klick an derselben Marke: eine neue gibt es nur im anderen Fenster.
+$say(str_contains($skript, 'unlock( form, elsewhere );') && ! str_contains($skript, "unlock( form, true );\n\t\t\t\t}, 8000 );"), 'nach der Sperre behält das Formular seine Marke, außer es ging in ein anderes Fenster');
 
 printf("\n%s\n", $failed === 0 ? 'all green' : sprintf('%d FEHLER', $failed));
 
