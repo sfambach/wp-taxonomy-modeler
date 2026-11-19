@@ -168,6 +168,11 @@ final class PageTimesLog
         if (str_starts_with($page, 'taxmod')) {
             $tab = $word($get['tab'] ?? '');
 
+            // A page may carry a record id in `tab` (the contacts do): a tab is a word, and what has a digit in it is not kept.
+            if (preg_match('/^[a-z_-]+$/', $tab) !== 1) {
+                $tab = '';
+            }
+
             return $page . ($tab === '' ? '' : '/' . $tab);
         }
 

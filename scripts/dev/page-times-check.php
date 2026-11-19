@@ -37,6 +37,7 @@ $get = ['page' => 'taxmod-logistik', 'tab' => 'arrived', 's' => 'geheimes Suchwo
 
 $say(PageTimesLog::subject(true, $get, $get) === 'taxmod-logistik/arrived', 'eine Seite heisst page/tab — Suchwort, Satz-Id und Bestellung bleiben draussen');
 $say(PageTimesLog::subject(true, ['page' => 'taxmod'], []) === 'taxmod', 'ohne Reiter nur die Seite');
+$say(PageTimesLog::subject(true, ['page' => 'taxmod-lager-kontakte', 'tab' => '149000102677'], []) === 'taxmod-lager-kontakte' && PageTimesLog::subject(true, ['page' => 'taxmod-x', 'tab' => 'satz-13'], []) === 'taxmod-x', 'ein Reiter mit Ziffern ist eine Satz-Id und bleibt draussen');
 $say(PageTimesLog::subject(true, [], ['action' => 'taxmod_fragment', 'record' => '9']) === 'action:taxmod_fragment', 'ein Nachladen oder Formular heisst action:…');
 $say(PageTimesLog::subject(true, ['page' => 'plugins'], ['action' => 'heartbeat']) === null, 'eine fremde Seite wird nicht mitgeschrieben');
 $say(PageTimesLog::subject(false, $get, $get) === null, 'ausserhalb der Verwaltung wird nichts mitgeschrieben');
