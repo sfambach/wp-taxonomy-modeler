@@ -37,6 +37,12 @@ $get = ['page' => 'taxmod-logistik', 'tab' => 'arrived', 's' => 'geheimes Suchwo
 
 $say(PageTimesLog::subject(true, $get, $get) === 'taxmod-logistik/arrived', 'eine Seite heisst page/tab — Suchwort, Satz-Id und Bestellung bleiben draussen');
 $say(PageTimesLog::subject(true, ['page' => 'taxmod'], []) === 'taxmod', 'ohne Reiter nur die Seite');
+$carried = ['page' => 'taxmod', 'tab' => 'x', 'taxmod_node' => '149000102677', 's' => 'geheimes Suchwort', 'group' => '77', 'order' => '815', '_wpnonce' => 'abc', '4711' => '1', 'Feld-9' => '1', 'pick' => ['76688', '76697']];
+$names   = PageTimesLog::switches($carried);
+$say($names === 'group,order,pick,s,taxmod_node', 'die Schalter eines Aufrufs sind die Namen seiner Parameter, sortiert — ohne page, tab und Nonce, ohne Namen mit Ziffern (' . $names . ')');
+$say(! str_contains($names, 'geheim') && ! str_contains($names, '149000102677') && ! str_contains($names, '815') && ! str_contains($names, '76688') && ! str_contains($names, '77'), 'kein Wert, keine Id, kein Suchwort steht in den Schaltern');
+$say(count(explode(',', PageTimesLog::switches(array_fill_keys(range('a', 'z'), '1')))) === 8, 'höchstens acht Namen');
+$say(PageTimesLog::switches(['page' => 'taxmod']) === '', 'ohne Schalter nichts');
 $say(PageTimesLog::subject(true, ['page' => 'taxmod-lager-kontakte', 'tab' => '149000102677'], []) === 'taxmod-lager-kontakte' && PageTimesLog::subject(true, ['page' => 'taxmod-x', 'tab' => 'satz-13'], []) === 'taxmod-x', 'ein Reiter mit Ziffern ist eine Satz-Id und bleibt draussen');
 $say(PageTimesLog::subject(true, [], ['action' => 'taxmod_fragment', 'record' => '9']) === 'action:taxmod_fragment', 'ein Nachladen oder Formular heisst action:…');
 $say(PageTimesLog::subject(true, ['page' => 'taxmod-lager-cockpit', 'area' => 'lager', 'group' => '77'], []) === 'taxmod-lager-cockpit:lager', 'der Bereich des Cockpits unterscheidet als Wort');
@@ -82,6 +88,15 @@ $entries = PageTimesLog::entries();
 
 $say(count($entries) === PageTimes::KEEP && $entries[PageTimes::KEEP - 1]['p'] === 'taxmod-probe/b', 'der Ring bleibt bei ' . PageTimes::KEEP . ' und behält den neuesten');
 $say(strlen((string) maybe_serialize($entries)) < 33000, 'ein voller Ring bleibt unter 33 KB — drei Zahlen mehr je Eintrag seit D-1482 (' . strlen((string) maybe_serialize($entries)) . ' Bytes)');
+
+$kept = PageTimesLog::entries();
+PageTimesLog::write('taxmod-probe/c', 'group,order,pick,s,taxmod_node');
+$entries = PageTimesLog::entries();
+$with    = $entries[count($entries) - 1] ?? [];
+$say(($with['a'] ?? null) === 'group,order,pick,s,taxmod_node' && array_keys($with) === ['t', 'p', 'ms', 'q', 'mb', 'o', 'b', 'r', 'h', 'a'], 'ein Aufruf mit Schaltern trägt ihre Namen unter a (Nachtrag zu D-1482), einer ohne trägt kein a');
+update_option(PageTimesLog::OPTION, array_fill(0, PageTimes::KEEP, ['a' => 'taxmod_collapsed,taxmod_hidden,taxmod_message,taxmod_node,taxmod_open_record,taxmod_root,taxmod_search,term'] + $with), false);
+$say(strlen((string) maybe_serialize(PageTimesLog::entries())) < 60000, 'ein voller Ring, jeder Eintrag mit acht langen Namen, bleibt unter 60 KB (' . strlen((string) maybe_serialize(PageTimesLog::entries())) . ' Bytes)');
+update_option(PageTimesLog::OPTION, $kept, false);
 
 echo "\nDer Schalter\n";
 
