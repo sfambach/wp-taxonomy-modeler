@@ -144,7 +144,12 @@ final class OnceMark
         for ($i = 0; $i < self::WAIT_TENTHS; $i++) {
             $went = self::wentTo($mark);
 
-            if ($went !== null && $went !== self::RUNNING) {
+            // *The first act failed and gave its mark back while this request waited: nothing to follow and nothing to wait for.*
+            if ($went === null) {
+                return '';
+            }
+
+            if ($went !== self::RUNNING) {
                 return $went === 'back' ? '' : $went;
             }
 

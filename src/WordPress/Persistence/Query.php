@@ -235,6 +235,13 @@ final class Query
             } finally {
                 mysqli_free_result($result);
             }
+
+            // *A stream that breaks off (the connection lost half way) ends the loop like its last row does: said, not swallowed —
+            // whoever folds the rows would otherwise work with a part of them.*
+            if (mysqli_errno($link) !== 0) {
+                $wpdb->last_error = mysqli_error($link);
+                self::nothingWentWrong($doing);
+            }
         });
     }
 
