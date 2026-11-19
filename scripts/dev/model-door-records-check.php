@@ -43,6 +43,7 @@ require dirname(__DIR__, 2) . '/vendor/autoload.php';
 use Taxmod\Core\Model\Type\TextType;
 use Taxmod\WordPress\ModelDoor;
 use Taxmod\WordPress\Persistence\WpdbNodeRepository;
+use Taxmod\WordPress\Persistence\Schema;
 
 global $wpdb;
 $ok  = 0;
@@ -137,24 +138,32 @@ $kinds = $apply->execute(['changes' => [
     ['op' => 'add_field', 'ref' => 'tag', 'node' => '@k', 'target' => 1183, 'name' => '__nf Tag'],
     ['op' => 'add_field', 'ref' => 'ja', 'node' => '@k', 'target' => 1179, 'name' => '__nf Ja'],
     ['op' => 'add_field', 'ref' => 'zu', 'node' => '@k', 'target' => '@k', 'name' => '__nf Verweis', 'kind' => 'aggregation'],
+    ['op' => 'add_field', 'ref' => 'viele', 'node' => '@k', 'target' => '@k', 'name' => '__nf Verweise', 'kind' => 'aggregation', 'multiplicity' => '0..*'],
     ['op' => 'create_record', 'ref' => 'a', 'node' => '@k'],
     ['op' => 'set_values', 'record' => '@a', 'values' => ['@zahl' => '1', '@ganz' => '0', '@tag' => '2026-11-19', '@ja' => '1']],
     ['op' => 'create_record', 'ref' => 'b', 'node' => '@k'],
     ['op' => 'set_values', 'record' => '@b', 'values' => ['@zahl' => '2.50', '@ganz' => '-7', '@tag' => '2026-11', '@ja' => '0', '@zu' => '@a']],
     ['op' => 'create_record', 'ref' => 'c', 'node' => '@k'],
-    ['op' => 'set_values', 'record' => '@c', 'values' => ['@zahl' => '0', '@tag' => '2026', '@zu' => '@b']],
+    ['op' => 'set_values', 'record' => '@c', 'values' => ['@zahl' => '0', '@tag' => '2026', '@zu' => '@b', '@viele' => ['values' => ['@b', '@a']]]],
 ]]);
 
 if (is_wp_error($kinds)) {
     check('a node with a number, a count, a date, a yes/no and a reference can be set up', false, $kinds->get_error_message());
 } else {
     $k      = $kinds['refs'];
+    // The later row comes first now: the order is the stored position, not the row's id (D-1492). Written straight to the
+    // table, because every writer of the model keeps the two in step — the reading must not rely on that.
+    $rows   = array_map('intval', $wpdb->get_col($wpdb->prepare('SELECT id FROM ' . Schema::table('relation_records') . ' WHERE node_record_id = %d AND relation_id = %d ORDER BY id ASC', $k['c'], $k['viele'])));
+    $turned = count($rows) === 2
+        && $wpdb->update(Schema::table('relation_records'), ['position' => 1], ['id' => $rows[0]]) === 1
+        && $wpdb->update(Schema::table('relation_records'), ['position' => 0], ['id' => $rows[1]]) === 1;
     $folded = (new ModelDoor())->records($k['k']);
     $asked  = $viaAbility($k['k']);
     ksort($folded);
     ksort($asked);
     $sorted = static fn (array $records): array => array_map(static function (array $v): array { ksort($v); return $v; }, $records);
     check('number, count, date (day, month, year), yes/no and reference: records() gives exactly what read-node answers', $sorted($folded) === $sorted($asked), wp_json_encode([$sorted($folded), $sorted($asked)]));
+    check('values turned round afterwards come in their stored order, not in the order of their rows (D-1492)', $turned && ($folded[$k['c']][$k['viele']] ?? null) === [(string) $k['a'], (string) $k['b']], wp_json_encode($folded[$k['c']] ?? null));
     check('a number is not padded with the zeros of its column', ($folded[$k['a']][$k['zahl']] ?? null) === ['1'] && ! str_contains(wp_json_encode($folded), '.0000'), wp_json_encode($folded[$k['a']] ?? null));
 }
 
@@ -183,7 +192,8 @@ add_filter('query', $listen);
 remove_filter('query', $listen);
 $values = array_values(array_filter($statements, static fn (string $sql): bool => str_contains($sql, 'relation_records') && str_contains($sql, 'value_text')));
 check('the values of the node come in one statement, and a counter of statements sees it (CD-7)', count($values) === 1, count($values) . ' statements read values');
-check('that statement names the node, not a list of record ids', isset($values[0]) && preg_match('/WHERE node_record_id IN \(SELECT id FROM \S+ WHERE node_id = \d+ AND relation_id = 0\)/', $values[0]) === 1, substr((string) ($values[0] ?? ''), 0, 300));
+check('that statement names the node, not a list of record ids', isset($values[0]) && preg_match('/WHERE s\.node_id = \d+ AND s\.relation_id = 0/', $values[0]) === 1 && preg_match('/IN\s*\(\s*\d/', $values[0]) !== 1, substr((string) ($values[0] ?? ''), 0, 300));
+check('the database orders by the record only — no sorting run over every value and its text (D-1492)', isset($values[0]) && preg_match('/ORDER BY s\.id ASC\s*$/', $values[0]) === 1, substr((string) ($values[0] ?? ''), -80));
 
 $door   = new ModelDoor();
 $before = $wpdb->num_queries;

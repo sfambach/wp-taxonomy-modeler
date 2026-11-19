@@ -162,3 +162,5 @@ flowchart LR
 Die Tür faltet die Wertzeilen eines Knotens direkt; es gibt kein Wert-Objekt je Zeile und keine gehaltene Antwort. Was der
 Rohwert einer Zeile ist, sagt eine Stelle (`TypedValue::rawOf`). Die schmale Lesung von D-1486 blieb live ohne Wirkung und
 ist im Lager zurückgebaut (D-1491); Zahlen stehen in den Beschlüssen.
+
+Die Datenbank ordnet dabei nur nach dem Satz; die Reihenfolge der Werte im Satz stellt die Lesung selbst her ([D-1492](../../NewConcept/90-decision-log.md)): ein Sortierlauf über alle Werte samt Text entfällt.

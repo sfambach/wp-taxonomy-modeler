@@ -240,22 +240,46 @@ final class WpdbRecordRepository implements RecordRepository
 
         // ⚠️ *Dieselbe Bedingung und dieselbe Reihenfolge wie {@see self::valuesOfNode()}; was «der Rohwert» einer Zeile ist,
         // sagt {@see TypedValue::rawOf()} — dieselbe Stelle, aus der auch `rawValue()` liest. Kein Objekt je Zeile.*
+        // ⚠️ *Die Datenbank ordnet nur nach dem Satz, und das liefert ihr der Index ohne Sortierlauf. Nach `position, id`
+        // ordnet diese Methode selbst, je Satz: ein `ORDER BY` über alle drei zwingt die Datenbank, jede Zeile samt
+        // ihrem Text in eine Zwischentabelle zu legen und zu sortieren (D-1492).*
+        $satz   = 0;
+        $zeilen = [];
+        $ablegen = static function () use (&$nachSatz, &$satz, &$zeilen): void {
+            if (count($zeilen) > 1) {
+                usort($zeilen, static fn (array $a, array $b): int => [$a[0], $a[1]] <=> [$b[0], $b[1]]);
+            }
+
+            foreach ($zeilen as [, , $relation, $roh]) {
+                $nachSatz[$satz][$relation][] = $roh;
+            }
+
+            $zeilen = [];
+        };
+
         Query::each('Rohwerte eines Knotens lesen', $wpdb->prepare(
-            'SELECT node_record_id, relation_id, value_int, value_decimal, value_text, value_date, value_ref, value_precision
-             FROM ' . Schema::table('relation_records') . '
-             WHERE node_record_id IN (SELECT id FROM ' . Schema::table('node_records') . ' WHERE node_id = %d AND relation_id = 0)
-             ORDER BY node_record_id ASC, position ASC, id ASC',
+            'SELECT w.node_record_id, w.relation_id, w.position, w.id, w.value_int, w.value_decimal, w.value_text, w.value_date, w.value_ref, w.value_precision
+             FROM ' . Schema::table('node_records') . ' s
+             JOIN ' . Schema::table('relation_records') . ' w ON w.node_record_id = s.id
+             WHERE s.node_id = %d AND s.relation_id = 0
+             ORDER BY s.id ASC',
             $nodeId
-        ), static function (array $r) use (&$nachSatz): void {
-            $nachSatz[(int) $r['node_record_id']][(int) $r['relation_id']][] = TypedValue::rawOf(
+        ), static function (array $r) use (&$satz, &$zeilen, $ablegen): void {
+            if ((int) $r['node_record_id'] !== $satz) {
+                $ablegen();
+                $satz = (int) $r['node_record_id'];
+            }
+
+            $zeilen[] = [(int) $r['position'], (int) $r['id'], (int) $r['relation_id'], TypedValue::rawOf(
                 $r['value_int'] === null ? null : (int) $r['value_int'],
                 StoredDecimal::read($r['value_decimal']),
                 $r['value_text'],
                 $r['value_date'],
                 $r['value_ref'] === null ? null : (int) $r['value_ref'],
                 $r['value_date'] === null ? null : \Taxmod\Core\Model\ValuePrecision::tryFrom((string) ($r['value_precision'] ?? '')),
-            );
+            )];
         });
+        $ablegen();
 
         return $nachSatz;
     }
