@@ -112,3 +112,25 @@ Module danach um.
 
 - ⚠️ *Angenommen: der Auswahlbaum darf wie ein grosser Satzdialog-Körper behandelt werden (D-898 nennt nur Satzdialoge).*
 - ⚠️ *Angenommen: «Used by» darf erst beim Aufklappen laden, weil es schon heute zugeklappt steht.*
+
+---
+
+## Seitenzeit-Protokoll ([D-1476](../../NewConcept/90-decision-log.md), 2026-11-19)
+
+Sein Wort (19.11.): *«Das finde ich eigentlich ganz gut, dass du das mal mitloggst, vielleicht für jede Seite. Dann kann ich dir
+das schicken, dann musst du nicht messen.»*
+
+```mermaid
+flowchart LR
+  P["Verwaltungsaufruf: page oder action beginnt mit taxmod"] -->|Ende der Anfrage| E["ein Eintrag: Zeit, Abfragen, Speicher, OPcache"]
+  E --> R["Ring der letzten 200 Aufrufe<br/>eine Option, nicht autoload"]
+  R --> A["Fähigkeit taxmod/page-times (nur lesen)"]
+  R --> T["Tabelle unter Konfiguration<br/>im Entwicklermodus, Haken «Drawing times»"]
+```
+
+- **Eine Stelle für alle Module**: der Modeller schreibt mit, kein Modul tut etwas dazu.
+- **Festgehalten wird nur** die Seite, ihr Reiter oder die Aktion. Kein Suchwort, keine Satz-Id, kein Benutzer.
+- **Immer an**, abstellbar unter Konfiguration › Entwicklermodus › «Page time log».
+- **Kein Modell, keine Tabelle, kein Schema**: Messwerte, nach denen keine Seite etwas entscheidet.
+- **Ein Wächterlauf schreibt nicht mit** (`page-times-check.php`).
+- ⚠️ Gemessen wird die Zeit **auf dem Server** bis zum Ende der Anfrage. Was der Browser danach braucht, steht nicht darin.

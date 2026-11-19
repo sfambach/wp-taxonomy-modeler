@@ -50,7 +50,7 @@ use Taxmod\WordPress\Persistence\WpdbRelationRepository;
  */
 final class Plugin
 {
-    public const VERSION     = '0.2.149';
+    public const VERSION     = '0.2.150';
 
     /** `apply_filters(RECORD_EDITOR_FILTER, '', $recordId, $returnTo, $toolbar)`: the record's edit form for a module's page (D-1025); `$toolbar` = the module's own button groups (escaped HTML), placed after «Save» in the one toolbar (D-1308). */
     public const RECORD_EDITOR_FILTER = 'taxmod_record_editor';
@@ -312,6 +312,9 @@ final class Plugin
         add_action('wp_abilities_api_init', static fn () => $plugin->abilities()->register());
         // D-1235: the print jobs as abilities — the print thread reads what CUPS did and prints again.
         add_action('wp_abilities_api_init', static fn () => (new \Taxmod\WordPress\Printing\PrintAbilities())->register());
+
+        // D-1476: what every Taxmod page took, written down after the page is sent.
+        Admin\PageTimesLog::register();
 
         // ⚠️ **Ein Satz aus dem Modell im Beitrag** ([D-912](../../docs/NewConcept/90-decision-log.md)).
         add_action('init', static fn () => (new RecordBlock($plugin->screen(...), $plugin->file))->register());
