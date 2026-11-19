@@ -16,7 +16,7 @@ final class JournalListener
     {
     }
 
-    /** A provider that writes every model change into this chronicle — what a service uses when nobody hands it a dispatcher. */
+    /** A dispatcher that writes every model change into this chronicle and then hands it to the {@see SharedListeners} — what a service uses when nobody hands it a dispatcher. */
     public static function dispatcherFor(Changelog $changelog): Dispatcher
     {
         $provider = new ListenerProvider();
@@ -24,6 +24,10 @@ final class JournalListener
 
         $provider->listen(ModelChanged::class, $listener->changed(...));
         $provider->listen(ChangedTogether::class, $listener->together(...));
+        // After the chronicle, so a listener finds the act number on the event and writes inside the same act.
+        $shared = SharedListeners::dispatcher();
+        $provider->listen(ModelChanged::class, $shared->dispatch(...));
+        $provider->listen(ChangedTogether::class, $shared->dispatch(...));
 
         return new Dispatcher($provider);
     }

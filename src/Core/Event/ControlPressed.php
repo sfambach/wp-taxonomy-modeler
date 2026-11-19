@@ -17,6 +17,8 @@ namespace Taxmod\Core\Event;
  */
 final class ControlPressed implements Named
 {
+    use EventId;
+
     private mixed $outcome = null;
 
     private bool $answered = false;

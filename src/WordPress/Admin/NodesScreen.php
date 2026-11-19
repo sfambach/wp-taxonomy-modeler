@@ -1279,7 +1279,8 @@ final class NodesScreen
             $this->types ?? throw new \LogicException('No type nodes.'),
             $this->rendering,
             $this->changelog,
-            [new \Taxmod\WordPress\FilterMergeParticipant()]
+            // The filter stays one version as a bridge for modules not yet listening to `RecordsMerging`.
+            [new \Taxmod\Core\Event\SharedMergeParticipant(), new \Taxmod\WordPress\FilterMergeParticipant()]
         ))->merge($from, $into);
 
         \Taxmod\WordPress\Persistence\RecordReviews::clear($from);
