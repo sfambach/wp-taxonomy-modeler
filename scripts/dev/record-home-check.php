@@ -10,9 +10,9 @@
  * CONTRACT
  * Haken        taxmod_record_home (url|null, recordId, nodeId); null oder leer lässt die Modeller-Adresse
  * Verweis      ein angezeigter Satzverweis führt zur Adresse des Hakens, mit dem Knoten des Verweisziels
- * Kopf         die Vorschau eines geführten Satzes trägt «Open in its module» mit dieser Adresse
+ * Knopf        die Toolbar der Vorschau eines geführten Satzes trägt «Open in its module» mit dieser Adresse (eine Toolbar, D-1403)
  * Verwiesen    «Referred to by» führt zur Adresse des Hakens, mit dem Knoten des verweisenden Feldes
- * ohne Haken   alles wie vorher: taxmod_open_record, kein Kopf
+ * ohne Haken   alles wie vorher: taxmod_open_record, kein Knopf
  * ```
  *
  * Usage: php scripts/dev/record-home-check.php
@@ -99,7 +99,7 @@ add_filter(NodesScreen::RECORD_HOME_FILTER, $haken, 10, 3);
 $von = $zeige((int) $fund->vonKnoten, (int) $fund->von);
 $say(str_contains($von, 'href="https://example.test/home?r=' . (int) $fund->ziel . '"'), sprintf('Satz #%d: der Verweis auf #%d führt zur Seite des Moduls', $fund->von, $fund->ziel));
 $say(in_array((int) $fund->feldZiel, $gefragt[(int) $fund->ziel] ?? [], true), sprintf('der Haken bekam den Knoten des Verweisziels (%d)', $fund->feldZiel));
-$say(str_contains($von, 'class="taxmod-record-home"') && str_contains($von, 'https://example.test/home?r=' . (int) $fund->von), 'die Vorschau des geführten Satzes trägt den Kopf «Open in its module»');
+$say(preg_match('/taxmod-preview-acts.*class="button taxmod-record-home" href="https:\/\/example\.test\/home\?r=' . (int) $fund->von . '"/s', $von) === 1, 'die Toolbar der Vorschau trägt «Open in its module»');
 
 $ziel = $zeige((int) $fund->zielKnoten, (int) $fund->ziel);
 $say(preg_match('/taxmod-referrers.*href="https:\/\/example\.test\/home\?r=' . (int) $fund->von . '"/s', $ziel) === 1, sprintf('«Referred to by» an #%d führt zur Seite des Moduls von #%d', $fund->ziel, $fund->von));
@@ -109,7 +109,7 @@ remove_filter(NodesScreen::RECORD_HOME_FILTER, $haken, 10);
 add_filter(NodesScreen::RECORD_HOME_FILTER, static fn (): string => '', 10, 3);
 
 $ohne = $zeige((int) $fund->vonKnoten, (int) $fund->von);
-$say(! str_contains($ohne, 'example.test') && ! str_contains($ohne, 'class="taxmod-record-home"'), 'ein leerer Haken lässt die Modeller-Adresse und keinen Kopf');
+$say(! str_contains($ohne, 'example.test') && ! str_contains($ohne, 'class="taxmod-record-home"'), 'ein leerer Haken lässt die Modeller-Adresse und keinen Knopf');
 $say(str_contains($ohne, 'taxmod_open_record=' . (int) $fund->ziel), 'ohne Haken führt der Verweis in den Modeller');
 
 echo $failed === 0 ? "record-home-check: ok\n" : "record-home-check: {$failed} FAIL\n";

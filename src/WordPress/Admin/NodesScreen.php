@@ -2845,7 +2845,7 @@ final class NodesScreen
         ] as [$title, $purpose, $editable, $level, $gezeigte, $breite, $formId]) {
             $html .= '<div class="taxmod-preview-side' . $breite . '"' . ($formId === '' ? '' : ' id="taxmod-preview-edit"') . '>'
                 . '<h4>' . esc_html($title) . '</h4>'
-                . ($formId === '' ? '' : $this->recordHomeLine($satz, $selected->id) . self::reviewNote($satz))
+                . ($formId === '' ? '' : self::reviewNote($satz))
                 // D-1308: the buttons above the form, as the toolbar.
                 . ($formId === '' ? '' : $this->previewActs($selected, $satz, $formId) . $this->variantsLine($selected, $satz) . $this->claimedRows($satz, $relations, $claimed))
                 . \Taxmod\WordPress\Draw\Markup::of($this->rendering->withPartActs(__('Add row', 'taxmod'), __('Remove this row', 'taxmod'), __('Add several', 'taxmod'), __('Insert a row below this one', 'taxmod'), __('Remove from this list — the record itself stays', 'taxmod'))->withRecordLinks(
@@ -3004,7 +3004,7 @@ final class NodesScreen
     /** The actions modules offer on this record, as link buttons beside the modeller's own (D-998). */
     private function moduleActions(int $nodeId, int $recordId): string
     {
-        $html = '';
+        $html = $this->recordHomeButton($recordId, $nodeId);
 
         foreach ((array) apply_filters(self::RECORD_ACTIONS_FILTER, [], $nodeId, $recordId) as $action) {
             if (! is_array($action) || ! is_string($action['label'] ?? null) || ! is_string($action['url'] ?? null) || $action['url'] === '') {
@@ -6462,13 +6462,12 @@ final class NodesScreen
             ?? add_query_arg(['page' => 'taxmod', self::OPEN_RECORD => (string) $satzId], admin_url('admin.php')) . '#taxmod-preview-edit';
     }
 
-    /** D-1483: the head of the preview names the module page of a record a module owns, so the record is one click from its process. */
-    private function recordHomeLine(int $satzId, int $knotenId): string
+    /** D-1483: in the one toolbar (D-1403) the module page of a record a module owns, so the record is one click from its process. */
+    private function recordHomeButton(int $satzId, int $knotenId): string
     {
         $home = $satzId > 0 ? $this->recordHome($satzId, $knotenId) : null;
 
-        return $home === null ? '' : '<p class="taxmod-record-home"><a class="button" href="' . esc_url($home) . '">'
-            . esc_html__('Open in its module', 'taxmod') . '</a></p>';
+        return $home === null ? '' : ' <a class="button taxmod-record-home" href="' . esc_url($home) . '">' . esc_html__('Open in its module', 'taxmod') . '</a>';
     }
 
     /** D-1483: a module that owns the record (orders, stock, sales) names its own page; null leaves the Modeller's. */
