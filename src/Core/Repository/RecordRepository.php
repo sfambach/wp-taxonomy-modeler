@@ -145,6 +145,15 @@ interface RecordRepository
      * @return list<RelationRecord>
      */
     public function nodeReferrers(int $nodeId): array;
+
+    /**
+     * How many value rows choose each of these **nodes** — records and settings alike, in one query (D-1474, `CD-7`); a node
+     * nothing chooses is absent.
+     *
+     * @param  list<int> $nodeIds
+     * @return array<int, int> node id → rows that choose it
+     */
+    public function nodeReferrerCounts(array $nodeIds): array;
     /**
      * Eine Wertzeile schreiben — und **sagen, welche Version dabei entstanden ist**.
      *

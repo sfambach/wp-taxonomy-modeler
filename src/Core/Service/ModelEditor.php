@@ -1929,6 +1929,42 @@ final class ModelEditor
         }
     }
 
+    /**
+     * Delete a value of a choice list that nothing uses — into the trash, one act, so one undo ([D-1474](../../../docs/NewConcept/90-decision-log.md)).
+     *
+     * ⚠️ *Refused, naming why, by the same rules as {@see mergeConstant()}: a framework node, a node with children, the target of a
+     * field, or a value some record or setting still chooses. A used value is merged into another instead; the trash alone would
+     * leave those choices pointing at a parked node.*
+     */
+    public function trashUnusedConstant(int $id): Node
+    {
+        $node = $this->nodes->byId($id);
+
+        if ($this->framework->isProtected($node)) {
+            throw NodeIsProtected::named($node->name);
+        }
+
+        if ($this->nodes->childrenOf($node) !== []) {
+            throw ImpossibleMove::constantNotRemovable($node->name, 'it has children');
+        }
+
+        if ($this->usedBy($node->id) !== []) {
+            throw ImpossibleMove::constantNotRemovable($node->name, 'a field points at it as its target');
+        }
+
+        if ($this->records === null) {
+            throw ImpossibleMove::constantNotRemovable($node->name, 'its uses cannot be read here');
+        }
+
+        $verwendet = count($this->records->nodeReferrers($node->id));
+
+        if ($verwendet > 0) {
+            throw ImpossibleMove::constantNotRemovable($node->name, sprintf('%d value(s) still choose it — merge it into another instead', $verwendet));
+        }
+
+        return $this->moveToTrash($node->id);
+    }
+
     public function mergeField(int $ownerId, int $relationId, int $intoRelationId, ?int $underNodeId = null, bool $first = false): Relation
     {
         $this->changelog->beginAct();

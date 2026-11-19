@@ -184,6 +184,16 @@ if (is_array($liste)) {
     roundTrip('merge_constant', [['op' => 'merge_constant', 'from' => $l['y'], 'into' => $l['x']]]);
     [, $fehler] = run('taxmod/apply', [['op' => 'merge_constant', 'from' => $l['l'], 'into' => $l['x']]]);
     check('merge_constant: a list with children is refused', $fehler !== '', 'accepted');
+
+    // D-1474: «Löschen» of a choice-list value — only what nothing chooses; the chosen one is refused, naming how often.
+    [, $fehler] = run('taxmod/apply', [['op' => 'trash_unused_constant', 'node' => $l['y']]]);
+    check('trash_unused_constant: a value a record chooses is refused', str_contains($fehler, '1 value(s)'), $fehler === '' ? 'accepted' : $fehler);
+    [, $fehler] = run('taxmod/apply', [['op' => 'trash_unused_constant', 'node' => $l['l']]]);
+    check('trash_unused_constant: a list with values is refused', $fehler !== '', 'accepted');
+    $frei = wp_get_ability('taxmod/apply')->execute(['changes' => [['op' => 'create_node', 'ref' => 'z', 'name' => '__un Silber', 'parent' => $l['l']]]]);
+    check('trash_unused_constant: the unused value is built', is_array($frei));
+    check('constantUses: one query counts the chosen value only', (new \Taxmod\WordPress\ModelDoor())->constantUses([(int) $l['y'], (int) ($frei['refs']['z'] ?? 0)]) === [(int) $l['y'] => 1]);
+    roundTrip('trash_unused_constant', [['op' => 'trash_unused_constant', 'node' => $frei['refs']['z'] ?? 0]]);
 }
 
 echo "\n== 2. Records ==\n";

@@ -315,6 +315,35 @@ final class WpdbRecordRepository implements RecordRepository
         return array_map(fn (array $r): RelationRecord => $this->valueFromRow($r), $rows);
     }
 
+    public function nodeReferrerCounts(array $nodeIds): array
+    {
+        global $wpdb;
+
+        $ids = array_values(array_unique(array_filter(array_map('intval', $nodeIds))));
+
+        if ($ids === []) {
+            return [];
+        }
+
+        $platzhalter = implode(',', array_fill(0, count($ids), '%d'));
+
+        $rows = Query::rows('Verweise auf mehrere Knoten zaehlen', $wpdb->prepare(
+            'SELECT value_ref, COUNT(*) AS anzahl
+             FROM ' . Schema::table('relation_records') . '
+             WHERE value_ref_kind = \'node\' AND value_ref IN (' . $platzhalter . ')
+             GROUP BY value_ref',
+            ...$ids
+        ));
+
+        $aus = [];
+
+        foreach ($rows as $r) {
+            $aus[(int) $r['value_ref']] = (int) $r['anzahl'];
+        }
+
+        return $aus;
+    }
+
     public function referrersOfMany(array $recordIds): array
     {
         global $wpdb;

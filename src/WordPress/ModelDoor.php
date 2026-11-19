@@ -242,6 +242,54 @@ final class ModelDoor
     }
 
     /**
+     * D-1474: Stammdaten › Auswahllisten — the model's changes a module may ask for on a choice list, each one act through
+     * `taxmod/apply`, so the person's capability for the modeller applies and the answer's change number takes it back.
+     */
+    public function renameNode(int $node, string $name): int
+    {
+        return $this->applied([['op' => 'rename_node', 'node' => $node, 'name' => $name]]);
+    }
+
+    /** D-1458, D-1474: every choice of `$from` chooses `$into`, `$from` goes to the trash; the modeller's rules refuse with a reason. */
+    public function mergeConstant(int $from, int $into): int
+    {
+        return $this->applied([['op' => 'merge_constant', 'from' => $from, 'into' => $into]]);
+    }
+
+    /** D-1474: a value nothing chooses into the trash; one still chosen is refused, naming how many choose it. */
+    public function trashUnusedConstant(int $node): int
+    {
+        return $this->applied([['op' => 'trash_unused_constant', 'node' => $node]]);
+    }
+
+    /** D-1474: take back one of the acts above (or {@see createChild()}) by its number; its answer is the undo's own number. */
+    public function undoModel(int $act): int
+    {
+        return $this->applied([['op' => 'undo_act', 'act' => $act]]);
+    }
+
+    /**
+     * D-1474: how many values (records and settings) choose each of these nodes, in one query — a list page shows it per row.
+     *
+     * @param list<int> $nodes
+     * @return array<int, int> node id → values choosing it; a node nothing chooses is absent
+     */
+    public function constantUses(array $nodes): array
+    {
+        return $nodes === [] ? [] : (new WpdbRecordRepository())->nodeReferrerCounts($nodes);
+    }
+
+    /** @param list<array<string, mixed>> $changes */
+    private function applied(array $changes): int
+    {
+        $this->nodes = [];
+        $this->trees = [];
+        $act         = (int) ($this->execute('taxmod/apply', ['changes' => $changes])['act'] ?? 0);
+
+        return $act > 0 ? $act : throw ModelDoorRefused::because('The modeller wrote no change for ' . (string) ($changes[0]['op'] ?? '') . '.');
+    }
+
+    /**
      * The modeller's own controls for these fields of `$node` (D-1250) — a quantity is the unit-value control it is in the
      * material, never an input of the module's own. Posted as `$prefix[relation id]`; read back with {@see typed()}.
      *
