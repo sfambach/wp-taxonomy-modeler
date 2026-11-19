@@ -1765,13 +1765,20 @@ ol.taxmod-switch-cascade .taxmod-list-remove,
     position: static;
     inset: auto;
     margin: 0;
-    width: auto;
-    min-width: 16em;
+    /* His screenshot 2026-11-19 05:49: the tree was narrow and cut — it takes the field's whole width and more height. */
+    width: 100%;
+    min-width: min(28em, calc(100vw - 14em));
     max-width: none;
-    max-height: 16em;
+    max-height: 22em;
     border: 1px solid #8c8f94;
     border-radius: 3px;
     box-shadow: none;
+}
+
+/* His screenshot 2026-11-19 05:49: the search stood in the middle of the list — rows showed in the padding above it. The list
+ * scrolls from its very top edge, so the search sticks there with nothing above it. */
+.taxmod-dialog-panel .taxmod-chooser > .taxmod-dialog .taxmod-chooser-tree {
+    padding-top: 0;
 }
 
 /* D-1436: a number and its unit, one piece; the unit stands there even when it is the only one. */
