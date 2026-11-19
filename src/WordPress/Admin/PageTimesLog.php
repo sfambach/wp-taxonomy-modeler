@@ -151,7 +151,8 @@ final class PageTimesLog
     }
 
     /**
-     * `page` or `page/tab` of an admin page, `action:…` of a fragment or a form — only where the name begins with taxmod.
+     * `page`, `page/tab` or `page:area` of an admin page, `action:…` or `action:…:do` of a fragment or a form — only where the
+     * name begins with taxmod. The variants come from a fixed list of parameters (`tab`, `area`, `do`) and only as words (D-1482).
      *
      * @param array<array-key, mixed> $get     `mixed`: what a request carries is not typed
      * @param array<array-key, mixed> $request
@@ -162,22 +163,22 @@ final class PageTimesLog
             return null;
         }
 
-        $word = static fn (mixed $value): string => is_string($value) ? sanitize_key($value) : '';
-        $page = $word($get['page'] ?? '');
+        // A word and nothing else: what has a digit in it may be a record id (the contacts carry one in `tab`) and is not kept.
+        $word = static function (mixed $value): string {
+            $value = is_array($value) ? array_key_first($value) : $value;
+
+            return is_string($value) && preg_match('/^[a-z_-]+$/', $value) === 1 ? $value : '';
+        };
+        $with = static fn (string $name, string $sign, string $part): string => $part === '' ? $name : $name . $sign . $part;
+        $page = is_string($get['page'] ?? null) ? sanitize_key($get['page']) : '';
 
         if (str_starts_with($page, 'taxmod')) {
-            $tab = $word($get['tab'] ?? '');
-
-            // A page may carry a record id in `tab` (the contacts do): a tab is a word, and what has a digit in it is not kept.
-            if (preg_match('/^[a-z_-]+$/', $tab) !== 1) {
-                $tab = '';
-            }
-
-            return $page . ($tab === '' ? '' : '/' . $tab);
+            return $with($with($page, '/', $word($get['tab'] ?? '')), ':', $word($get['area'] ?? ''));
         }
 
-        $action = $word($request['action'] ?? '');
+        $action = is_string($request['action'] ?? null) ? sanitize_key($request['action']) : '';
 
-        return str_starts_with($action, 'taxmod') ? 'action:' . $action : null;
+        // `do` names what a node form was sent for — as a word, or as the key of the button (`do[<word>]`).
+        return str_starts_with($action, 'taxmod') ? $with('action:' . $action, ':', $word($request['do'] ?? '')) : null;
     }
 }

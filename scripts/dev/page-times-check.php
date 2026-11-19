@@ -39,6 +39,10 @@ $say(PageTimesLog::subject(true, $get, $get) === 'taxmod-logistik/arrived', 'ein
 $say(PageTimesLog::subject(true, ['page' => 'taxmod'], []) === 'taxmod', 'ohne Reiter nur die Seite');
 $say(PageTimesLog::subject(true, ['page' => 'taxmod-lager-kontakte', 'tab' => '149000102677'], []) === 'taxmod-lager-kontakte' && PageTimesLog::subject(true, ['page' => 'taxmod-x', 'tab' => 'satz-13'], []) === 'taxmod-x', 'ein Reiter mit Ziffern ist eine Satz-Id und bleibt draussen');
 $say(PageTimesLog::subject(true, [], ['action' => 'taxmod_fragment', 'record' => '9']) === 'action:taxmod_fragment', 'ein Nachladen oder Formular heisst action:…');
+$say(PageTimesLog::subject(true, ['page' => 'taxmod-lager-cockpit', 'area' => 'lager', 'group' => '77'], []) === 'taxmod-lager-cockpit:lager', 'der Bereich des Cockpits unterscheidet als Wort');
+$say(PageTimesLog::subject(true, ['page' => 'taxmod-lager-cockpit', 'area' => '4711'], []) === 'taxmod-lager-cockpit', 'ein Bereich mit Ziffern bleibt draussen');
+$say(PageTimesLog::subject(true, [], ['action' => 'taxmod_node', 'do' => 'save_page', 'id' => '5']) === 'action:taxmod_node:save_page' && PageTimesLog::subject(true, [], ['action' => 'taxmod_node', 'do' => ['add_field' => '1']]) === 'action:taxmod_node:add_field', 'die Knoten-Aktion nennt ihr Wort, auch als Schlüssel des Knopfs');
+$say(PageTimesLog::subject(true, [], ['action' => 'taxmod_node', 'do' => ['42' => '1']]) === 'action:taxmod_node' && PageTimesLog::subject(true, [], ['action' => 'taxmod_node', 'do' => 'x 9']) === 'action:taxmod_node', 'was kein Wort ist, bleibt draussen');
 $say(PageTimesLog::subject(true, ['page' => 'plugins'], ['action' => 'heartbeat']) === null, 'eine fremde Seite wird nicht mitgeschrieben');
 $say(PageTimesLog::subject(false, $get, $get) === null, 'ausserhalb der Verwaltung wird nichts mitgeschrieben');
 $say(PageTimesLog::subject(true, ['page' => ['taxmod']], []) === null, 'ein Feld statt eines Wortes zählt nicht');
