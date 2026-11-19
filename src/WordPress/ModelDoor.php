@@ -498,6 +498,45 @@ final class ModelDoor
     }
 
     /**
+     * D-1479: which records of these nodes are variants, and of which parent — for a list that sums a parent's stock and
+     * draws its variants beneath it. A read for the nodes, one for their fields, one per «Variante von» field (CD-7).
+     *
+     * @param list<int> $nodeIds
+     * @return array<int, int> variant → parent
+     */
+    public function variantParents(array $nodeIds): array
+    {
+        $nodes = $nodeIds === [] ? [] : (new Persistence\WpdbNodeRepository())->byIds(array_values(array_unique($nodeIds)));
+        $owners = [];
+
+        foreach ($nodes as $node) {
+            foreach ([...$node->ancestorIds(), $node->id] as $owner) {
+                $owners[$owner] = true;
+            }
+        }
+
+        $fields = $owners === [] ? [] : array_filter(
+            (new Persistence\WpdbRelationRepository())->fieldRelationsOf(array_keys($owners)),
+            static fn (\Taxmod\Core\Model\Relation $field): bool => $field->kind === \Taxmod\Core\Model\RelationKind::Aggregation && isset($owners[$field->toNodeId])
+        );
+        $out    = [];
+
+        foreach (self::addonsOf(array_map(static fn ($field): int => $field->id, array_values($fields))) as $relation => $names) {
+            if (! in_array(VariantOfAddon::NAME, $names, true)) {
+                continue;
+            }
+
+            foreach ((new WpdbRecordRepository())->parentLinksOf(array_map(static fn ($node): int => $node->id, array_values($nodes)), (int) $relation) as $variant => $parent) {
+                if ($parent !== null && $parent > 0) {
+                    $out[(int) $variant] = $parent;
+                }
+            }
+        }
+
+        return $out;
+    }
+
+    /**
      * D-1295: the words of one record for the fields a label names — by field name (any case) or id, «node» for the node's
      * name; a reference gives the word of the record it points at, an empty field is empty (D-1160, D-1222).
      *

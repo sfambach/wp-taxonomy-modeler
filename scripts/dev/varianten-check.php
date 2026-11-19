@@ -173,6 +173,8 @@ $added  = $apply->execute(['changes' => [['op' => 'add_variant', 'ref' => 'neu',
 $neu    = is_array($added) ? (int) ($added['refs']['neu'] ?? 0) : 0;
 $shown  = (new ModelDoor())->records($ref['m']);
 check('add_variant at a variant adds a sibling under the same parent', $neu > 0 && ($shown[$neu][$ref['von']] ?? []) === [(string) $vater] && ($shown[$neu][$ref['farbe']] ?? []) === ['blau'], $why($added));
+$links  = (new ModelDoor())->variantParents([$ref['m']]);
+check('variantParents names each variant with its parent (D-1479)', ($links[$r['a'] ?? 0] ?? 0) === $vater && ($links[$ref['v1']] ?? 0) === $ref['p'] && ! isset($links[$vater]), wp_json_encode($links));
 $undo   = $apply->execute(['changes' => [['op' => 'undo_act', 'act' => (int) ($answer['act'] ?? 0)]]]);
 $shown  = (new ModelDoor())->records($ref['m']);
 check('undo takes make_variants back as one act', ! is_wp_error($undo) && ($shown[$r['a']][$ref['name']] ?? []) === ['TFT 1,8'] && ! isset($shown[$vater]), $why($undo));
