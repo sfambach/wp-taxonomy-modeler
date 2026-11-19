@@ -135,3 +135,16 @@ flowchart LR
 - **Ein Wächterlauf schreibt nicht mit** (`page-times-check.php`).
 - ⚠️ Gemessen wird die Zeit **auf dem Server** bis zum Ende der Anfrage. Was der Browser danach braucht, steht nicht darin.
 - **Wohin die Zeit ging** ([D-1482](../../NewConcept/90-decision-log.md)): je Eintrag die ms bis WordPress geladen ist, bis die Seite gezeichnet ist, und die Wartezeit auf fremde Server (nur ms). Die Fähigkeit nennt dazu, was eine leere Abfrage kostet; gemessen nur beim Lesen der Fähigkeit.
+
+## Schmale Lesung ([D-1486](../../NewConcept/90-decision-log.md), 2026-11-19)
+
+```mermaid
+flowchart LR
+  P["Seite des Moduls"] --> T["Tabelle: Knoten + genannte Felder"]
+  T -->|"Feld genannt"| N["eine Anweisung: Werte nur dieser Felder"]
+  T -->|"anderes Feld gefragt"| G["Knoten einmal ganz lesen, Zähler +1"]
+```
+
+Ein Modul nennt die Felder, die es von einem Knoten liest; die Tür liefert dafür dasselbe wie die ganze Lesung. Ein nicht
+genanntes Feld wird nie als leer beantwortet: der Knoten wird einmal ganz gelesen. Gemessen und Zahlen: D-1486. Bewacht von
+`model-door-fields-check` (gleiche Werte, eine Anweisung) und im Lager von `inbound-check` (kein Reiter liest nachträglich ganz).

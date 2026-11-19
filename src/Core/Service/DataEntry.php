@@ -2486,6 +2486,17 @@ final class DataEntry
     }
 
     /**
+     * Die Werte aller Sätze eines Knotens nur in den genannten Feldern, in einer Abfrage ([D-1486](../../../docs/NewConcept/90-decision-log.md)).
+     *
+     * @param  list<int>                                                $relationIds
+     * @return array<int, list<\Taxmod\Core\Model\RelationRecord>> ein Satz ohne Wert in diesen Feldern fehlt
+     */
+    public function valuesOfNode(int $nodeId, array $relationIds): array
+    {
+        return $relationIds === [] ? [] : $this->records->valuesOfNode($nodeId, $relationIds);
+    }
+
+    /**
      * Welche dieser Datensätze überhaupt eine Wertzeile tragen — **in einer Abfrage** (`CD-7`).
      *
      * ⚠️ **Gebraucht, seit ein leerer `default` nicht mehr als vorhanden zählt**

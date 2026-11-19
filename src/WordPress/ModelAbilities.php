@@ -612,7 +612,14 @@ final class ModelAbilities
             $seite = array_slice($records, max(0, (int) ($input['offset'] ?? 0)), $limit);
         }
 
-        $werte   = $seite === [] ? [] : $entries->valuesOfMany(array_map(static fn ($r): int => $r->id, $seite));
+        // D-1486: asked for named fields and for every record, only those values are read — measured 2026-11-19 with purchases
+        // as wide as the live ones, a goods receipt tab that read every value peaked at twice the memory. A page of records
+        // keeps the read by ids.
+        $werte   = match (true) {
+            $seite === []                            => [],
+            $nur !== [] && count($seite) === $gesamt => $entries->valuesOfNode($id, $nur),
+            default                                  => $entries->valuesOfMany(array_map(static fn ($r): int => $r->id, $seite)),
+        };
         // D-1255: which of them still need a review, in one query.
         $pruefen = array_flip(\Taxmod\WordPress\Persistence\RecordReviews::among(array_map(static fn ($r): int => $r->id, $seite)));
         $neutral = $compact ? SettingsScreen::neutralLocale() : '';
