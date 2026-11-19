@@ -147,4 +147,18 @@ flowchart LR
 
 Ein Modul nennt die Felder, die es von einem Knoten liest; die Tür liefert dafür dasselbe wie die ganze Lesung. Ein nicht
 genanntes Feld wird nie als leer beantwortet: der Knoten wird einmal ganz gelesen. Gemessen und Zahlen: D-1486. Bewacht von
-`model-door-fields-check` (gleiche Werte, eine Anweisung) und im Lager von `inbound-check` (kein Reiter liest nachträglich ganz).
+`model-door-records-check` (gleiche Werte, eine Anweisung). Live ohne Wirkung; im Lager zurückgebaut (D-1491), die Tür-Methode entfernt (D-1489).
+
+## Schlanker Lese-Weg ([D-1489](../../NewConcept/90-decision-log.md), 2026-11-19)
+
+```mermaid
+flowchart LR
+  M["Modul: Knoten"] --> D["ModelDoor::records"]
+  D --> R["Wertzeilen strömen (Query::each)"]
+  R --> F["falten: Satz → Feld → Rohwerte"]
+  F --> V["Varianten zeigen (D-1208)"]
+```
+
+Die Tür faltet die Wertzeilen eines Knotens direkt; es gibt kein Wert-Objekt je Zeile und keine gehaltene Antwort. Was der
+Rohwert einer Zeile ist, sagt eine Stelle (`TypedValue::rawOf`). Die schmale Lesung von D-1486 blieb live ohne Wirkung und
+ist im Lager zurückgebaut (D-1491); Zahlen stehen in den Beschlüssen.

@@ -31,10 +31,10 @@ final class ModelDoor
     /** @var (\Closure(): \Taxmod\Core\Repository\Changelog)|null the modeller's one changelog, handed in at boot (D-1419) */
     private static ?\Closure $changelog = null;
 
-    /** @var array<int, array<string, mixed>> node id → the answer of `read-node` */
-    private array $nodes = [];
+    /** @var array<string, array<int, array<int, list<string>>>> node id → its records as read (D-1489) */
+    private array $read = [];
 
-    /** @var array<string, array<string, mixed>> node|fields → the answer of `read-node` for those fields (D-1486) */
+    /** @var array<string, array<string, mixed>> node| → the answer of `read-node` without records: the fields of the node */
     private array $narrow = [];
 
     /** @var array<string, array<string, mixed>> root|depth → the answer of `read-tree` */
@@ -43,89 +43,36 @@ final class ModelDoor
     /**
      * The records of a node with their raw values — a variant with the values it shows (D-1208).
      *
+     * Folded straight from the value rows (D-1489): the answer of `read-node` for a node with thousands of records cost some
+     * 1600 bytes a value while it was built, and the door kept it beside its own result.
+     *
      * @return array<int, array<int, list<string>>> record id → relation id → values
      */
     public function records(int $node): array
     {
-        $out    = [];
-        $addons = [];
-
-        foreach ($this->readNode($node)['records'] ?? [] as $record) {
-            $values = [];
-
-            foreach ($record['values'] ?? [] as $value) {
-                $values[(int) $value['relation_id']][] = (string) $value['value'];
-            }
-
-            $out[(int) $record['id']] = $values;
-        }
-
-        foreach ($this->readNode($node)['fields'] ?? [] as $field) {
-            $addons[(int) $field['relation_id']] = array_map('strval', (array) ($field['addons'] ?? []));
-        }
-
-        return $this->shown($out, $addons);
+        return $this->read[$node] ??= $this->shown((new WpdbRecordRepository())->rawValuesOfNode($node), $this->addonsAt($node));
     }
 
-    /**
-     * The records of a node with only the fields named — the same shape and the same values as {@see self::records()} gives
-     * for those fields, read in one query (D-1486). Every record of the node is there, also one without a value in them.
-     *
-     * @param list<int> $relations
-     * @return array<int, array<int, list<string>>> record id → relation id → values
-     */
-    public function recordsOfFields(int $node, array $relations): array
+    /** @return array<int, list<string>> relation id → the names of the add-ons on that field */
+    private function addonsAt(int $node): array
     {
-        $relations = array_values(array_unique(array_filter(array_map('intval', $relations))));
-
-        if ($relations === []) {
-            throw ModelDoorRefused::because('recordsOfFields needs at least one field — records() reads them all');
-        }
-
-        // Read whole already in this request: answered from that — a second read of the same records would only cost.
-        if (isset($this->nodes[$node])) {
-            $asked = array_flip($relations);
-
-            return array_map(static fn (array $values): array => array_intersect_key($values, $asked), $this->records($node));
-        }
-
-        // A variant shows its parent's values (D-1208): the field that names the parent is read with the others, asked or not,
-        // or a variant would answer differently here than in records().
         $addons = [];
 
         foreach ($this->fieldList($node) as $field) {
             $addons[(int) $field['relation_id']] = array_map('strval', (array) ($field['addons'] ?? []));
         }
 
-        $variantOf = array_keys(array_filter($addons, static fn (array $names): bool => in_array(VariantOfAddon::NAME, $names, true)));
-        $read      = array_values(array_unique([...$relations, ...$variantOf]));
-        sort($read);
-        $answer = $this->narrow[$node . '|' . implode(',', $read)] ??= $this->execute('taxmod/read-node', ['node' => $node, 'fields' => $read]);
-        $out    = [];
-
-        foreach ($answer['records'] ?? [] as $record) {
-            $values = [];
-
-            foreach ($record['values'] ?? [] as $value) {
-                $values[(int) $value['relation_id']][] = (string) $value['value'];
-            }
-
-            $out[(int) $record['id']] = $values;
-        }
-
-        $asked = array_flip($relations);
-
-        return array_map(static fn (array $values): array => array_intersect_key($values, $asked), $this->shown($out, $addons));
+        return $addons;
     }
 
     /**
-     * The fields of a node without its records — from the whole read if the door has it, else asked without records.
+     * The fields of a node without its records, asked once.
      *
      * @return list<array<string, mixed>> `mixed`: a field as `read-node` lists it
      */
     private function fieldList(int $node): array
     {
-        return $this->nodes[$node]['fields'] ?? ($this->narrow[$node . '|'] ??= $this->execute('taxmod/read-node', ['node' => $node, 'records' => false]))['fields'] ?? [];
+        return ($this->narrow[$node . '|'] ??= $this->execute('taxmod/read-node', ['node' => $node, 'records' => false, 'used_by' => false]))['fields'] ?? [];
     }
 
     /**
@@ -137,7 +84,7 @@ final class ModelDoor
     {
         $out = [];
 
-        foreach ($this->readNode($node)['fields'] ?? [] as $field) {
+        foreach ($this->fieldList($node) as $field) {
             $out[(int) $field['relation_id']] = [
                 'name'         => (string) ($field['name'] ?? ''),
                 'target'       => (int) ($field['target'] ?? 0),
@@ -284,7 +231,7 @@ final class ModelDoor
             throw ModelDoorRefused::because('No module declared the property ' . $key . '.');
         }
 
-        $this->nodes = [];
+        $this->read = [];
         $this->narrow = [];
         $this->trees = [];
         $this->execute('taxmod/apply', ['changes' => [['op' => 'set_setting', 'node' => $node, 'attribute' => $key, 'value' => match (true) {
@@ -300,7 +247,7 @@ final class ModelDoor
      */
     public function createChild(int $parent, string $name): int
     {
-        $this->nodes = [];
+        $this->read = [];
         $this->narrow = [];
         $this->trees = [];
         $answer = $this->execute('taxmod/apply', ['changes' => [['op' => 'create_node', 'parent' => $parent, 'name' => $name]]]);
@@ -358,7 +305,7 @@ final class ModelDoor
     /** @param list<array<string, mixed>> $changes */
     private function applied(array $changes): int
     {
-        $this->nodes = [];
+        $this->read = [];
         $this->trees = [];
         $act         = (int) ($this->execute('taxmod/apply', ['changes' => $changes])['act'] ?? 0);
 
@@ -736,7 +683,7 @@ final class ModelDoor
      */
     public function write(array $changes): array
     {
-        $this->nodes = [];
+        $this->read = [];
         $this->narrow = [];
         $this->trees = [];
 
@@ -788,12 +735,6 @@ final class ModelDoor
     public function undo(int $act): array
     {
         return $this->write([['op' => 'undo_act', 'act' => $act]]);
-    }
-
-    /** @return array<string, mixed> */
-    private function readNode(int $node): array
-    {
-        return $this->nodes[$node] ??= $this->execute('taxmod/read-node', ['node' => $node, 'used_by' => false]);
     }
 
     /** @return array<string, mixed> */

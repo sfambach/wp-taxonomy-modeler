@@ -356,13 +356,26 @@ final class TypedValue
      */
     public function rawValue(): string
     {
+        return self::rawOf($this->int, $this->decimal, $this->text, $this->date, $this->reference, $this->precision);
+    }
+
+    /**
+     * {@see self::rawValue()} straight from the typed columns, without building the value
+     * ([D-1489](../../../docs/NewConcept/90-decision-log.md)) — the one place that says what the raw value of a row is; a
+     * reader of tens of thousands of rows asks here and holds no object per row.
+     */
+    public static function rawOf(?int $int, ?string $decimal, ?string $text, ?string $date, ?int $reference, ?ValuePrecision $precision): string
+    {
         return match (true) {
-            $this->isNothing()        => '',
-            $this->int !== null       => (string) $this->int,
-            $this->decimal !== null   => $this->decimal,
-            $this->date !== null      => $this->knownDate(),
-            $this->reference !== null => (string) $this->reference,
-            default                   => (string) $this->text,
+            $int !== null       => (string) $int,
+            $decimal !== null   => $decimal,
+            $date !== null      => match ($precision) {
+                ValuePrecision::Year  => substr($date, 0, 4),
+                ValuePrecision::Month => substr($date, 0, 7),
+                null                  => $date,
+            },
+            $reference !== null => (string) $reference,
+            default             => (string) $text,
         };
     }
 
