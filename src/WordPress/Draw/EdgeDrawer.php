@@ -844,6 +844,7 @@ final class EdgeDrawer implements Drawer
             ValueKind::Unchosen => '<span class="taxmod-value taxmod-no-renderer">' . self::e($text) . '</span>',
             ValueKind::Dangling => '<span class="taxmod-value taxmod-dangling">' . self::e($text) . '</span>',
             ValueKind::Record   => self::valueSpan($value->target === '' ? self::e($text) : '<a class="taxmod-record-link" href="' . self::e($value->target) . '">' . self::e($text) . '</a>'),
+            ValueKind::Link     => self::valueSpan($value->target === '' ? self::e($text) : '<a class="taxmod-field-link" href="' . esc_url($value->target, ['http', 'https']) . '" target="_blank" rel="noopener">' . self::e($text) . '</a>'),
             ValueKind::LongText => '<span class="taxmod-value" style="white-space:pre-wrap">' . self::e($text) . '</span>',
             ValueKind::Code     => '<pre class="taxmod-value taxmod-code" data-taxmod-code="' . self::e($value->target) . '">' . self::e($text) . '</pre>',
             ValueKind::Text     => self::valueSpan(self::e($text)),
