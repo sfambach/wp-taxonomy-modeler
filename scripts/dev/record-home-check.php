@@ -99,7 +99,7 @@ add_filter(NodesScreen::RECORD_HOME_FILTER, $haken, 10, 3);
 $von = $zeige((int) $fund->vonKnoten, (int) $fund->von);
 $say(str_contains($von, 'href="https://example.test/home?r=' . (int) $fund->ziel . '"'), sprintf('Satz #%d: der Verweis auf #%d führt zur Seite des Moduls', $fund->von, $fund->ziel));
 $say(in_array((int) $fund->feldZiel, $gefragt[(int) $fund->ziel] ?? [], true), sprintf('der Haken bekam den Knoten des Verweisziels (%d)', $fund->feldZiel));
-$say(preg_match('/taxmod-preview-acts.*class="button taxmod-record-home" href="https:\/\/example\.test\/home\?r=' . (int) $fund->von . '"/s', $von) === 1, 'die Toolbar der Vorschau trägt «Open in its module»');
+$say(preg_match('/taxmod-preview-acts.*class="button taxmod-icon-button taxmod-record-home" href="https:\/\/example\.test\/home\?r=' . (int) $fund->von . '"/s', $von) === 1, 'die Toolbar der Vorschau trägt «Open in its module» als Icon-Quadrat');
 
 $ziel = $zeige((int) $fund->zielKnoten, (int) $fund->ziel);
 $say(preg_match('/taxmod-referrers.*href="https:\/\/example\.test\/home\?r=' . (int) $fund->von . '"/s', $ziel) === 1, sprintf('«Referred to by» an #%d führt zur Seite des Moduls von #%d', $fund->ziel, $fund->von));

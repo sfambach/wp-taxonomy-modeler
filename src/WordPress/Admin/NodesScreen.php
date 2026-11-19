@@ -6467,7 +6467,9 @@ final class NodesScreen
     {
         $home = $satzId > 0 ? $this->recordHome($satzId, $knotenId) : null;
 
-        return $home === null ? '' : ' <a class="button taxmod-record-home" href="' . esc_url($home) . '">' . esc_html__('Open in its module', 'taxmod') . '</a>';
+        // *Ein Icon-Quadrat mit Tooltip wie die anderen Knöpfe der Toolbar (seine Regel 18.11.: «Buttons einheitliche Größe, Icon-Quadrate mit Tooltip»).*
+        return $home === null ? '' : ' <a class="button taxmod-icon-button taxmod-record-home" href="' . esc_url($home) . '" title="' . esc_attr__('Open in its module', 'taxmod') . '">'
+            . ListPage::icon('external', __('Open in its module', 'taxmod')) . '</a>';
     }
 
     /** D-1483: a module that owns the record (orders, stock, sales) names its own page; null leaves the Modeller's. */

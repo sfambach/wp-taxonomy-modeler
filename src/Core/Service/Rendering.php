@@ -4794,7 +4794,7 @@ final class Rendering implements Presets, \Taxmod\Core\Port\FieldAddons
         return TypedValue::ofText(($this->jumpUrl)((int) $ziel, $filterFeld, $wert));
     }
 
-    /** @var array<int, array{namen: array<string, int>, werte: array<int, array<int, string>>}> Je Anbieter-Ast seine Sätze, einmal gelesen (CD-7). */
+    /** @var array<string, array{namen: array<string, int>, werte: array<int, array<int, string>>}> Je Anbieter-Ast und Vorlage seine Sätze, einmal gelesen (CD-7). */
     private array $anbieter = [];
 
     /**
@@ -4837,7 +4837,7 @@ final class Rendering implements Presets, \Taxmod\Core\Port\FieldAddons
 
         $quelle  = $erstes($this->resolver->listOf($typKnoten, \Taxmod\Core\Model\Type\TextType::LINK_QUELLE, $relation));
         $genannt = $quelle === null ? null : ($values[$quelle] ?? null);
-        $bekannt = $this->anbieterVon($ast);
+        $bekannt = $this->anbieterVon($ast, $vorlage);
 
         if ($genannt !== null && $genannt->referenceSpace === \Taxmod\Core\Model\ReferenceSpace::Record && $genannt->reference !== null) {
             $satz = (int) $genannt->reference;
@@ -4852,41 +4852,57 @@ final class Rendering implements Presets, \Taxmod\Core\Port\FieldAddons
     }
 
     /**
-     * Die Sätze unter einem Anbieter-Ast: je Name (jeder Textwert, klein geschrieben) der erste Satz, und je Satz seine Textwerte.
+     * Die Sätze unter einem Anbieter-Ast: je Name — sein Satzwort, klein geschrieben — der Satz, und je Satz seine Vorlage. ⚠️ *Ein Name, den
+     * zwei Sätze tragen, findet keinen (Prüftor 19.11.): lieber kein Link als einer zum falschen Anbieter.*
      *
      * @return array{namen: array<string, int>, werte: array<int, array<int, string>>}
      */
-    private function anbieterVon(int $ast): array
+    private function anbieterVon(int $ast, int $vorlage): array
     {
-        if (isset($this->anbieter[$ast])) {
-            return $this->anbieter[$ast];
+        if (isset($this->anbieter[$ast . ':' . $vorlage])) {
+            return $this->anbieter[$ast . ':' . $vorlage];
         }
 
         $knoten = $this->gemerkterKnoten($ast);
+        $kante  = $this->relations?->byId($vorlage);
         $ids    = [];
 
-        foreach ($knoten === null ? [] : $this->records?->ofNodes([$knoten->id, ...array_map(static fn (Node $n): int => $n->id, $this->nodes->subtreeOf($knoten))]) ?? [] as $saetze) {
+        foreach ($knoten === null || $kante === null ? [] : $this->records?->ofNodes([$knoten->id, ...array_map(static fn (Node $n): int => $n->id, $this->nodes->subtreeOf($knoten))]) ?? [] as $saetze) {
             foreach ($saetze as $satz) {
                 $ids[] = $satz->id;
             }
         }
 
-        sort($ids);
         $namen = [];
         $werte = [];
+        $doppelt = [];
 
-        foreach ($ids === [] ? [] : $this->records->valuesOfMany($ids) as $id => $zeilen) {
-            foreach ($zeilen as $zeile) {
-                if ($zeile->value->text !== null && trim($zeile->value->text) !== '') {
-                    $werte[$id][$zeile->relationId] ??= $zeile->value->text;
-                    $namen[mb_strtolower(trim($zeile->value->text))] ??= $id;
+        if ($ids !== [] && $kante !== null) {
+            foreach ($this->records->valuesOfMany($ids) as $id => $zeilen) {
+                foreach ($zeilen as $zeile) {
+                    if ($zeile->relationId === $vorlage && $zeile->value->text !== null) {
+                        $werte[$id][$vorlage] ??= $zeile->value->text;
+                    }
                 }
+            }
+
+            // *Das Satzwort, das auch der Wähler zeigt (D-885) — der Name des Anbieters, nicht irgendein Text von ihm.*
+            foreach ($this->summaryTextsOf([['relation' => $kante, 'records' => $ids, 'ownWords' => true]])[$kante->id] ?? [] as $id => $wort) {
+                $name = mb_strtolower(trim((string) $wort));
+
+                if ($name === '') {
+                    continue;
+                }
+
+                if (isset($namen[$name])) {
+                    $doppelt[$name] = true;
+                }
+
+                $namen[$name] ??= (int) $id;
             }
         }
 
-        ksort($werte);
-
-        return $this->anbieter[$ast] = ['namen' => $namen, 'werte' => $werte];
+        return $this->anbieter[$ast . ':' . $vorlage] = ['namen' => array_diff_key($namen, $doppelt), 'werte' => $werte];
     }
 
     public function pathTextFor(Relation $relation, int $forNode): TypedValue
