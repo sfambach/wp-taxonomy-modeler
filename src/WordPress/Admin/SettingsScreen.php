@@ -235,7 +235,8 @@ final class SettingsScreen
             . '</form>'
             // ⚠️ *Ausserhalb des Formulars, weil nichts davon abgeschickt wird.
             //  Ein Anzeigeblock innerhalb eines Formulars lädt dazu ein, ihn für einstellbar zu halten.*
-            . $this->facts();
+            . $this->facts()
+            . PageTimesLog::table();
 
         return ListPage::page(__('Configuration', 'taxmod'), [], [['html' => $html]], tabs: $this->tabBar($reiter, ''));
     }
@@ -256,12 +257,15 @@ final class SettingsScreen
     }
 
     /**
-     * Was der Entwicklermodus einzeln zeigt — **vier Haken unter einem Modus**.
+     * Was der Entwicklermodus einzeln zeigt — **fünf Haken unter einem Modus**.
      *
      * ⚠️ **[D-705](../../../docs/NewConcept/90-decision-log.md), und es widerruft
      * [D-248](../../../docs/NewConcept/90-decision-log.md) nicht.** *D-248 verbot einen **zweiten
-     * Modus** («two ways to be in a surprising state»); diese vier sind ein **Sichtfilter** innerhalb
+     * Modus** («two ways to be in a surprising state»); diese sind ein **Sichtfilter** innerhalb
      * des einen Modus und können in keine Lage führen, in die er nicht schon geführt hat.*
+     *
+     * ⚠️ *Der Haken des Seitenzeit-Protokolls ([D-1476](../../../docs/NewConcept/90-decision-log.md)) steht nur **hier**, wirkt aber
+     * auch bei ausgeschaltetem Modus: es schreibt mit, bis es hier abgestellt wird.*
      *
      * ⚠️ *Vorgabe **an**, jede einzeln: der Modus soll beim Einschalten das tun, was er bisher tat.
      * Deshalb wird beim Speichern ausdrücklich `0` geschrieben statt gelöscht — «aus» und «nie
@@ -274,6 +278,7 @@ final class SettingsScreen
         'taxmod_dev_settings_record' => 'dev_settings_record',
         'taxmod_dev_root_toggle'     => 'dev_root_toggle',
         DrawingTimes::OPTION         => 'dev_timing',
+        PageTimesLog::SWITCH         => 'dev_page_times',
     ];
 
     /** Ob ein einzelner Haken zieht — **und er zieht nur, während der Modus an ist**. */
@@ -283,10 +288,10 @@ final class SettingsScreen
     }
 
     /**
-     * Die vier Zeilen — **nur, wenn der Modus an ist**.
+     * Die Zeilen — **nur, wenn der Modus an ist**.
      *
-     * ⚠️ *Sein Wort: «wenn developer mode aktiv ist». **Vier Haken über einem ausgeschalteten Modus
-     * wären vier Fragen ohne Wirkung.***
+     * ⚠️ *Sein Wort: «wenn developer mode aktiv ist». **Haken über einem ausgeschalteten Modus
+     * wären Fragen ohne Wirkung.***
      *
      * ⚠️ *Das verborgene Feld ist der Merker: **ohne es könnte das Speichern nicht unterscheiden,
      * ob ein Haken abgewählt wurde oder ob die Zeile gar nicht dastand** — und ein Formular, das die
@@ -315,6 +320,10 @@ final class SettingsScreen
                 __('· Drawing times', 'taxmod'),
                 __('A line under the model page: how long each part took to draw, how many database queries it asked and how big the page is. For measuring load times.', 'taxmod'),
             ],
+            PageTimesLog::SWITCH         => [
+                __('· Page time log', 'taxmod'),
+                __('Writes down what every Taxmod page took on the server: time, database queries, memory. Only the page, its tab and the action are kept, for the last 200 calls. It runs without the developer mode too, until it is turned off here.', 'taxmod'),
+            ],
         ];
 
         $rows = '';
@@ -322,7 +331,7 @@ final class SettingsScreen
         foreach (self::DEVELOPER_DETAILS as $option => $field) {
             $rows .= $this->row(
                 $was[$option][0],
-                ToggleMarkup::input($field, self::developerShows($option)),
+                ToggleMarkup::input($field, get_option($option, '1') !== '0'),
                 $was[$option][1]
             );
         }
@@ -676,7 +685,7 @@ final class SettingsScreen
         // ⚠️ **Nur, wenn das Formular die Zeilen auch trug** ([D-705](../../../docs/NewConcept/90-decision-log.md)).
         // *Sie stehen nur da, während der Modus an ist — **ohne diesen Merker könnte das Speichern
         // nicht unterscheiden, ob ein Haken abgewählt wurde oder ob die Zeile gar nicht dastand**,
-        // und ein Formular ohne sie löschte alle vier.*
+        // und ein Formular ohne sie löschte sie alle.*
         if (isset($_POST['dev_details'])) {
             foreach (self::DEVELOPER_DETAILS as $option => $field) {
                 update_option($option, self::angehakt($field) ? '1' : '0', true);
