@@ -117,7 +117,7 @@ $compact = $tr === [] ? null : wp_get_ability('taxmod/apply')->execute(['changes
     ['op' => 'set_setting', 'node' => 4232, 'field' => $tr['mass'], 'attribute' => 'with_label', 'value' => 'false'],
 ]]);
 $line = is_array($compact) ? ($door->controls($ref['k'], [$tr['mass']], 'buy', '', 0, [$tr['mass'] => ['0' => [4234 => '800']]])[$tr['mass']] ?? '') : '';
-check('a unit value set compact at one field stands in one line, without the part names its use site switched off (D-1538)', str_contains($line, 'taxmod-compact-horizontal') && ! str_contains($line, 'taxmod-compact-label') && str_contains($line, 'value="800"'), $line);
+check('a unit value set compact at one field stands in one line, without the part names its use site switched off, breaking between parts (D-1538)', str_contains($line, 'taxmod-compact-horizontal') && str_contains($line, 'flex-wrap:wrap') && ! str_contains($line, 'taxmod-compact-label') && str_contains($line, 'value="800"'), $line);
 $wroteDeep = $abm === 0 ? null : wp_get_ability('taxmod/apply')->execute(['changes' => [['op' => 'set_values', 'record' => $ref['r'], 'values' => $deep]]]);
 check('write-data takes the deeper form as it comes', is_array($wroteDeep), is_wp_error($wroteDeep) ? $wroteDeep->get_error_message() : wp_json_encode($wroteDeep));
 
