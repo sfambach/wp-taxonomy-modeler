@@ -1201,6 +1201,18 @@ final class ListPage
      * ⚠️ *His word, 2026-11-12: «Rücksprung sollte natürlich überall vorhanden sein».* The page knows where back is (the list it
      * came from), so it passes the address; the record editor's «return to» is where a save lands, not where back is.
      */
+    /**
+     * D-1521: the one head of a page — the way back and the title in one white box across the whole width. ⚠️ *His word
+     * 2026-11-20: «warum machen wir den Pfeil nicht vor den Workbench-EG … dass wir da diese Zeile, die extra nicht brauchen»,
+     * «wenn das Workbench-EG auch in einer weißen Box wäre … von links bis ganz rechts».* The back arrow belongs here, never
+     * in the toolbar below.
+     */
+    public static function head(string $title, string $backUrl = '', string $backLabel = ''): string
+    {
+        return '<div class="taxmod-page-head">' . ($backUrl === '' ? '' : self::back($backUrl, $backLabel))
+            . '<h2>' . esc_html($title) . '</h2></div>';
+    }
+
     public static function back(string $url, string $label = ''): string
     {
         return '<a class="button taxmod-icon-button taxmod-back" href="' . esc_url($url) . '" title="' . esc_attr($label === '' ? __('Back', 'taxmod') : $label) . '">'
