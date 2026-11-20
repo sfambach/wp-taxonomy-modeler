@@ -43,7 +43,6 @@ const SELECT_CEILINGS = [
     'wp_tax_stock/src/WordPress/Admin/ChoiceListsPage.php'            => 1, // fixed word list: the list's own entries
     'wp_tax_stock/src/WordPress/Admin/SettingsPage.php'               => 1, // to be checked
     'wp_tax_stock/src/WordPress/Admin/PurchasePage.php'               => 2, // to be checked
-    'wp_tax_shipping/src/WordPress/SettingsPage.php'                  => 2, // record choices (sender, firms): Versand 0.0.4 moves them to RecordPick, then 0
     'wp_tax_shipping/src/WordPress/ShippingPage.php'                  => 1, // to be checked
 ];
 
@@ -52,7 +51,6 @@ const PRINTER_OWNERS = ['wp_tax_label/', 'wp-taxonomy-modeler/src/WordPress/Prin
 
 /** Known before this guard; each falls out with the named release, and the guard turns red when it is gone but still listed. */
 const PRINTER_PENDING = [
-    'wp_tax_shipping/src/WordPress/Settings.php' => 'Versand 0.0.4 reads the workplace printer (D-1502, D-1507)',
 ];
 
 /** A printer or print-queue setting or field: a stored key, a drawn field, a select of printers. */
