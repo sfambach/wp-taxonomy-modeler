@@ -5,7 +5,7 @@ namespace Taxmod\Core\Listing;
 /**
  * What a list shows, the same for every list (D-1054, design 7.2): the columns the user chose — or the starting set —, the rows
  * the search and the column filters keep, in the chosen order. Search and filters always mean «contains», ignoring case, with «*» for any
- * characters ({@see Wildcard}); the search looks at every column, shown or not.
+ * characters ({@see Wildcard}); the search looks at every column, shown or not, and each of its words may stand in another column.
  *
  * ```mermaid
  * flowchart LR
@@ -81,7 +81,7 @@ final class ListView
         }
 
         $kept    = array_values(array_filter($rows, static function (array $row) use ($search, $filters, $numbers): bool {
-            if ($search !== '' && ! self::anyContains(self::searched($row), $search)) {
+            if ($search !== '' && ! self::holdsEveryWord(self::searched($row), $search)) {
                 return false;
             }
 
@@ -142,6 +142,24 @@ final class ListView
     public static function clampPage(int $page, int $total, int $perPage): int
     {
         return max(1, min($page, (int) ceil(max(1, $total) / max(1, $perPage))));
+    }
+
+    /**
+     * Every word of the search is held by some text of the row — «10k THT» finds the 10 kΩ resistor in the group THT, whatever
+     * stands between them. His word 2026-11-20 20:23: «die Wildcards funktionieren noch nicht, wenn ich zwei Begriffe eingebe …
+     * zwischen 10 Kilo und THT könnte ja natürlich ein bisschen was sein. Zum Beispiel das Ohmzeichen». Each word keeps its own «*».
+     *
+     * @param list<string> $texts
+     */
+    public static function holdsEveryWord(array $texts, string $search): bool
+    {
+        foreach (preg_split('/\s+/u', trim($search)) ?: [] as $word) {
+            if ($word !== '' && ! self::anyContains($texts, $word)) {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     /** @param list<string> $texts */
