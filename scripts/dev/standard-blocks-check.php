@@ -22,6 +22,12 @@
  *    the arrows of a process are `ListPage::steps` everywhere — list, status of a record, a section — and the Modeller's
  *    stylesheet draws them once. No other file carries the `taxmod-step…` classes (no own markup, no own CSS, no own script),
  *    and a variant of the bar (`.is-status`) may change only how wide it is, never its height, padding, alignment or type.
+ * 6. Opening is the eye (D-1526, Stefan 20.11. «das Auge fürs Öffnen … konsistent überall»): a button or link that opens
+ *    («Öffnen», «Open») draws `ListPage::ICON_OPEN`, never another icon.
+ * 7. One bar above a list (D-1526, «eine Toolbar»): the page's own buttons stand in the list bar
+ *    (`ListPage::listBar(…, $buttons)`), never in a `ListPage::toolbar` drawn right above it.
+ * 8. One head per page, saying what it is (D-1526): a list is `ListPage::listHead` («Arbeitsplätze (2)»), one record
+ *    `ListPage::recordHead` («Arbeitsplatz – Workbench UG1»); a page calls neither `ListPage::head` itself.
  *
  * Needs no WordPress.
  *
@@ -180,6 +186,58 @@ foreach ($repos as $repo) {
                 $red++;
             } elseif (! $reads && isset(PDF_PENDING[$name]) && is_file($path)) {
                 printf("FAIL %s: reads no PDF any more — strike it from PDF_PENDING\n", $name);
+                $red++;
+            }
+        }
+    }
+}
+
+// Rules 6–8 (D-1526): the eye opens, one bar above a list, the head says what the page is.
+const OPEN_OTHER_ICON = '/(?:iconButton|iconLink)\s*\(\s*(?!ListPage::ICON_OPEN|self::ICON_OPEN|[\'"]visibility[\'"])[^,]+,\s*__\(\s*[\'"](?:Öffnen|Open)[\'"]|dashicon\(\s*[\'"](?!visibility)[a-z0-9-]+[\'"]\s*,\s*\$[a-z]+->openWord/u';
+const TOOLBAR_OVER_BAR = '/ListPage::toolbar\([^;]{0,800}?\.\s*ListPage::(?:listBar|bulkBar)\(/s';
+const OWN_HEAD = '/ListPage::head\s*\(/';
+
+/** Known when D-1526 came; each falls out with its module's next release, and turns red when fixed but still listed. */
+const BAR_PENDING = [
+    'wp_tax_manufacturing/src/WordPress/Admin/OrdersPage.php' => 'Fertigung, next release',
+    'wp_tax_stock/src/WordPress/Admin/StockPage.php'          => 'Lager, next release',
+];
+const HEAD_PENDING = [
+    'wp_tax_label/src/WordPress/Admin/PrintersPage.php'      => 'Etiketten, next release',
+    'wp_tax_stock/src/WordPress/Admin/ChoiceListsPage.php'   => 'Lager, next release',
+    'wp_tax_stock/src/WordPress/Admin/ContactsPage.php'      => 'Lager, next release',
+    'wp_tax_stock/src/WordPress/Admin/PurchasePage.php'      => 'Lager, next release',
+    'wp_tax_stock/src/WordPress/Admin/StockPage.php'         => 'Lager, next release',
+];
+
+foreach ($repos as $repo) {
+    if (! is_dir($repo . '/src')) {
+        continue;
+    }
+
+    foreach (new RecursiveIteratorIterator(new RecursiveDirectoryIterator($repo . '/src', FilesystemIterator::SKIP_DOTS)) as $file) {
+        $path = (string) $file;
+        $name = basename($repo) . substr($path, strlen($repo));
+
+        if (! str_ends_with($path, '.php') || str_ends_with($name, '/ListPage.php')) {
+            continue;
+        }
+
+        $source = (string) file_get_contents($path);
+
+        if (preg_match(OPEN_OTHER_ICON, $source, $m) === 1) {
+            printf("FAIL %s: «%s» — opening is the eye, ListPage::ICON_OPEN (rule 6, D-1526)\n", $name, trim(substr($m[0], 0, 70)));
+            $red++;
+        }
+
+        foreach ([[TOOLBAR_OVER_BAR, BAR_PENDING, 'BAR_PENDING', 'a toolbar right above the list bar — the page\'s buttons go into ListPage::listBar (rule 7, D-1526)'],
+                  [OWN_HEAD, HEAD_PENDING, 'HEAD_PENDING', 'its own ListPage::head — a list is ListPage::listHead, a record ListPage::recordHead (rule 8, D-1526)']] as [$pattern, $pending, $list, $why]) {
+            $hit = preg_match($pattern, $source) === 1;
+            if ($hit && ! isset($pending[$name])) {
+                printf("FAIL %s: %s\n", $name, $why);
+                $red++;
+            } elseif (! $hit && isset($pending[$name])) {
+                printf("FAIL %s: fixed — strike it from %s\n", $name, $list);
                 $red++;
             }
         }

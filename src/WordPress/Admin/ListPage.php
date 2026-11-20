@@ -825,10 +825,12 @@ final class ListPage
      *
      * @param string $filters from {@see self::filters()}
      * @param string $search  from {@see self::searchBox()}
+     * @param string $buttons the page's own buttons («Neuer Arbeitsplatz»), first in the same row — D-1526: one row, never a
+     *                        toolbar above the bar; a list whose count stands in {@see self::listHead()} passes `$count` ''
      */
-    public static function listBar(string $count, string $filters = '', string $search = '', bool $expandable = false): string
+    public static function listBar(string $count, string $filters = '', string $search = '', bool $expandable = false, string $buttons = ''): string
     {
-        return self::barRow('', $count, $filters, $expandable, $search);
+        return self::barRow($buttons === '' ? '' : '<div class="alignleft actions taxmod-list-buttons">' . $buttons . '</div>', $count, $filters, $expandable, $search);
     }
 
     /** The one row of {@see self::bulkBar()} and {@see self::listBar()}: `$start` first, then filters, fold icons, search, count. */
@@ -840,7 +842,7 @@ final class ListPage
             . '<button type="button" class="button" onclick="' . esc_attr(self::toggleAll(false)) . '">' . self::icon('arrow-down-alt2', __('Expand all', 'taxmod')) . '</button> '
             . '<button type="button" class="button" onclick="' . esc_attr(self::toggleAll(true)) . '">' . self::icon('arrow-up-alt2', __('Collapse all', 'taxmod')) . '</button></div>')
             . $search
-            . '<div class="tablenav-pages one-page"><span class="displaying-num">' . esc_html($count) . '</span></div><br class="clear"></div>';
+            . ($count === '' ? '' : '<div class="tablenav-pages one-page"><span class="displaying-num">' . esc_html($count) . '</span></div>') . '<br class="clear"></div>';
     }
 
     /**
@@ -1209,6 +1211,8 @@ final class ListPage
     /** D-1451: the row acts of the stock's receipt lists — store, edit, not stored, new. */
     public const ICON_STORE = 'archive';
     public const ICON_EDIT = 'edit';
+    /** D-1526: opening a row or a chosen record is the eye, everywhere. */
+    public const ICON_OPEN = 'visibility';
     public const ICON_NOT_STORED = 'no';
     public const ICON_NEW = 'plus-alt2';
     /** «Zurücknehmen» of a receipt row (Lager, announced with D-1458). */
@@ -1233,10 +1237,35 @@ final class ListPage
      * «wenn das Workbench-EG auch in einer weißen Box wäre … von links bis ganz rechts».* The back arrow belongs here, never
      * in the toolbar below.
      */
-    public static function head(string $title, string $backUrl = '', string $backLabel = ''): string
+    public static function head(string $title, string $backUrl = '', string $backLabel = '', string $hint = ''): string
     {
         return '<div class="taxmod-page-head">' . ($backUrl === '' ? '' : self::back($backUrl, $backLabel))
-            . '<h2>' . esc_html($title) . '</h2></div>';
+            . '<h2>' . ($hint === '' ? esc_html($title) : HintMarkup::behind(esc_html($title), $hint)) . '</h2></div>';
+    }
+
+    /**
+     * D-1526: the head of a list — what it lists and how many, «Arbeitsplätze (2)»; the count stands here and nowhere in the bar
+     * below. ⚠️ *His word 2026-11-20: «die zwei Arbeitsplätze rechts … könntest du einfach hinter Arbeitsplatz in der Überschrift
+     * und dann Klammer auf, 2, Klammer zu machen».* `$hint` is the page's explanation behind the «?».
+     */
+    public static function listHead(string $kinds, int $count, string $hint = ''): string
+    {
+        return self::head(sprintf('%s (%s)', $kinds, number_format_i18n($count)), '', '', $hint);
+    }
+
+    /**
+     * D-1526: the head of one record — the way back, then the kind of thing and its name, «Arbeitsplatz – Workbench UG1».
+     * ⚠️ *His word 2026-11-20: «die eigentliche Überschrift fehlt hier … Arbeitsplatz in dem Fall, weil es die Einzelansicht ist».*
+     */
+    public static function recordHead(string $kind, string $name, string $backUrl, string $backLabel = '', string $hint = ''): string
+    {
+        return self::head($kind . ' – ' . $name, $backUrl, $backLabel, $hint);
+    }
+
+    /** D-1526: the one way to open a row — the eye. ⚠️ *His word 2026-11-20: «das Auge fürs Öffnen … konsistent überall».* */
+    public static function openButton(string $url, string $label = ''): string
+    {
+        return self::iconButton(self::ICON_OPEN, $label === '' ? __('Open', 'taxmod') : $label, $url);
     }
 
     public static function back(string $url, string $label = ''): string

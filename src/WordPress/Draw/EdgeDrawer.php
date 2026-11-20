@@ -371,7 +371,7 @@ final class EdgeDrawer implements Drawer
     {
         $offen = $p->taken && $p->href !== null && $p->href !== '' && $p->openWord !== ''
             ? '<a class="button ' . ControlMarkup::ICON_ONLY . ' taxmod-record-open" href="' . self::e($p->href) . '" target="_blank" rel="noopener" title="' . self::e($p->openWord) . '">'
-                . IconMarkup::dashicon('edit', $p->openWord) . '</a>'
+                . IconMarkup::dashicon('visibility', $p->openWord) . '</a>'
             : '';
         $ende = '<button type="button" class="button ' . ControlMarkup::ICON_ONLY . ' taxmod-record-clear"' . ($p->taken ? '' : ' hidden') . ' style="color:#b32d2e" title="' . self::e($p->clearWord) . '">'
                 . IconMarkup::dashicon('trash', $p->clearWord) . '</button>'
