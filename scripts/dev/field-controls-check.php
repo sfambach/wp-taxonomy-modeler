@@ -54,6 +54,11 @@ if (! is_array($built)) {
 $ref  = $built['refs'];
 $door = new ModelDoor();
 
+// D-1538: a part field, built before any control is drawn — the drawing remembers the model of its request.
+$teil = wp_get_ability('taxmod/apply')->execute(['changes' => [
+    ['op' => 'add_field', 'ref' => 'mass', 'node' => $ref['k'], 'target' => 4232, 'name' => '__fc Gewicht', 'kind' => 'composition', 'multiplicity' => '0..1'],
+]]);
+
 $new = $door->controls($ref['k'], [$ref['name'], $ref['count']], 'buy', 'f1', 0, [$ref['count'] => '10']);
 check('the controls are the modeller\'s, named prefix[relation]', str_contains($new[$ref['count']] ?? '', 'name="buy[' . $ref['count'] . ']"') && str_contains($new[$ref['count']] ?? '', 'form="f1"'), wp_json_encode($new));
 check('a whole number gets the number control of its type', str_contains($new[$ref['count']] ?? '', 'inputmode="numeric"'));
@@ -84,6 +89,19 @@ check('without a root the chooser offers the whole target', str_contains($ganz, 
 check('a root narrows the chooser to its branch (D-1298)', str_contains($engen, '__fc Betriebsbedarf') && ! str_contains($engen, '__fc Eingang'), $engen);
 check('only leaves are offered, not the branch itself', $ar !== [] && ! str_contains($engen, 'value="' . $ar['v'] . '"'), $engen);
 check('a root outside the target is ignored', str_contains($fremd, '__fc Eingang'), $fremd);
+
+$tr      = is_array($teil) ? $teil['refs'] : [];
+$control = $tr === [] ? '' : ($door->controls($ref['k'], [$tr['mass']], 'buy', '', $ref['r'])[$tr['mass']] ?? '');
+preg_match('/name="buy\\[' . ($tr['mass'] ?? 0) . '\\]\\[([^\\]]*)\\]\\[' . 4234 . '\\]"/', $control, $hit);
+check('a part field posts its inner fields one level deeper', $hit !== [], $control);
+$partKey = $hit[1] ?? 'neu';
+$parts   = $tr === [] ? [] : $door->typed($ref['k'], [$tr['mass'] => [$partKey => [4234 => ' 3 ', 'x' => 'junk']]]);
+check('a part field comes back in the part form of write-data (D-1538)', ($parts[$tr['mass']][sanitize_key($partKey)][4234] ?? null) === '3', wp_json_encode($parts));
+check('an empty part is left out', $tr !== [] && ! isset($door->typed($ref['k'], [$tr['mass'] => [$partKey => [4234 => '']]])[$tr['mass']]));
+$wrote = $tr === [] ? null : wp_get_ability('taxmod/apply')->execute(['changes' => [['op' => 'set_values', 'record' => $ref['r'], 'values' => $parts]]]);
+check('write-data takes the part form as it comes', is_array($wrote), is_wp_error($wrote) ? $wrote->get_error_message() : wp_json_encode($wrote));
+$back = $tr === [] ? '' : ($door->controls($ref['k'], [$tr['mass']], 'buy', '', $ref['r'])[$tr['mass']] ?? '');
+check('the written part stands in its control again', str_contains($back, 'value="3"'), $back);
 
 wp_set_current_user(0);
 check('without the capability no control is drawn', $door->controls($ref['k'], [$ref['count']], 'buy') === []);
