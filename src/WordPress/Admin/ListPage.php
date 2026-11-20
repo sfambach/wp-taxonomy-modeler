@@ -1096,11 +1096,15 @@ final class ListPage
             ? \Taxmod\Core\Renderer\DecimalText::shown($value, \Taxmod\WordPress\Plugin::siteDecimalSeparator())
             : $value;
 
-        return \Taxmod\WordPress\Draw\EdgeDrawer::control(new \Taxmod\Core\Description\ValueInput(
+        $control = \Taxmod\WordPress\Draw\EdgeDrawer::control(new \Taxmod\Core\Description\ValueInput(
             $kind, $name, $value, (string) ($options['form'] ?? ''), (bool) ($options['required'] ?? false), $text('size'), $text('pattern'),
             $text('inputMode'), $text('min'), $text('max'), $text('step'), $text('rows'), $text('columns'), (string) ($options['note'] ?? ''),
             null, (string) ($options['id'] ?? ''), (string) ($options['placeholder'] ?? ''),
         ));
+
+        // Prüftor 20.11.: a field of a page that was `required` stays one — the browser's stop is behaviour, not decoration. The
+        // renderer for model fields keeps aria-required alone; only this door adds the stop, on the first visible control.
+        return empty($options['required']) ? $control : (string) preg_replace('/<(input|select|textarea)\b(?![^>]*type="hidden")/', '<$1 required', $control, 1);
     }
 
     /**
