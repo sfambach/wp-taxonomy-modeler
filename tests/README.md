@@ -133,6 +133,14 @@ the whole boundary run.
 ⚠️ **A WordPress call that drifts into `Taxmod\Core` fails on the first run**, immediately,
 because nothing is there to answer it. That is a mechanical check on `CD-1`, not a promise.
 
+## Standard-Bausteine statt eigener Felder (D-1508)
+
+`standard-blocks-check.php` liest den Modeller und jedes `wp_tax_*` daneben, ohne WordPress.
+**Eine Satzwahl ist `RecordPick::field` ([D-1488](../docs/NewConcept/90-decision-log.md))**: eigene
+Selects zählen je Datei gegen eine Decke, die nur sinkt; eine neue Datei hat Decke 0. **Ein Drucker
+gehört dem Arbeitsplatz ([D-1502](../docs/NewConcept/90-decision-log.md))**: eine Drucker- oder
+Warteschlangen-Einstellung außerhalb des Etikettenmoduls ist rot, ohne Decke.
+
 ## Ein Wächter schreibt nicht in das Modell des Eigentümers
 
 ⚠️ **Ein Wächter darf lesen, so viel er will; was er schreibt, überlebt ihn nicht.** Jeder Lauf, der
