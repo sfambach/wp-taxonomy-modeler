@@ -60,6 +60,9 @@ $refs = taxmodBeispiel([
     ['op' => 'set_values', 'record' => '@r1', 'values' => ['@n' => 'Texas Instruments']],
     ['op' => 'create_record', 'ref' => 'r2', 'node' => '@h'],
     ['op' => 'set_values', 'record' => '@r2', 'values' => ['@n' => 'NXP']],
+    // D-1509: a main branch of its own beside Model, as Kontakt is since D-884.
+    ['op' => 'create_node', 'ref' => 'k', 'name' => '__cf Kontakt', 'parent' => $fw->root()->id],
+    ['op' => 'add_field', 'ref' => 'kn', 'node' => '@k', 'target' => $text, 'name' => '__cf Kontaktname', 'kind' => 'composition', 'multiplicity' => '1..1'],
 ]);
 
 echo "\n== Anlegen und Undo ==\n";
@@ -85,6 +88,27 @@ $say(($antwort['success'] ?? false) === true && $neu > 0 && $da(), 'der Satz ste
 $say($akt > 0, 'die Antwort nennt seinen Akt');
 $undo = $akt > 0 ? wp_get_ability('taxmod/apply')->execute(['changes' => [['op' => 'undo_act', 'act' => $akt]]]) : new WP_Error('x', 'kein Akt');
 $say(! is_wp_error($undo) && ! $da(), 'Undo nimmt den angelegten Satz zurück', is_wp_error($undo) ? $undo->get_error_message() : '');
+
+$anlegen = static function (int $node, string $name) use ($plugin): array {
+    $_POST    = wp_slash(['node' => (string) $node, 'name' => $name, '_ajax_nonce' => wp_create_nonce(NodesScreen::RECORD_CREATE_ACTION)]);
+    $_REQUEST = $_POST;
+    ob_start();
+    try {
+        $plugin->screen()->handleRecordCreate();
+    } catch (ChooserFieldStop) {
+        // The answer is in the buffer.
+    }
+
+    return (array) json_decode((string) ob_get_clean(), true);
+};
+// D-1509, Stefan 20.11. 10:41 «kann nicht angelegt werden»: a contact chooser creates under the contact branch.
+$kontakt = $anlegen((int) $refs['k'], '__cf Deutsche Post');
+$say(($kontakt['success'] ?? false) === true, 'ein Satz entsteht auch unter einem eigenen Hauptast (Kontakt)', (string) json_encode($kontakt));
+if (($kontakt['data']['act'] ?? 0) > 0) {
+    wp_get_ability('taxmod/apply')->execute(['changes' => [['op' => 'undo_act', 'act' => (int) $kontakt['data']['act']]]]);
+}
+$wert = $anlegen($fw->rootOf(Branch::DataTypes)->id, '__cf nein');
+$say(($wert['success'] ?? true) === false, 'unter einem Rahmenknoten entsteht keiner', (string) json_encode($wert));
 
 echo "\n== Deutsch ==\n";
 // Coordinator 19.11. 21:38 for him: the chooser's words in German — through the plugin's own translation (AR-2).

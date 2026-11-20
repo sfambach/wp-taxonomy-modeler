@@ -1874,13 +1874,16 @@ final class NodesScreen
             wp_send_json_error(['message' => __('Enter a name first.', 'taxmod')], 400);
         }
 
-        $unterModel = false;
+        // D-1509: records stand under Model and under a main branch of their own (Kontakt since D-884) — the same line as D-890
+        // draws for writing: no framework node, nothing in the trash, nothing under the value branches.
+        $knoten = $gefragt > 0 ? (new \Taxmod\WordPress\Persistence\WpdbNodeRepository())->find($gefragt) : null;
+        $ast = $knoten === null ? null : $this->framework->branchOf($knoten);
+        $anlegbar = $knoten !== null
+            && ! $this->framework->isProtected($knoten)
+            && ! in_array($this->framework->trash()->id, [...$knoten->ancestorIds(), $knoten->id], true)
+            && ($ast === null || $ast === Branch::Model);
 
-        foreach ($this->tree->rowsUnder($this->framework->rootOf(Branch::Model), [$this->framework->trash()->id]) as $zeile) {
-            $unterModel = $unterModel || $zeile['node']->id === $gefragt;
-        }
-
-        if (! $unterModel) {
+        if (! $anlegbar) {
             wp_send_json_error(['message' => __('No records can be created here.', 'taxmod')], 404);
         }
 
