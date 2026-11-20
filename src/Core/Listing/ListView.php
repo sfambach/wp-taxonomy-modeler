@@ -146,7 +146,7 @@ final class ListView
 
     /**
      * Every word of the search is held by some text of the row — «10k THT» finds the 10 kΩ resistor in the group THT, whatever
-     * stands between them. His word 2026-11-20 20:23: «die Wildcards funktionieren noch nicht, wenn ich zwei Begriffe eingebe …
+     * stands between them. D-1536, his word 2026-11-20 20:23: «die Wildcards funktionieren noch nicht, wenn ich zwei Begriffe eingebe …
      * zwischen 10 Kilo und THT könnte ja natürlich ein bisschen was sein. Zum Beispiel das Ohmzeichen». Each word keeps its own «*».
      *
      * @param list<string> $texts
