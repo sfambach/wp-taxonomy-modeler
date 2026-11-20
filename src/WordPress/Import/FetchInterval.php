@@ -76,11 +76,6 @@ final class FetchInterval
     public static function field(FetchingSource $source): string
     {
         $labels = self::labels();
-        $options = '';
-
-        foreach ($labels as $value => $label) {
-            $options .= '<option value="' . esc_attr($value) . '"' . selected(self::chosen($source->key()), $value, false) . '>' . esc_html($label) . '</option>';
-        }
 
         $now = self::of($source);
         $state = $now > 0
@@ -89,7 +84,7 @@ final class FetchInterval
             : __('now off', 'taxmod');
 
         return '<table class="form-table taxmod-fetch-interval" role="presentation"><tbody><tr><th scope="row"><label for="taxmod-fetch-interval">'
-            . esc_html__('Fetch interval', 'taxmod') . '</label></th><td><select id="taxmod-fetch-interval" name="' . self::FIELD . '">' . $options . '</select> '
+            . esc_html__('Fetch interval', 'taxmod') . '</label></th><td>' . \Taxmod\WordPress\Draw\SelectMarkup::of(self::FIELD, $labels, (string) self::chosen($source->key()), false, '', ['id' => 'taxmod-fetch-interval']) . ' '
             . '<span class="description">' . esc_html($state . ' · ' . __('«Fetch all» on the inbox page fetches now.', 'taxmod')) . '</span></td></tr></tbody></table>';
     }
 

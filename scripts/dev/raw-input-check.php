@@ -18,9 +18,8 @@
 const CEILINGS = [
     'wp-taxonomy-modeler/src/Core/Service/Rendering.php' => 4,
     'wp-taxonomy-modeler/src/WordPress/Admin/BackupScreen.php' => 1,
-    'wp-taxonomy-modeler/src/WordPress/Admin/NodesScreen.php' => 11,
+    'wp-taxonomy-modeler/src/WordPress/Admin/NodesScreen.php' => 10,
     'wp-taxonomy-modeler/src/WordPress/Import/AutoTake.php' => 1,
-    'wp-taxonomy-modeler/src/WordPress/Import/FetchInterval.php' => 1,
     'wp-taxonomy-modeler/src/WordPress/Import/ImportTab.php' => 2,
     'wp-taxonomy-modeler/src/WordPress/Import/InboxScreen.php' => 2,
     'wp-taxonomy-modeler/src/WordPress/Import/MailReading.php' => 4,
