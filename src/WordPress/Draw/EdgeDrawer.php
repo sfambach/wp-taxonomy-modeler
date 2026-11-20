@@ -898,6 +898,10 @@ final class EdgeDrawer implements Drawer
                 'type' => 'password', 'id' => $in->id, 'placeholder' => $in->placeholder, 'name' => $in->name, 'form' => $in->form, 'aria-required' => $required, 'value' => '',
                 'autocomplete' => 'new-password', 'size' => $in->size,
             ]),
+            InputKind::Upload   => self::tag('input', [
+                'type' => 'file', 'id' => $in->id, 'name' => $in->name, 'form' => $in->form, 'aria-required' => $required,
+                'accept' => $in->note, 'multiple' => str_ends_with($in->name, '[]'),
+            ]),
             InputKind::Range    => self::tag('input', [
                 'type' => 'range', 'name' => $in->name, 'form' => $in->form, 'aria-required' => $required, 'value' => $in->value,
                 'min' => $in->min, 'max' => $in->max, 'step' => $in->step,

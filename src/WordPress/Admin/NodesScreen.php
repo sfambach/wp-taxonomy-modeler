@@ -2,6 +2,7 @@
 
 namespace Taxmod\WordPress\Admin;
 
+use Taxmod\Core\Description\InputKind;
 use Taxmod\Core\Event\Address;
 use Taxmod\Core\Event\ControlPressed;
 use Taxmod\Core\Exception\ConcurrentChange;
@@ -3376,7 +3377,7 @@ final class NodesScreen
     {
         return '<div class="taxmod-name-row">'
             . '<label class="taxmod-name-row-name"><span class="taxmod-chip-label">' . esc_html__('Name', 'taxmod') . '</span> '
-            . '<input type="text" name="name" value="' . esc_attr($selected->name) . '" required form="' . esc_attr(self::pageForm($selected)) . '"></label>'
+            . ListPage::field(InputKind::Line, 'name', $selected->name, ['required' => true, 'form' => self::pageForm($selected)]) . '</label>'
             . '<span class="taxmod-name-row-class" title="' . esc_attr__('Given when the node was created. It may be changed to any class the parent allows and the children fit; settings the new class does not declare are dropped.', 'taxmod') . '">'
             . '<span class="taxmod-chip-label">' . esc_html__('Class of this node', 'taxmod') . '</span> ' . $this->ownClassSwitch($selected) . '</span>'
             . '</div>';

@@ -272,7 +272,7 @@ final class InboxScreen
                 $failed ? \Taxmod\Core\Tile\TileTone::Alert : \Taxmod\Core\Tile\TileTone::Normal,
                 actions: ($source instanceof FetchingSource ? self::button(self::FETCH, $key, __('Fetch now', 'taxmod')) : '')
                     . ($source instanceof SearchingSource ? self::button(self::SEARCH, $key, __('Fetch this order', 'taxmod'),
-                        '<input type="text" name="text" style="width:10em" placeholder="' . esc_attr__('Order number', 'taxmod') . '" aria-label="' . esc_attr__('Order number', 'taxmod') . '"> ') : '')
+                        ListPage::field(\Taxmod\Core\Description\InputKind::Line, 'text', '', ['size' => 12, 'placeholder' => __('Order number', 'taxmod')]) . ' ') : '')
             );
         }
 

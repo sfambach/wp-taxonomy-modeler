@@ -67,7 +67,7 @@ final class ImportTab
             . '<input type="checkbox" name="auto_take" value="1"' . checked(AutoTake::user() !== 0, true, false) . '> '
             . esc_html__('Take new orders from the responsible source and status updates of existing orders without review. Anything else stays in the inbox; a status waits there until its order exists.', 'taxmod')
             . '</label></p><p><label>' . esc_html__('Discard parcel notices no order claims after', 'taxmod')
-            . ' <input type="number" min="1" step="1" class="small-text" name="orphan_days" value="' . esc_attr((string) InboxScreen::orphanDays()) . '"> '
+            . ' ' . \Taxmod\WordPress\Admin\ListPage::field(\Taxmod\Core\Description\InputKind::Number, 'orphan_days', (string) InboxScreen::orphanDays(), ['min' => 1, 'step' => 1]) . ' '
             . esc_html__('days', 'taxmod') . '</label></p>';
 
         $html .= '<h2>' . esc_html__('Where taken orders go', 'taxmod') . '</h2><p>'
@@ -113,17 +113,15 @@ final class ImportTab
 
         $html .= '<table class="form-table" role="presentation"><tbody>' . $rows . '</tbody></table>'
             . '<p><label for="taxmod-import-required"><strong>' . esc_html__('Purchase fields a line must fill (ids, comma separated)', 'taxmod') . '</strong></label><br>'
-            . '<input type="text" id="taxmod-import-required" name="target[required_parts]" class="regular-text" value="'
-            . esc_attr(implode(', ', array_map('intval', (array) $targets['required_parts']))) . '"></p>'
+            . \Taxmod\WordPress\Admin\ListPage::field(\Taxmod\Core\Description\InputKind::Line, 'target[required_parts]', implode(', ', array_map('intval', (array) $targets['required_parts'])), ['id' => 'taxmod-import-required', 'size' => 40]) . '</p>'
             . '<p><label for="taxmod-import-sale-required"><strong>' . esc_html__('Sold item fields a line must fill (ids, comma separated)', 'taxmod') . '</strong></label><br>'
-            . '<input type="text" id="taxmod-import-sale-required" name="target[sale_required_parts]" class="regular-text" value="'
-            . esc_attr(implode(', ', array_map('intval', (array) $targets['sale_required_parts']))) . '"></p>'
+            . \Taxmod\WordPress\Admin\ListPage::field(\Taxmod\Core\Description\InputKind::Line, 'target[sale_required_parts]', implode(', ', array_map('intval', (array) $targets['sale_required_parts'])), ['id' => 'taxmod-import-sale-required', 'size' => 40]) . '</p>'
             . '<p class="description">' . esc_html__('A sale uses the order roles from the seller\'s side: merchant is the buyer, ordered_at the day sold, shipping_cost the shipping the buyer paid.', 'taxmod') . '</p>';
 
         return $html . '<details><summary>' . esc_html__('All at once as JSON', 'taxmod') . '</summary><p>'
             . esc_html__('Pasted JSON replaces the fields above. Left empty, the fields count.', 'taxmod') . '</p>'
-            . '<textarea name="targets" rows="12" class="large-text code" aria-label="' . esc_attr__('Targets as JSON', 'taxmod') . '" placeholder="'
-            . esc_attr((string) wp_json_encode($targets)) . '"></textarea></details>';
+            . '<label class="screen-reader-text" for="taxmod-import-targets">' . esc_html__('Targets as JSON', 'taxmod') . '</label>'
+            . \Taxmod\WordPress\Admin\ListPage::field(\Taxmod\Core\Description\InputKind::LongText, 'targets', '', ['id' => 'taxmod-import-targets', 'rows' => 12, 'columns' => 80, 'placeholder' => (string) wp_json_encode($targets)]) . '</details>';
     }
 
     /** @param array<int, string> $names id => name of the list this field picks from */

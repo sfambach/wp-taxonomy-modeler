@@ -152,7 +152,7 @@ final class PrintTab
     private static function retentionSetting(): string
     {
         return '<p><label>' . esc_html__('Erledigte Druckaufträge löschen nach', 'taxmod')
-            . ' <input type="number" class="small-text" min="0" max="' . esc_attr((string) PrintJobRetention::MAX_DAYS) . '" step="1" name="' . esc_attr(PrintJobRetention::OPTION) . '" value="' . esc_attr((string) PrintJobRetention::days()) . '"> '
+            . ' ' . ListPage::field(\Taxmod\Core\Description\InputKind::Number, PrintJobRetention::OPTION, (string) PrintJobRetention::days(), ['min' => 0, 'max' => PrintJobRetention::MAX_DAYS, 'step' => 1]) . ' '
             . esc_html__('Tagen (0 = nie)', 'taxmod') . '</label></p>';
     }
 
@@ -231,7 +231,7 @@ final class PrintTab
             __('Add print service', 'taxmod'),
             __('New print service', 'taxmod'),
             esc_html__('One print service per computer with printers. It fetches only the jobs for the printers CUPS has on that computer.', 'taxmod')
-                . '<br><label>' . esc_html__('Name, e.g. the computer', 'taxmod') . ' <input type="text" name="' . esc_attr(self::SERVICE_NAME) . '" maxlength="64"></label>',
+                . '<br><label>' . esc_html__('Name, e.g. the computer', 'taxmod') . ' ' . ListPage::field(\Taxmod\Core\Description\InputKind::Line, self::SERVICE_NAME, '', ['size' => 30, 'pattern' => '.{0,64}']) . '</label>',
             self::DO,
             'add',
             __('Create access', 'taxmod')
