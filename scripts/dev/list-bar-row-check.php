@@ -52,7 +52,8 @@ $bar    = ListPage::bulkBar('b', 'taxmod-check', ['print' => 'Etiketten drucken'
     $filter . ListPage::filterToggle() . ListPage::columnMenu('check', $view, $url([])), true, [],
     ListPage::searchBox('f', 'smd', 'Material, Nummer, Gruppe …', ['page' => 'taxmod-check']));
 $row    = ListPage::row('b', '1', ['', '44136', 'Spule 4,7 µH SMD', 'Material ▸ Bauteile', '0', '—'], '<a class="button button-small" href="#">Öffnen</a>', '');
-$list   = $bar . ListPage::table(ListPage::heads($view, $url), $row, ListPage::filterRow('f', $view), true);
+$list   = $bar . ListPage::table(ListPage::heads($view, $url), $row, ListPage::filterRow('f', $view), true)
+    . ListPage::grid([['Posten'], ['Status']], [['#1', 'Test']]);
 
 $styles = '';
 
@@ -99,7 +100,9 @@ const { chromium } = require('playwright');
         const r = e.getBoundingClientRect(), box = e.closest('.button, button').getBoundingClientRect();
         return Math.max(parseFloat(getComputedStyle(e).lineHeight) - r.height, Math.abs((r.top + r.height / 2) - (box.top + box.height / 2)));
       });
-      return { icons: icons, inside: right <= bar.getBoundingClientRect().right + 1, mids: Array.from(new Set(items.map(mid))), count: items.length, searchInBar: !!search,
+      // D-1529: a list (table or grid) is as wide as the page's list bar.
+      const wide = Array.from(document.querySelectorAll('.taxmod-list, .taxmod-grid')).map(t => Math.round(bar.getBoundingClientRect().width - t.getBoundingClientRect().width));
+      return { wide: wide, icons: icons, inside: right <= bar.getBoundingClientRect().right + 1, mids: Array.from(new Set(items.map(mid))), count: items.length, searchInBar: !!search,
         searchRight: search ? search.getBoundingClientRect().left > bar.getBoundingClientRect().left + bar.clientWidth / 2 : false, buttons: shown };
     });
   }
@@ -118,6 +121,7 @@ foreach (['full' => 'a full admin page', 'beside' => 'beside the Logistik naviga
     check("$where: every control of the bar stands in one row", $m['count'] > 5 && $spread <= 4, 'middles ' . implode(', ', $m['mids']));
     check("$where: nothing runs past the list's width", ($m['inside'] ?? false) === true);
     check("$where: the search stands in the bar, on the right", $m['searchInBar'] && $m['searchRight']);
+    check("$where: every list is as wide as the page (D-1529)", count($m['wide'] ?? []) === 2 && max($m['wide']) <= 2, 'short by ' . implode(', ', $m['wide'] ?? []));
     check("$where: every icon sits in the middle of its box (D-1527)", ($m['icons'] ?? []) !== [] && max($m['icons']) <= 2, 'offsets ' . implode(', ', array_map(static fn ($o): string => (string) round((float) $o, 1), $m['icons'] ?? [])));
     check("$where: no «Search» and no «Filter» button beside it", ! in_array('Search', $m['buttons'], true) && ! in_array('Filter', $m['buttons'], true), implode(' | ', $m['buttons']));
 }

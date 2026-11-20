@@ -28,6 +28,9 @@
  *    (`ListPage::listBar(…, $buttons)`), never in a `ListPage::toolbar` drawn right above it.
  * 8. One head per page, saying what it is (D-1526): a list is `ListPage::listHead` («Arbeitsplätze (2)»), one record
  *    `ListPage::recordHead` («Arbeitsplatz – Workbench UG1»); a page calls neither `ListPage::head` itself.
+ * 9. A list is as wide as its page (D-1529, Stefan 20.11. «die Tabellenansichten sollen … immer die volle Breite haben»):
+ *    no stylesheet, inline style or script gives a list (`taxmod-list`, `taxmod-grid`, `wp-list-table`) a width or
+ *    max-width other than 100 %. Forms may be narrower; a list never.
  *
  * Needs no WordPress.
  *
@@ -238,6 +241,33 @@ foreach ($repos as $repo) {
             } elseif (! $hit && isset($pending[$name])) {
                 printf("FAIL %s: fixed — strike it from %s\n", $name, $list);
                 $red++;
+            }
+        }
+    }
+}
+
+// Rule 9 (D-1529): a list takes the page's full width.
+const LIST_WIDTH = '/\\.(?:taxmod-list|taxmod-grid|wp-list-table)\\s*+(?:,[^{}]*)?\\{[^}]*?(?<![a-z-])(?:max-)?width\\s*+:\\s*+(?!100%)[^;}]+/';
+
+foreach ($repos as $repo) {
+    foreach (['src', 'assets'] as $folder) {
+        if (! is_dir($repo . '/' . $folder)) {
+            continue;
+        }
+
+        foreach (new RecursiveIteratorIterator(new RecursiveDirectoryIterator($repo . '/' . $folder, FilesystemIterator::SKIP_DOTS)) as $file) {
+            $path = (string) $file;
+            $name = basename($repo) . substr($path, strlen($repo));
+
+            if (! preg_match('/\.(php|css|js)$/', $path) || str_contains($name, '/vendor/')) {
+                continue;
+            }
+
+            if (preg_match_all(LIST_WIDTH, (string) preg_replace('~/\\*.*?\\*/~s', '', (string) file_get_contents($path)), $all) > 0) {
+                foreach ($all[0] as $hit) {
+                    printf("FAIL %s: «%s» — a list is as wide as its page (rule 9, D-1529)\n", $name, trim(substr(preg_replace('/\s+/', ' ', $hit) ?? '', -90)));
+                    $red++;
+                }
             }
         }
     }
