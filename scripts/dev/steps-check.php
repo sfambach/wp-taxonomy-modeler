@@ -47,12 +47,13 @@ $check('the open stage is marked and named as the current step', str_contains($p
 $check('without a view over all, nothing is drawn under the stages', ! str_contains($plain, 'taxmod-steps-all') && ! str_contains($plain, 'taxmod-steps-process'));
 
 $all = ListPage::steps($steps, 'c', $url, [], ['x', 'All', 8]);
-$check('his wish 2026-11-09: «Alle» is a narrow arrow under the stages, in the same box as wide as they are', preg_match('#<div class="taxmod-steps-process"><ol>.*</ol><a class="taxmod-steps-all" href="https://example.test/\?tab=x"><span class="taxmod-step-label">All</span> <span class="taxmod-steps-all-count">8</span></a></div>#s', $all) === 1);
+// D-1530 replaces his wish of 2026-11-09 (a narrow bar under the stages): Stefan's card 20.11. 18:40 «'Alle' vorne in der Zeile».
+$check('D-1530: «Alle» is the first stage of the same row, with its count', preg_match('#<ol><li><a class="taxmod-step" href="https://example.test/\?tab=x"><span class="taxmod-step-label">All</span><span class="taxmod-step-count">8</span></a></li><li><a class="taxmod-step" href="https://example.test/\?tab=a">#', $all) === 1);
+$check('D-1530: no second bar under the stages', ! str_contains($all, 'taxmod-steps-all') && ! str_contains($all, 'taxmod-steps-process'));
 $open = ListPage::steps($steps, 'x', $url, [], ['x', 'All']);
-$check('open, it is marked like a stage', str_contains($open, 'taxmod-steps-all is-active" href="https://example.test/?tab=x" aria-current="step"') && ! str_contains($open, 'taxmod-step is-active'));
-
-$css = (string) @file_get_contents(dirname(__DIR__, 2) . '/assets/admin.css');
-$check('its look lives in the stylesheet, not inline', str_contains($css, '.taxmod-steps-all {') && str_contains($css, '.taxmod-steps-all.is-active {') && ! str_contains($all, 'style='));
+$check('open, it is marked like a stage', str_contains($open, 'taxmod-step is-active" href="https://example.test/?tab=x" aria-current="step"'));
+$status = ListPage::steps($steps, 'a', null, [], ['x', 'All', 8]);
+$check('as a record\'s status (no links), there is no «Alle»', ! str_contains($status, '>All<'));
 
 echo $failed === 0 ? "steps-check: all claims hold\n" : "steps-check: {$failed} FAIL\n";
 exit($failed === 0 ? 0 : 1);

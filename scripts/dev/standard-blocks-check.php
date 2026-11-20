@@ -31,6 +31,9 @@
  * 9. A list is as wide as its page (D-1529, Stefan 20.11. «die Tabellenansichten sollen … immer die volle Breite haben»):
  *    no stylesheet, inline style or script gives a list (`taxmod-list`, `taxmod-grid`, `wp-list-table`) a width or
  *    max-width other than 100 %. Forms may be narrower; a list never.
+ * 10. The «?» of a field stands at the end of its label, before the field (D-1531, Stefan 20.11. «Das Fragezeichen davor sieht
+ *    besser aus»): the Modeller's stylesheet puts `.taxmod-form-row > .taxmod-hint` into the label's column, for every form,
+ *    and no page needs a class of its own for it.
  *
  * Needs no WordPress.
  *
@@ -271,6 +274,13 @@ foreach ($repos as $repo) {
             }
         }
     }
+}
+
+// Rule 10 (D-1531): the field's «?» before the field, everywhere.
+$css = (string) file_get_contents($root . '/wp-taxonomy-modeler/assets/admin.css');
+if (preg_match('/(?:^|[},])\s*\.taxmod-form-row\s*>\s*\.taxmod-hint\s*\{[^}]*grid-column\s*:\s*1\s*;/m', (string) preg_replace('~/\*.*?\*/~s', '', $css)) !== 1) {
+    printf("FAIL admin.css: «.taxmod-form-row > .taxmod-hint» is not in the label's column for every form (rule 10, D-1531)\n");
+    $red++;
 }
 
 // Rule 5: the process bar has one owner and one look.
