@@ -694,14 +694,17 @@ final class EdgeDrawer implements Drawer
         $innen = '';
 
         foreach ($c->parts as $i => $p) {
-            $innen .= '<span class="taxmod-compact-part">'
+            // D-1538: a part keeps together and the line breaks between parts, never inside one — a size of three unit values stood
+            // cut off at the right edge (Versand, 1300 px).
+            $innen .= '<span class="taxmod-compact-part" style="flex:0 0 auto">'
                 . ($c->withLabel ? '<span class="taxmod-compact-label">' . self::e($p['name']) . '</span>' : '')
                 . '<span class="taxmod-compact-field">' . $felder[$i] . '</span>' . HintMarkup::icon($p['hint']) . '</span>';
         }
 
-        // `.25em` is the width of a space in this font; `.5em` looked like columns, which compact is not.
+        // `.25em` is the width of a space in this font; `.5em` looked like columns, which compact is not. Wrapping, a broken line keeps
+        // the same `.25em` between its rows.
         return '<div class="taxmod-compact taxmod-compact-' . ($c->vertical ? \Taxmod\Core\Renderer\Orientation::Vertical : \Taxmod\Core\Renderer\Orientation::Horizontal)->value . '" style="display:flex;gap:.25em;'
-            . ($c->vertical ? 'flex-direction:column;align-items:flex-start;flex-wrap:wrap' : 'flex-direction:row;align-items:baseline;flex-wrap:nowrap') . '">'
+            . ($c->vertical ? 'flex-direction:column;align-items:flex-start;flex-wrap:wrap' : 'flex-direction:row;align-items:baseline;flex-wrap:wrap;max-width:100%') . '">'
             . $innen . ($c->gathered === null ? '' : $this->draw($c->gathered)) . '</div>';
     }
 
