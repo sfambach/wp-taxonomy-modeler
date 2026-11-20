@@ -44,7 +44,7 @@ const CEILINGS = [
     'wp_tax_stock/src/WordPress/Admin/PurchasePage.php' => 7,
     'wp_tax_stock/src/WordPress/Admin/SettingsPage.php' => 7,
     'wp_tax_stock/src/WordPress/Admin/SettingsTab.php' => 1,
-    'wp_tax_stock/src/WordPress/Admin/StockPage.php' => 30,
+    'wp_tax_stock/src/WordPress/Admin/StockPage.php' => 29,
     'wp_tax_stock/src/WordPress/StockService.php' => 2,
 ];
 
