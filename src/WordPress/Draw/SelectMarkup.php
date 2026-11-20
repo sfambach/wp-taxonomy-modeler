@@ -44,8 +44,9 @@ final class SelectMarkup
         $markup = self::select($wahl, $attributes, $locked);
 
         // D-1504: a page's select with exactly one answer stands greyed and disabled (R30), and a disabled select sends nothing.
-        // The hand-written select it replaces sent that answer, so the page still gets it — as a hidden field beside it.
-        if ($name !== '' && ! $wahl->operable && $wahl->decided && ! $mayBeNothing && count($options) === 1) {
+        // The hand-written select it replaces sent that answer, so the page still gets it — as a hidden field beside it. A select
+        // shown read-only on purpose (editable false) keeps sending nothing (Prüftor 20.11.).
+        if ($editable && $name !== '' && ! $wahl->operable && $wahl->decided && ! $mayBeNothing && count($options) === 1) {
             $markup .= '<input type="hidden" name="' . self::e($name) . '"' . ($formId === '' ? '' : ' form="' . self::e($formId) . '"')
                 . ' value="' . self::e((string) array_key_first($options)) . '">';
         }

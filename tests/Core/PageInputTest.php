@@ -61,4 +61,10 @@ final class PageInputTest extends TestCase
         self::assertStringContainsString('<input type="hidden" name="place" form="f1" value="17">', $html);
         self::assertStringNotContainsString('type="hidden"', SelectMarkup::of('place', [17 => 'Test', 18 => 'Lager'], null, false));
     }
+
+    #[Test]
+    public function a_read_only_select_with_one_answer_sends_nothing(): void
+    {
+        self::assertStringNotContainsString('type="hidden"', SelectMarkup::of('place', [17 => 'Test'], '17', false, 'f1', [], false));
+    }
 }
