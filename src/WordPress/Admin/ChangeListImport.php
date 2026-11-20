@@ -58,7 +58,7 @@ final class ChangeListImport
             . '<form method="post" action="' . esc_url(admin_url('admin-post.php')) . '" enctype="multipart/form-data">'
             . '<input type="hidden" name="action" value="' . esc_attr(self::ACTION) . '">'
             . wp_nonce_field(self::ACTION, '_taxmod_nonce', true, false)
-            . '<p><input type="file" name="taxmod_change_list" accept=".json,.zip,application/json,application/zip" required></p>'
+            . '<p>' . \Taxmod\WordPress\Admin\ListPage::field(\Taxmod\Core\Description\InputKind::Upload, 'taxmod_change_list', '', ['required' => true, 'note' => '.json,.zip,application/json,application/zip']) . '</p>'
             . get_submit_button(__('Import change lists', 'taxmod'), 'primary', 'submit', false)
             . '</form>'
             . $this->continueForm();

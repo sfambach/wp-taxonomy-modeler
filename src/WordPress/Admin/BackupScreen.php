@@ -53,7 +53,7 @@ final class BackupScreen
             . '<form method="post" action="' . $post . '" enctype="multipart/form-data">'
             . '<input type="hidden" name="action" value="' . esc_attr(self::RESTORE_ACTION) . '">'
             . wp_nonce_field(self::RESTORE_ACTION, '_taxmod_nonce', true, false)
-            . '<p><input type="file" name="taxmod_backup" accept=".zip,application/zip" required></p>'
+            . '<p>' . \Taxmod\WordPress\Admin\ListPage::field(\Taxmod\Core\Description\InputKind::Upload, 'taxmod_backup', '', ['required' => true, 'note' => '.zip,application/zip']) . '</p>'
             . '<p><label><input type="checkbox" name="taxmod_confirm" value="1" required> '
             . esc_html__('Yes, replace the model on this site.', 'taxmod') . '</label></p>'
             . get_submit_button(__('Restore backup', 'taxmod'), 'delete', 'submit', false)
