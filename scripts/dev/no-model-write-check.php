@@ -56,6 +56,9 @@ $ausnahmen = [
     // ⚠️ *Grenzlauf 2026-11-17 (D-1427): der Lauf führt die Schritte eines Fassungssprungs wirklich aus, und eine Tabellenänderung
     // bestätigt MySQL sofort — eine Klammer gäbe es dafür nicht. Er sagt selbst: nur auf einer Prüf-Datenbank ([D-1426](../../docs/NewConcept/90-decision-log.md)).*
     'fassungssprung-check.php' => 'Tabellenänderungen eines Fassungssprungs, nur auf einer Prüf-Datenbank',
+    // ⚠️ *Review 2026-11-20 (zu D-1489): der Lauf schreibt nichts — er liest zwei erzeugte Ströme und beendet dabei seine eigene
+    // Verbindung von einer zweiten aus. Eine Klammer hinge an genau dieser Verbindung und endete mit ihr.*
+    'query-stream-check.php' => 'schreibt nichts; beendet die eigene Verbindung, an der die Klammer hinge',
 ];
 
 /**

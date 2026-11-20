@@ -598,15 +598,19 @@
 		}
 
 		if ( ! window.fetch || ! window.DOMParser || ! liveAct( form, submitter ) ) {
-			// *Sent the usual way (D-1434): locked while the page goes. An answer that leaves the page standing — a download, a new tab —
-			// frees the form after a while with a fresh mark; until then a second click is caught, here or by the server.*
+			// *Sent the usual way (D-1434): locked while the page goes, and freed after a while in case the answer leaves the page
+			// standing. A fresh mark only where the page stays for certain — another window. Anywhere else the form keeps its mark:
+			// a server still working after that while catches a second click by it, and a download gives its mark back itself
+			// (`OnceMark::atEnd`), so it can be asked for again.*
 			if ( post ) {
-				if ( ( form.getAttribute( 'target' ) || '' ) === '' && ! ( submitter && ( submitter.getAttribute( 'formtarget' ) || '' ) !== '' ) ) {
+				var elsewhere = ( form.getAttribute( 'target' ) || '' ) !== '' || !! ( submitter && ( submitter.getAttribute( 'formtarget' ) || '' ) !== '' );
+
+				if ( ! elsewhere ) {
 					lock( form, submitter );
 				}
 
 				setTimeout( function () {
-					unlock( form, true );
+					unlock( form, elsewhere );
 				}, 8000 );
 			}
 
