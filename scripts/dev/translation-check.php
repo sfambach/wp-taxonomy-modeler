@@ -1,7 +1,7 @@
 <?php declare(strict_types=1);
 
 /**
- * D-1500 (C1–C3): every English software string a Taxmod screen shows has its German text in the plugin's
+ * D-1501 (D-1500 C1–C3): every English software string a Taxmod screen shows has its German text in the plugin's
  * `languages/<domain>-de_DE.l10n.php`. A ratchet (PR-9): it reads each repository's `src/` with the PHP tokenizer, takes the
  * literal first argument of `__`, `esc_html__`, `_n` … in the repository's own text domain, leaves out the ability
  * descriptions (`*Abilities.php`, read by agents, not by a person) and source texts already German, and turns red when a
@@ -11,7 +11,7 @@
  *
  * Needs no WordPress.
  *
- * @see docs/NewConcept/90-decision-log.md D-1500
+ * @see docs/NewConcept/90-decision-log.md D-1501
  */
 
 /**
