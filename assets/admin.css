@@ -2766,9 +2766,14 @@ pre.taxmod-code {
 .taxmod-steps li {
 	margin: 0 -12px 0 0;
 }
+/* Stefan 20.11.: one look everywhere — list, status of a record, sections. Every tile as high as the row, content centred up and down. */
 .taxmod-step {
 	display: flex;
 	flex-direction: column;
+	justify-content: center;
+	box-sizing: border-box;
+	height: 100%;
+	min-height: 62px;
 	min-width: 120px;
 	padding: 8px 28px 8px 24px;
 	background: #dcdcde;
@@ -2805,9 +2810,12 @@ pre.taxmod-code {
 }
 .taxmod-steps-ends .taxmod-step {
 	flex: 1 1 0;
+	height: auto;
+	min-height: 0;
 	clip-path: none;
 	flex-direction: row;
-	align-items: baseline;
+	justify-content: flex-start;
+	align-items: center;
 	gap: 6px;
 	padding-top: 2px;
 	padding-bottom: 2px;
@@ -3125,7 +3133,7 @@ details.taxmod-record-section > summary {
     display: none;
 }
 
-/* His wish 2026-11-15: the status arrows of a single record span the full width, evenly, with a little room to the edge, as high as the list's arrows with their counts. */
+/* His wish 2026-11-15: the status arrows of a single record span the full width, evenly, with a little room to the edge. Only the width differs; the look is the list's (standard-blocks-check rule 5). */
 .taxmod-steps.is-status {
     margin: 12px 8px;
 }
@@ -3141,15 +3149,7 @@ details.taxmod-record-section > summary {
 }
 
 .taxmod-steps.is-status .taxmod-step {
-    box-sizing: border-box;
     min-width: 0;
-    height: 100%;
-    min-height: 62px;
-    justify-content: center;
-}
-
-.taxmod-steps.is-status .taxmod-steps-ends .taxmod-step {
-    min-height: 30px;
 }
 
 /* ListPage::grid — the one read-only table (plan-dubletten row 8). */

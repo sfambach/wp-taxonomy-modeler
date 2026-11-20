@@ -50,7 +50,7 @@ use Taxmod\WordPress\Persistence\WpdbRelationRepository;
  */
 final class Plugin
 {
-    public const VERSION     = '0.2.177';
+    public const VERSION     = '0.2.178';
 
     /** `apply_filters(RECORD_EDITOR_FILTER, '', $recordId, $returnTo, $toolbar)`: the record's edit form for a module's page (D-1025); `$toolbar` = the module's own button groups (escaped HTML), placed after «Save» in the one toolbar (D-1308). */
     public const RECORD_EDITOR_FILTER = 'taxmod_record_editor';
@@ -1155,6 +1155,9 @@ final class Plugin
                 'inherited'             => __('inherited from the node — adding one here replaces them at this place', 'taxmod'),
                 'addon:preset'          => __('Preset', 'taxmod'),
                 'addon:pick_rows'       => __('Add several', 'taxmod'),
+                // *D-1520: the offer comes from another field of the same record.*
+                'addon:choice_from'     => __('Choice from field', 'taxmod'),
+                'field:from_field'      => __('only what this record holds in', 'taxmod'),
                 'addon:range'           => __('Check range', 'taxmod'),
                 'addon:shape'           => __('Check shape', 'taxmod'),
                 'field:source_field'    => __('field here', 'taxmod'),

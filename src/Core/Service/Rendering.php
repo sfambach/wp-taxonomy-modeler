@@ -5957,7 +5957,7 @@ final class Rendering implements Presets, \Taxmod\Core\Port\FieldAddons
             // ⚠️ *Seit D-844/D-845 sagen die gewählten Vorbelegungen der Stelle, was bleibt und was nach vorn gehört — je Paar gefiltert
             // oder sortiert.*
             [$behalten, $vorn] = $purpose === Purpose::Edit
-                ? $this->presetFor($relation, $ziele[$relation->toNodeId] ?? null, $angebote[$relation->id] ?? [], $werte, $values, $ownerValues)
+                ? $this->presetFor($relation, $ziele[$relation->toNodeId] ?? null, $angebote[$relation->id] ?? [], $werte, $values, $ownerValues, $mehrfach)
                 : [null, null];
             $passend = $vorn === null ? null : array_fill_keys(array_keys($vorn), true);
             $reihe   = $angebote[$relation->id] ?? [];
@@ -6026,9 +6026,10 @@ final class Rendering implements Presets, \Taxmod\Core\Port\FieldAddons
      * @param  array<int, list<\Taxmod\Core\Model\RelationRecord>>        $werte       Die Werte der angebotenen Sätze.
      * @param  array<int, TypedValue>                                     $values      Die Werte des Satzes, in dem das Feld steht.
      * @param  array<int, TypedValue>                                     $ownerValues Die Werte des Satzes, der ihn hält.
+     * @param  array<int, list<int>>                                      $mehrfach    Die Sätze der mehrfachen Verweise des Satzes (D-1520).
      * @return array{0: array<int, true>|null, 1: array<int, int>|null} Was bleibt (`null`: alles) und je Satz, wie viele Paare ihn nach vorn stellen.
      */
-    private function presetFor(Relation $relation, ?Node $ziel, array $angebot, array $werte, array $values, array $ownerValues): array
+    private function presetFor(Relation $relation, ?Node $ziel, array $angebot, array $werte, array $values, array $ownerValues, array $mehrfach = []): array
     {
         if ($ziel === null || $this->resolver === null || $this->addons === null) {
             return [null, null];
@@ -6069,7 +6070,8 @@ final class Rendering implements Presets, \Taxmod\Core\Port\FieldAddons
                     $knoten = $this->gemerkterKnoten($gesucht->reference);
 
                     return $knoten === null ? null : $this->resolver?->requirementValue($knoten, $addon::class, \Taxmod\Core\Addon\PresetAddon::BEHAVIOUR);
-                }
+                },
+                $mehrfach
             );
         }
 
@@ -6287,6 +6289,44 @@ final class Rendering implements Presets, \Taxmod\Core\Port\FieldAddons
         $lauf($ziel, 0);
 
         return $zeilen;
+    }
+
+    /**
+     * Welche Felder ihre Wahl aus einem anderen Feld desselben Satzes nehmen ([D-1520](../../../docs/NewConcept/90-decision-log.md)).
+     *
+     * ⚠️ *Der Rand prüft damit beim Speichern über **alle** geschickten Werte zugleich — das Quellfeld kann im selben Speichern
+     * mitkommen, also gehört die Prüfung nicht an einen einzelnen Wert ({@see self::complaintsFor()}).*
+     *
+     * @param  list<Relation>  $relations
+     * @return array<int, int> Kanten-Id ⇒ Kanten-Id des Quellfelds
+     */
+    public function choiceSourcesOf(array $relations): array
+    {
+        if ($this->addons === null || $this->resolver === null) {
+            return [];
+        }
+
+        $aus = [];
+
+        foreach ($relations as $relation) {
+            $ziel = $this->gemerkterKnoten($relation->toNodeId);
+
+            if ($ziel === null) {
+                continue;
+            }
+
+            foreach ($this->resolver->addonsAt($ziel, $relation) as $gewaehlt) {
+                $quelle = $this->addons->byClass($gewaehlt->klasse) instanceof \Taxmod\Core\Addon\ChoiceFromFieldAddon
+                    ? \Taxmod\Core\Addon\ChoiceFromFieldAddon::sourceOf($gewaehlt->settings)
+                    : null;
+
+                if ($quelle !== null && $quelle !== $relation->id) {
+                    $aus[$relation->id] = $quelle;
+                }
+            }
+        }
+
+        return $aus;
     }
 
     /**

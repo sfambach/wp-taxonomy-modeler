@@ -19,6 +19,7 @@ interface ShapesOffer extends Addon
      * @param array<string, TypedValue>               $settings     Die eigenen Felder der gewählten Funktion.
      * @param \Closure(TypedValue, TypedValue): bool   $matches      Passt ein Wert des Angebots zum gesuchten?
      * @param \Closure(TypedValue): ?string            $behaviourAt  Was am gesuchten Wert als Verhalten eingestellt ist (das Bedingte).
+     * @param array<int, list<int>>                   $holderMany   Je mehrfachem Verweis des tragenden Satzes alle seine Sätze (D-1520).
      */
-    public function judge(array $offer, array $offerValues, array $holderValues, array $settings, \Closure $matches, \Closure $behaviourAt): OfferVerdict;
+    public function judge(array $offer, array $offerValues, array $holderValues, array $settings, \Closure $matches, \Closure $behaviourAt, array $holderMany = []): OfferVerdict;
 }

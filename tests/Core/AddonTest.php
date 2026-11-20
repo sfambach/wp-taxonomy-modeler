@@ -199,8 +199,8 @@ final class AddonTest extends TestCase
     #[Test]
     public function the_shipped_set_is_preset_add_several_the_two_checks_and_the_calculation_step(): void
     {
-        // ⚠️ *Seit D-1022 auch der Rechenschritt — nur an einer Verwendungsstelle. Seit D-1149 die Kennzahl, nur am Knoten. Seit D-1180 die Syntaxprüfung des Code-Felds. Seit D-1208 «Je Variante», nur an einer Verwendungsstelle, und «Variante von», nur an einer Kante auf Sätze.*
-        self::assertSame(['preset', 'pick_rows', 'range', 'shape', 'syntax', 'calculate', 'metric', 'variant', 'variant_of'], ShippedAddons::registry()->names());
+        // ⚠️ *Seit D-1022 auch der Rechenschritt — nur an einer Verwendungsstelle. Seit D-1149 die Kennzahl, nur am Knoten. Seit D-1180 die Syntaxprüfung des Code-Felds. Seit D-1208 «Je Variante», nur an einer Verwendungsstelle, und «Variante von», nur an einer Kante auf Sätze. Seit D-1520 «Auswahl aus Feld», nur an einer Kante auf Sätze.*
+        self::assertSame(['preset', 'pick_rows', 'range', 'shape', 'syntax', 'calculate', 'metric', 'variant', 'variant_of', 'choice_from'], ShippedAddons::registry()->names());
     }
 
     /** ⚠️ *Jede Funktion sagt selbst, wo sie hängen darf (D-845): «Mehrere hinzufügen» nur an einer mehrfachen Kante.* */
@@ -211,7 +211,7 @@ final class AddonTest extends TestCase
 
         self::assertSame(['preset', 'range', 'shape', 'syntax', 'metric'], $namen([AddonSite::Node]));
         self::assertSame(['range', 'shape', 'syntax', 'calculate', 'variant'], $namen([AddonSite::Edge]));
-        self::assertSame(['preset', 'pick_rows', 'range', 'shape', 'syntax', 'calculate', 'variant', 'variant_of'], $namen([AddonSite::Edge, AddonSite::ManyEdge, AddonSite::RecordEdge]));
+        self::assertSame(['preset', 'pick_rows', 'range', 'shape', 'syntax', 'calculate', 'variant', 'variant_of', 'choice_from'], $namen([AddonSite::Edge, AddonSite::ManyEdge, AddonSite::RecordEdge]));
     }
 
     /**
@@ -299,6 +299,29 @@ final class AddonTest extends TestCase
         self::assertSame([1 => true], $gefiltert->keep, 'der Wert sagt «filter» und schlägt das Paar');
 
         self::assertNull($paar->judge($angebot, $werte, [], $felder('filter'), $gleich, $nichts)->keep, 'ohne Wert kein Urteil');
+    }
+
+    /** ⚠️ *«nur die, die er am Platz verfügbar hat» (D-1520): angeboten wird, was das Quellfeld desselben Satzes trägt — mehrfach oder einfach; leer heisst nichts.* */
+    #[Test]
+    public function a_choice_from_field_keeps_only_what_the_same_record_holds_there(): void
+    {
+        $wahl    = new \Taxmod\Core\Addon\ChoiceFromFieldAddon();
+        $angebot = [1, 2, 3];
+        $gleich  = static fn (TypedValue $wert, TypedValue $gesucht): bool => false;
+        $nichts  = static fn (TypedValue $gesucht): ?string => null;
+        $felder  = ['from_field' => TypedValue::ofRelationReference(10)];
+
+        self::assertSame([1 => true, 3 => true], $wahl->judge($angebot, [], [], $felder, $gleich, $nichts, [10 => [3, 1, 9]])->keep, 'mehrfaches Quellfeld');
+        self::assertSame([2 => true], $wahl->judge($angebot, [], [10 => TypedValue::ofRecordReference(2)], $felder, $gleich, $nichts)->keep, 'einfaches Quellfeld');
+        self::assertSame([], $wahl->judge($angebot, [], [11 => TypedValue::ofText('x')], $felder, $gleich, $nichts)->keep, 'leeres Quellfeld eines bekannten Satzes bietet nichts an');
+        self::assertNull($wahl->judge($angebot, [], [], $felder, $gleich, $nichts)->keep, 'kein Satz bekannt: kein Urteil, das Speichern prüft');
+        self::assertNull($wahl->judge($angebot, [], [], [], $gleich, $nichts)->keep, 'ohne Quellfeld kein Urteil');
+
+        self::assertSame([], \Taxmod\Core\Addon\ChoiceFromFieldAddon::complaintsAbout([3], [1, 3]));
+        $beschwerde = \Taxmod\Core\Addon\ChoiceFromFieldAddon::complaintsAbout([2], [1, 3]);
+        self::assertSame(\Taxmod\Core\Addon\ChoiceFromFieldAddon::NOT_IN_SOURCE, $beschwerde[0]->key);
+        self::assertSame(['record' => 2], $beschwerde[0]->values);
+        self::assertTrue(\Taxmod\Core\Addon\ShippedAddons::registry()->knows(\Taxmod\Core\Addon\ChoiceFromFieldAddon::NAME));
     }
 
     /** ⚠️ *«danach bitte Datum Restriktionen» (D-757): min und max am Datum, abgelegt als Text, geprüft als Datum.* */
