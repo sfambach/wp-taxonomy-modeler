@@ -28,4 +28,29 @@ final class DecimalText
     {
         return $separator === '.' ? $stored : str_replace('.', $separator, $stored);
     }
+
+    /**
+     * D-1501: what a person typed, back to the stored form — the one place for German and stored input alike. With both
+     * signs the last one is the decimal sign (1.234,5 → 1234.5); a lone comma is the decimal sign (1234,5); a lone point
+     * is the stored form (1234.5). Spaces are ignored. Empty or not a number is null — never a guessed 0.
+     */
+    public static function typed(string $text): ?string
+    {
+        $text = str_replace([' ', "\u{00A0}", "\u{202F}"], '', trim($text));
+
+        if ($text === '') {
+            return null;
+        }
+
+        $comma = strrpos($text, ',');
+        $point = strrpos($text, '.');
+
+        if ($comma !== false && $point !== false) {
+            $text = $comma > $point ? str_replace(',', '.', str_replace('.', '', $text)) : str_replace(',', '', $text);
+        } elseif ($comma !== false) {
+            $text = substr_count($text, ',') === 1 ? str_replace(',', '.', $text) : str_replace(',', '', $text);
+        }
+
+        return is_numeric($text) ? self::stored((float) $text, 12) : null;
+    }
 }

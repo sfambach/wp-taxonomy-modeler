@@ -30,6 +30,9 @@ final class ValueInput implements Describes
         public readonly string $note = '',
         /** What is shown where it differs from what is sent: a fixed value's name, a range's converted value. */
         public readonly ?string $shown = null,
+        /** D-1501: the id a page's label points at (`for`), and the grey hint inside an empty box. */
+        public readonly string $id = '',
+        public readonly string $placeholder = '',
     ) {
     }
 
@@ -51,6 +54,8 @@ final class ValueInput implements Describes
             'columns'    => $this->columns,
             'note'       => $this->note,
             'shown'      => $this->shown,
+            'id'         => $this->id,
+            'placeholder' => $this->placeholder,
         ];
     }
 }

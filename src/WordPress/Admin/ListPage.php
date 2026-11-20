@@ -1080,6 +1080,30 @@ final class ListPage
     }
 
     /**
+     * D-1501: one input of a page form, drawn by the form renderer ({@see \Taxmod\WordPress\Draw\EdgeDrawer::control()}) — the
+     * thin way in for every page and module, so no page writes its own `<input>`. A `Decimal` value arrives stored (point) and
+     * is shown in the site's notation; read it back with {@see \Taxmod\Core\Renderer\DecimalText::typed()}. A quantity
+     * takes {@see self::quantity()}, which carries its unit.
+     *
+     * @param array{form?: string, required?: bool, size?: int|string, pattern?: string, inputMode?: string, min?: int|float|string,
+     *              max?: int|float|string, step?: int|float|string, rows?: int|string, columns?: int|string, id?: string,
+     *              placeholder?: string, note?: string} $options
+     */
+    public static function field(\Taxmod\Core\Description\InputKind $kind, string $name, string $value = '', array $options = []): string
+    {
+        $text  = static fn (string $key): ?string => isset($options[$key]) && $options[$key] !== '' ? (string) $options[$key] : null;
+        $value = $kind === \Taxmod\Core\Description\InputKind::Decimal && $value !== ''
+            ? \Taxmod\Core\Renderer\DecimalText::shown($value, \Taxmod\WordPress\Plugin::siteDecimalSeparator())
+            : $value;
+
+        return \Taxmod\WordPress\Draw\EdgeDrawer::control(new \Taxmod\Core\Description\ValueInput(
+            $kind, $name, $value, (string) ($options['form'] ?? ''), (bool) ($options['required'] ?? false), $text('size'), $text('pattern'),
+            $text('inputMode'), $text('min'), $text('max'), $text('step'), $text('rows'), $text('columns'), (string) ($options['note'] ?? ''),
+            null, (string) ($options['id'] ?? ''), (string) ($options['placeholder'] ?? ''),
+        ));
+    }
+
+    /**
      * D-1500 (D-1436: «Menge immer als Zahl + Einheit, Einheit auch bei nur Stück»): the one field for a quantity — a decimal box
      * and its unit beside it. The unit is the model's word for it, handed in by the caller; this never guesses one.
      *
