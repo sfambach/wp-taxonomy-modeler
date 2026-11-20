@@ -2,6 +2,8 @@
 
 namespace Taxmod\WordPress\Import;
 
+use Taxmod\WordPress\Admin\ListPage;
+use Taxmod\Core\Description\InputKind;
 /**
  * The «Import» tab on the Configuration page (D-945, D-960): only the targets every source writes to, because each
  * installation numbers its nodes differently; the duty table is code (D-961). Capability and nonce are checked by the
@@ -64,7 +66,7 @@ final class ImportTab
         ];
 
         $html = '<h2>' . esc_html__('Take automatically', 'taxmod') . '</h2><p><label><input type="hidden" name="auto_take" value="0">'
-            . '<input type="checkbox" name="auto_take" value="1"' . checked(AutoTake::user() !== 0, true, false) . '> '
+            . ListPage::field(InputKind::Tick, 'auto_take', '1', ['checked' => (string) (AutoTake::user() !== 0) === '1']) . ' '
             . esc_html__('Take new orders from the responsible source and status updates of existing orders without review. Anything else stays in the inbox; a status waits there until its order exists.', 'taxmod')
             . '</label></p><p><label>' . esc_html__('Discard parcel notices no order claims after', 'taxmod')
             . ' ' . \Taxmod\WordPress\Admin\ListPage::field(\Taxmod\Core\Description\InputKind::Number, 'orphan_days', (string) InboxScreen::orphanDays(), ['min' => 1, 'step' => 1]) . ' '

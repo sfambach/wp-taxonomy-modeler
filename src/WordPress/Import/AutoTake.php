@@ -2,6 +2,8 @@
 
 namespace Taxmod\WordPress\Import;
 
+use Taxmod\WordPress\Admin\ListPage;
+use Taxmod\Core\Description\InputKind;
 use Taxmod\Core\Import\Intake;
 use Taxmod\WordPress\Admin\SettingsScreen;
 use Taxmod\WordPress\Plugin;
@@ -45,7 +47,7 @@ final class AutoTake
     public static function moduleField(string $tab): string
     {
         return '<p><label><input type="hidden" name="' . esc_attr(self::MODULE_FIELD) . '" value="0">'
-            . '<input type="checkbox" name="' . esc_attr(self::MODULE_FIELD) . '" value="1"' . checked(self::moduleOn($tab), true, false) . '> '
+            . ListPage::field(InputKind::Tick, self::MODULE_FIELD, '1', ['checked' => (string) (self::moduleOn($tab)) === '1']) . ' '
             . esc_html__('Take new orders and status updates of this module automatically, without review.', 'taxmod')
             . '</label></p>';
     }

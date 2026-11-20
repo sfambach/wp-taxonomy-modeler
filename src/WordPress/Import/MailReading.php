@@ -2,6 +2,8 @@
 
 namespace Taxmod\WordPress\Import;
 
+use Taxmod\WordPress\Admin\ListPage;
+use Taxmod\Core\Description\InputKind;
 use Taxmod\Core\Import\DutyRole;
 use Taxmod\Core\Import\Mail\KindFilter;
 use Taxmod\Core\Import\Mail\OrderMailParser;
@@ -100,8 +102,7 @@ final class MailReading
     public static function fields(OrderMailParser $reader, bool $hasApi): string
     {
         $key = $reader->key();
-        $html = '<p><input type="hidden" name="' . esc_attr(self::FIELD) . '[on]" value="0"><label><input type="checkbox" name="'
-            . esc_attr(self::FIELD) . '[on]" value="1"' . checked(self::isOn($key), true, false) . '> '
+        $html = '<p><input type="hidden" name="' . esc_attr(self::FIELD) . '[on]" value="0"><label>' . ListPage::field(InputKind::Tick, self::FIELD . '[on]', '1', ['checked' => (string) (self::isOn($key)) === '1']) . ' '
             . esc_html__('Read this shop\'s mails', 'taxmod') . '</label></p>';
 
         $mail = Sources::find('mail');
@@ -120,10 +121,10 @@ final class MailReading
         $truth = self::truth($key);
 
         return $html . '<fieldset><legend>' . esc_html__('What a mail may bring', 'taxmod') . '</legend>'
-            . '<p><label><input type="radio" name="' . esc_attr(self::FIELD) . '[truth]" value="' . esc_attr(self::TRUTH_UPDATES) . '"'
-            . checked($truth, self::TRUTH_UPDATES, false) . '> ' . esc_html__('Only updates — new orders and their data come from the API', 'taxmod') . '</label><br>'
-            . '<label><input type="radio" name="' . esc_attr(self::FIELD) . '[truth]" value="' . esc_attr(self::TRUTH_ALL) . '"'
-            . checked($truth, self::TRUTH_ALL, false) . '> ' . esc_html__('The whole truth — mails bring new orders too', 'taxmod') . '</label></p></fieldset>';
+            . '<p>' . ListPage::field(InputKind::Choice, self::FIELD . '[truth]', (string) $truth, ['choices' => [
+                self::TRUTH_UPDATES => __('Only updates — new orders and their data come from the API', 'taxmod'),
+                self::TRUTH_ALL     => __('The whole truth — mails bring new orders too', 'taxmod'),
+            ], 'lines' => true]) . '</p></fieldset>';
     }
 
     /**

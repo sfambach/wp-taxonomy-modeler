@@ -17,35 +17,88 @@
 /** Counted 2026-11-20 on main; only ever lowered. */
 const CEILINGS = [
     'wp-taxonomy-modeler/src/Core/Service/Rendering.php' => 4,
-    'wp-taxonomy-modeler/src/WordPress/Admin/BackupScreen.php' => 1,
-    'wp-taxonomy-modeler/src/WordPress/Admin/NodesScreen.php' => 10,
-    'wp-taxonomy-modeler/src/WordPress/Import/AutoTake.php' => 1,
-    'wp-taxonomy-modeler/src/WordPress/Import/ImportTab.php' => 2,
+    'wp-taxonomy-modeler/src/WordPress/Admin/NodesScreen.php' => 9,
+    'wp-taxonomy-modeler/src/WordPress/Import/ImportTab.php' => 1,
     'wp-taxonomy-modeler/src/WordPress/Import/InboxScreen.php' => 2,
-    'wp-taxonomy-modeler/src/WordPress/Import/MailReading.php' => 4,
+    'wp-taxonomy-modeler/src/WordPress/Import/MailReading.php' => 1,
     'wp-taxonomy-modeler/src/WordPress/Plugin.php' => 2,
     'wp-taxonomy-modeler/src/WordPress/Printing/PrintTab.php' => 1,
     'wp-taxonomy-modeler/src/WordPress/Printing/ScannerTab.php' => 1,
     'wp_tax_api_ebay/src/WordPress/ShippingScreen.php' => 1,
-    'wp_tax_ebay/src/WordPress/SettingsScreen.php' => 4,
-    'wp_tax_ebay/src/WordPress/ShippingScreen.php' => 10,
-    'wp_tax_label/src/WordPress/Admin/PrintersPage.php' => 1,
+    'wp_tax_ebay/src/WordPress/ShippingScreen.php' => 1,
     'wp_tax_label/src/WordPress/LabelButton.php' => 2,
-    'wp_tax_log_sales/src/WordPress/Admin/SalesPage.php' => 1,
-    'wp_tax_manufacturing/src/WordPress/Admin/OrdersPage.php' => 10,
-    'wp_tax_manufacturing/src/WordPress/Admin/SettingsTab.php' => 1,
+    'wp_tax_manufacturing/src/WordPress/Admin/OrdersPage.php' => 2,
     'wp_tax_manufacturing/src/WordPress/Admin/StagingSection.php' => 4,
-    'wp_tax_manufacturing/src/WordPress/Admin/TestSection.php' => 1,
     'wp_tax_shipping/src/WordPress/SettingsPage.php' => 2,
     'wp_tax_shipping/src/WordPress/ShippingPage.php' => 1,
     'wp_tax_stock/src/WordPress/Admin/ChoiceListsPage.php' => 1,
-    'wp_tax_stock/src/WordPress/Admin/InboundPage.php' => 2,
     'wp_tax_stock/src/WordPress/Admin/MaterialPicker.php' => 2,
-    'wp_tax_stock/src/WordPress/Admin/PurchasePage.php' => 7,
-    'wp_tax_stock/src/WordPress/Admin/SettingsPage.php' => 7,
+    'wp_tax_stock/src/WordPress/Admin/PurchasePage.php' => 4,
+    'wp_tax_stock/src/WordPress/Admin/SettingsPage.php' => 1,
     'wp_tax_stock/src/WordPress/Admin/SettingsTab.php' => 1,
-    'wp_tax_stock/src/WordPress/Admin/StockPage.php' => 29,
+    'wp_tax_stock/src/WordPress/Admin/StockPage.php' => 7,
     'wp_tax_stock/src/WordPress/StockService.php' => 2,
+];
+
+/**
+ * D-1504 (Prüftor 20.11.): every hand-written checkbox turned into a `Tick` keeps the name and the value it sent before —
+ * written down here as they were, checked against the source, so a later edit cannot change what the form sends unseen.
+ */
+const TICKS = [
+    'wp-taxonomy-modeler/src/WordPress/Admin/BackupScreen.php' => [
+        '\'taxmod_confirm\', \'1\'',
+    ],
+    'wp-taxonomy-modeler/src/WordPress/Admin/NodesScreen.php' => [
+        '\'use_node_name\', \'1\'',
+    ],
+    'wp-taxonomy-modeler/src/WordPress/Import/AutoTake.php' => [
+        'self::MODULE_FIELD, \'1\'',
+    ],
+    'wp-taxonomy-modeler/src/WordPress/Import/ImportTab.php' => [
+        '\'auto_take\', \'1\'',
+    ],
+    'wp-taxonomy-modeler/src/WordPress/Import/MailReading.php' => [
+        'self::FIELD . \'[on]\', \'1\'',
+    ],
+    'wp_tax_label/src/WordPress/Admin/PrintersPage.php' => [
+        'LabelButton::PREVIEW_OPTION, \'1\'',
+    ],
+    'wp_tax_log_sales/src/WordPress/Admin/SalesPage.php' => [
+        '\'same_article\', \'1\'',
+    ],
+    'wp_tax_manufacturing/src/WordPress/Admin/OrdersPage.php' => [
+        '\'build[\' . $a . \'][]\', (string) $row[\'position\']',
+        '\'selected[]\', $position',
+        '\'boards[]\', (string) $revision',
+    ],
+    'wp_tax_manufacturing/src/WordPress/Admin/TestSection.php' => [
+        '\'selected[]\', (string) $lot',
+    ],
+    'wp_tax_stock/src/WordPress/Admin/InboundPage.php' => [
+        '\'steps[]\', (string) ($n + 1)',
+    ],
+    'wp_tax_stock/src/WordPress/Admin/PurchasePage.php' => [
+        '\'positions[]\', (string) $line',
+    ],
+    'wp_tax_stock/src/WordPress/Admin/SettingsPage.php' => [
+        '\'fullscreen\', \'1\'',
+        '\'reset_columns\', \'1\'',
+        '\'reset_trees\', \'1\'',
+        '\'taxmod_stock_views[\' . $tab . \']\', \'1\'',
+        '\'taxmod_stock_single[\' . $tab . \']\', \'1\'',
+    ],
+    'wp_tax_stock/src/WordPress/Admin/StockPage.php' => [
+        '\'quelle[\' . $i . \'][remove]\', \'1\'',
+        '\'single\', \'1\'',
+        '\'source_empty\', \'1\'',
+        '\'\', \'\'',
+        '\'movable\', \'1\'',
+        '\'reserved\', \'1\'',
+        '\'selected[]\', $lot . \':\' . $where . \':\' . $thing',
+        '\'movable\', \'1\'',
+        '\'reserved\', \'1\'',
+        '\'below\', \'1\'',
+    ],
 ];
 
 function rawInputs(string $code): int
@@ -99,6 +152,23 @@ foreach ($repos as $name => $dir) {
     }
 
     printf("%s %s: %d raw inputs\n", $failed === $before ? 'ok  ' : 'FAIL', $name, $total);
+}
+
+// D-1504: each converted checkbox still sends the name and value it sent as hand-written markup.
+foreach (TICKS as $file => $calls) {
+    [$name, $relative] = explode('/', $file, 2);
+    $code = isset($repos[$name]) && is_file($repos[$name] . '/' . $relative) ? (string) file_get_contents($repos[$name] . '/' . $relative) : null;
+
+    if ($code === null) {
+        continue;
+    }
+
+    foreach (array_count_values($calls) as $call => $times) {
+        if (substr_count($code, 'ListPage::field(InputKind::Tick, ' . $call) < $times) {
+            $failed++;
+            printf("FAIL %s: the checkbox «%s» no longer sends what it sent (D-1504)\n", $file, $call);
+        }
+    }
 }
 
 exit($failed === 0 ? 0 : 1);

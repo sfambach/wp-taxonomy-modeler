@@ -2,6 +2,7 @@
 
 namespace Taxmod\WordPress\Admin;
 
+use Taxmod\Core\Description\InputKind;
 use Taxmod\WordPress\Persistence\Backup;
 use Taxmod\WordPress\Plugin;
 
@@ -54,7 +55,7 @@ final class BackupScreen
             . '<input type="hidden" name="action" value="' . esc_attr(self::RESTORE_ACTION) . '">'
             . wp_nonce_field(self::RESTORE_ACTION, '_taxmod_nonce', true, false)
             . '<p>' . \Taxmod\WordPress\Admin\ListPage::field(\Taxmod\Core\Description\InputKind::Upload, 'taxmod_backup', '', ['required' => true, 'note' => '.zip,application/zip']) . '</p>'
-            . '<p><label><input type="checkbox" name="taxmod_confirm" value="1" required> '
+            . '<p><label>' . ListPage::field(InputKind::Tick, 'taxmod_confirm', '1', ['required' => true]) . ' '
             . esc_html__('Yes, replace the model on this site.', 'taxmod') . '</label></p>'
             . get_submit_button(__('Restore backup', 'taxmod'), 'delete', 'submit', false)
             . '</form>' . $more]]);

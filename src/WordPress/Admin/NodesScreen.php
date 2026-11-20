@@ -4741,7 +4741,7 @@ final class NodesScreen
             // WICHTIG: Voreinstellung aus, nicht an -- auf sein Wort: "der Haken fuer use nodename
             // sollte Standard aus sein, passt besser". Das Namensfeld ist deshalb auch nicht mehr
             // gesperrt: der Schalter selbst entscheidet das per Skript ({@see admin.js}).
-            '<label class="taxmod-usename"><input type="checkbox" name="use_node_name" value="1"> '
+            '<label class="taxmod-usename">' . ListPage::field(InputKind::Tick, 'use_node_name', '1') . ' '
             . esc_html__('Use the node name', 'taxmod') . '</label>'
             . '<input type="text" name="name" placeholder="' . esc_attr__('Name of the field', 'taxmod') . '" style="flex:1">'
             // WICHTIG: Erst das Anzeigefeld, dann der Baumknopf -- auf sein Wort: "tree knop bei

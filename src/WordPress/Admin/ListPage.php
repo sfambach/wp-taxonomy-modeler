@@ -1087,7 +1087,12 @@ final class ListPage
      *
      * @param array{form?: string, required?: bool, size?: int|string, pattern?: string, inputMode?: string, min?: int|float|string,
      *              max?: int|float|string, step?: int|float|string, rows?: int|string, columns?: int|string, id?: string,
-     *              placeholder?: string, note?: string} $options
+     *              placeholder?: string, note?: string, checked?: bool, choices?: array<int|string, string>,
+     *              locked?: list<int|string>, list?: string, lines?: bool, label?: string} $options
+     *
+     * D-1504, page forms only: `Tick` sends `$value` when ticked and nothing when not; `Choice` draws `choices` as radio
+     * buttons, `$value` the one taken, `locked` greyed; `list` names a datalist that suggests values for a `Line`;
+     * `label` is the screen reader's name for a box without a visible label (a table cell).
      */
     public static function field(\Taxmod\Core\Description\InputKind $kind, string $name, string $value = '', array $options = []): string
     {
@@ -1100,6 +1105,8 @@ final class ListPage
             $kind, $name, $value, (string) ($options['form'] ?? ''), (bool) ($options['required'] ?? false), $text('size'), $text('pattern'),
             $text('inputMode'), $text('min'), $text('max'), $text('step'), $text('rows'), $text('columns'), (string) ($options['note'] ?? ''),
             null, (string) ($options['id'] ?? ''), (string) ($options['placeholder'] ?? ''),
+            (bool) ($options['checked'] ?? false), (array) ($options['choices'] ?? []), array_values((array) ($options['locked'] ?? [])),
+            (string) ($options['list'] ?? ''), (bool) ($options['lines'] ?? false), (string) ($options['label'] ?? ''),
         ));
 
         // Prüftor 20.11.: a field of a page that was `required` stays one — the browser's stop is behaviour, not decoration. The
