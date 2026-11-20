@@ -126,6 +126,10 @@ $rules = [
     // His word 16.11. «wir hatten ein seitentemplate festgelegt»: a module page is framed by ListPage::page (list pages) or
     // ListPage::record (a single record, D-1373), not by its own `<div class="wrap">`. Measured, failing once the last is moved.
     'G16 page without the template' => ['D-1373, D-1186', static fn (string $f, string $c, bool $module): int => $module && ! preg_match(SHARED_BLOCKS, $f) ? preg_match_all('/<div class=.?"wrap\b/', $c) : 0],
+    // D-1500: every list stands under the one bar (ListPage::bulkBar or ListPage::listBar), so no page shows list-head.js's
+    // second kind of head. Counted per file: tables beyond the bars drawn in it.
+    'G17 table without the bar' => ['D-1500, D-1462', static fn (string $f, string $c): int => preg_match(SHARED_BLOCKS, $f) ? 0
+        : max(0, preg_match_all('/^(?!\s*(?:\*|\/\/|\/\*)).*ListPage::table\(/m', $c) - preg_match_all('/^(?!\s*(?:\*|\/\/|\/\*)).*ListPage::(bulkBar|listBar)\(/m', $c))],
     'G7 style= attribute' =>['D-1068', static fn (string $f, string $c): int => preg_match_all('/style=\\\\?["\']/', $c)],
 ];
 

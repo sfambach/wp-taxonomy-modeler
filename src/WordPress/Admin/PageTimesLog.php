@@ -156,7 +156,7 @@ final class PageTimesLog
                 . '<td>' . (int) $took['median_ms'] . '</td>'
                 . '<td>' . (int) $took['max_ms'] . '</td>'
                 . '<td>' . (int) $took['median_queries'] . '</td>'
-                . '<td>' . esc_html(wp_date('Y-m-d H:i', (int) $took['last']) ?: '') . '</td></tr>';
+                . '<td>' . esc_html(ListPage::date((int) $took['last'], true)) . '</td></tr>';
         }
 
         $head = '';

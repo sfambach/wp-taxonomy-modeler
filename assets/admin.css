@@ -3258,3 +3258,45 @@ details.taxmod-record-section > summary {
     color: var(--wp-admin-theme-color, #2271b1);
     text-decoration: underline;
 }
+
+/*
+ * D-1500: one height for every control of a Taxmod page — text buttons, icon squares, the bar's choices — so no page sizes
+ * its own. His word 18.11.: «Buttons einheitliche Größe, Icon-Quadrate mit Tooltip». WordPress 7 draws a plain `.button`
+ * 40 px and its list bars 32 px; the list bar's height is the one kept. Borderless icons (`.taxmod-icon-button`, D-397) and
+ * WordPress's own `.button-link` stay as they are: they are not boxes.
+ */
+:root {
+    --taxmod-control-height: 32px;
+}
+
+:is(.taxmod-page, .taxmod-shell-main) :is(.button, input[type="submit"].button):not(.taxmod-icon-button):not(.button-link),
+:is(.taxmod-page, .taxmod-shell-main) .tablenav select {
+    min-height: var(--taxmod-control-height);
+    height: var(--taxmod-control-height);
+    line-height: calc(var(--taxmod-control-height) - 2px);
+    padding-top: 0;
+    padding-bottom: 0;
+    box-sizing: border-box;
+}
+
+.taxmod-square,
+.button.taxmod-square {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: var(--taxmod-control-height);
+    min-width: var(--taxmod-control-height);
+    padding: 0;
+}
+
+.taxmod-quantity {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    white-space: nowrap;
+}
+
+.taxmod-quantity-value {
+    width: 6em;
+    text-align: right;
+}

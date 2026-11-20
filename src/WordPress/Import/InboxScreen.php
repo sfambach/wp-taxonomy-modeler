@@ -240,7 +240,7 @@ final class InboxScreen
             '',
             null,
             [
-                __('Last run', 'taxmod') . ': ' . ($latest === null ? '–' : wp_date('Y-m-d H:i', (int) $latest['at'])),
+                __('Last run', 'taxmod') . ': ' . ($latest === null ? '–' : \Taxmod\WordPress\Admin\ListPage::date((int) $latest['at'], true)),
                 sprintf(
                     /* translators: 1: open, 2: taken, 3: discarded */
                     __('Open %1$d · taken %2$d · discarded %3$d', 'taxmod'),
@@ -257,7 +257,7 @@ final class InboxScreen
             $last = $run === null ? '–' : sprintf(
                 /* translators: 1: date and time, 2: number of proposals */
                 __('%1$s, %2$d new', 'taxmod'),
-                wp_date('Y-m-d H:i', (int) $run['at']),
+                \Taxmod\WordPress\Admin\ListPage::date((int) $run['at'], true),
                 (int) $run['filed']
             );
             $failed = $run !== null && $run['error'] !== null;
@@ -843,7 +843,7 @@ final class InboxScreen
         $label = Sources::find(self::leadSource($rows))?->label() ?? self::leadSource($rows);
         $origins = array_filter(array_map(static fn (array $row): string => (string) (((array) json_decode((string) ($row['evidence'] ?? ''), true))['origin'] ?? ''), $rows));
         /* translators: 1: source, 2: date */
-        $originNote = $origins !== [] ? implode(' ', array_unique($origins)) : sprintf(__('Taken from the inbox (%1$s) on %2$s.', 'taxmod'), $label, wp_date('Y-m-d'));
+        $originNote = $origins !== [] ? implode(' ', array_unique($origins)) : sprintf(__('Taken from the inbox (%1$s) on %2$s.', 'taxmod'), $label, \Taxmod\WordPress\Admin\ListPage::date(time()));
         // ⚠️ *Sein Wunsch vom 2026-10-23: «eine box mit allen updates in der reihenfolge wie sie aufgetreten sind … und dann
         // werden alle nacheinander eingespielt um das tracking zu haben» (D-980). The order itself comes from the merged
         // proposal; every status message after it is its own write, in the order it arrived, so the record's history shows
