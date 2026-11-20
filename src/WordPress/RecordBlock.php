@@ -66,7 +66,8 @@ final class RecordBlock
             true
         );
 
-        wp_set_script_translations(self::SCRIPT, Plugin::TEXT_DOMAIN);
+        // D-1500: the block's own words in German, from languages/ beside the PHP ones.
+        wp_set_script_translations(self::SCRIPT, Plugin::TEXT_DOMAIN, dirname($this->pluginFile) . '/languages');
 
         // *Sein Wunsch am 2026-10-19: «sichtbar machen das es noch nach rechts oder links geht» — the scrollbar is easy to miss.*
         wp_register_script(self::VIEW_SCRIPT, plugins_url('assets/record-block-view.js', $this->pluginFile), [], Plugin::VERSION, ['in_footer' => true, 'strategy' => 'defer']);

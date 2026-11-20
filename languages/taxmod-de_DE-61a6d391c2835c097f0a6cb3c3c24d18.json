@@ -1,0 +1,137 @@
+{
+ "translation-revision-date": "2026-11-20 08:00+0000",
+ "generator": "taxmod",
+ "domain": "messages",
+ "locale_data": {
+  "messages": {
+   "": {
+    "domain": "messages",
+    "lang": "de_DE",
+    "plural-forms": "nplurals=2; plural=(n != 1);"
+   },
+   "Choose another node": [
+    "Anderen Knoten wählen"
+   ],
+   "Node whose records are shown": [
+    "Knoten, dessen Sätze gezeigt werden"
+   ],
+   "Type part of the name, e.g. CPUs.": [
+    "Teil des Namens eingeben, z. B. CPUs."
+   ],
+   "Up": [
+    "Hoch"
+   ],
+   "Down": [
+    "Runter"
+   ],
+   "Remove": [
+    "Entfernen"
+   ],
+   "Filter records by any value": [
+    "Sätze nach beliebigem Wert filtern"
+   ],
+   "records match": [
+    "Sätze passen"
+   ],
+   "e.g. 386 or Intel": [
+    "z. B. 386 oder Intel"
+   ],
+   "Add record": [
+    "Satz hinzufügen"
+   ],
+   "Main record (the one this post is about)": [
+    "Hauptsatz (um den es in diesem Beitrag geht)"
+   ],
+   "Rows": [
+    "Zeilen"
+   ],
+   "Fields of the records": [
+    "Felder der Sätze"
+   ],
+   "Fields to compare (none = all shown)": [
+    "Zu vergleichende Felder (keins = alle gezeigten)"
+   ],
+   "One row per": [
+    "Eine Zeile je"
+   ],
+   "Value in the cell": [
+    "Wert in der Zelle"
+   ],
+   "Group rows by": [
+    "Zeilen gruppieren nach"
+   ],
+   "No groups": [
+    "Keine Gruppen"
+   ],
+   "Row labels": [
+    "Zeilenbeschriftung"
+   ],
+   "Through field": [
+    "Über Feld"
+   ],
+   "Empty: this record. A field: the records pointing here through it.": [
+    "Leer: dieser Satz. Ein Feld: die Sätze, die über dieses Feld hierher zeigen."
+   ],
+   "— this record": [
+    "— dieser Satz"
+   ],
+   "Ticked fields": [
+    "Angehakte Felder"
+   ],
+   "Show only these (none = all)": [
+    "Nur diese zeigen (keins = alle)"
+   ],
+   "Hide these, show all others": [
+    "Diese ausblenden, alle anderen zeigen"
+   ],
+   "Fields hidden": [
+    "Ausgeblendete Felder"
+   ],
+   "Fields shown (none = all)": [
+    "Gezeigte Felder (keins = alle)"
+   ],
+   "Enrich: show this record first": [
+    "Anreichern: diesen Satz zuerst zeigen"
+   ],
+   "Fields of this record hidden": [
+    "Ausgeblendete Felder dieses Satzes"
+   ],
+   "Fields of this record (none = all)": [
+    "Felder dieses Satzes (keins = alle)"
+   ],
+   "Display": [
+    "Anzeige"
+   ],
+   "Form (vertical)": [
+    "Formular (senkrecht)"
+   ],
+   "Table": [
+    "Tabelle"
+   ],
+   "Comparison": [
+    "Vergleich"
+   ],
+   "Record": [
+    "Satz"
+   ],
+   "Name the records by": [
+    "Sätze benennen nach"
+   ],
+   "Used in this list and above the columns.": [
+    "Gilt in dieser Liste und über den Spalten."
+   ],
+   "Their summary": [
+    "Ihre Zusammenfassung"
+   ],
+   "Records": [
+    "Sätze"
+   ],
+   "Model record": [
+    "Modell-Satz"
+   ],
+   "Choose a node and its records in the block settings.": [
+    "Knoten und seine Sätze in den Block-Einstellungen wählen."
+   ]
+  }
+ }
+}
