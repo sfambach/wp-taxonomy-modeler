@@ -1252,7 +1252,7 @@ Anlass: [INF-073](#inf-073--bestand-und-fertigung-vom-wareneingang-über-die-pla
 - **2026-11-08, ergänzt:** Arbeitsplatz statt oben/unten, Drucker je Arbeitsplatz, Wechsel jederzeit über eine Benutzereinstellung.
 - **Entwurf:** [pakete/arbeitsplatz/konzept.md](pakete/arbeitsplatz/konzept.md).
 - **2026-11-20, seine Karte:** A1–A4 wie vorgeschlagen (gemeinsame Plätze, Standarddrucker am Platz, Lagerort vorsehen, je Benutzer). **Entschieden:** [D-1502](NewConcept/90-decision-log.md).
-- **Gebaut:** Stufe 1 (Schritte 1–2 des Entwurfs) in Etiketten 0.0.17, Lager 0.64.156. Offen: Schritt 3 (Kopfzeile, Abfrage beim Anmelden); Lagerort als Testplatz-Vorschlag (Lager). Abschalten eines Druckers: [D-1231](NewConcept/90-decision-log.md).
+- **Gebaut:** Stufe 1 (Schritte 1–2 des Entwurfs) in Etiketten 0.0.17, Lager 0.64.156. Schritt 3 entschieden [D-1518](NewConcept/90-decision-log.md) (Stammdatum, Wahl in der Admin-Leiste, Hinweis statt Zwang), gebaut in Etiketten 0.0.29, Lager 0.64.164. Offen: Lagerort als Testplatz-Vorschlag (Lager); Etikettenwahl als Regelwerk ([Druckregeln](pakete/druckregeln/konzept.md), D-1519 reserviert). Abschalten eines Druckers: [D-1231](NewConcept/90-decision-log.md).
 
 ## INF-115 · Posten aufteilen und zusammenbuchen, Bestands-Split (2026-11-08)
 

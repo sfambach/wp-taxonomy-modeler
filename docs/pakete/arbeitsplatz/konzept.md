@@ -1,6 +1,6 @@
 # Paket · Arbeitsplatz — Konzeptentwurf
 
-**Stand 2026-11-20. Stufe 1 entschieden ([D-1502](../../NewConcept/90-decision-log.md), A1–A4 wie unten) und gebaut (Schritte 1–2: Etiketten 0.0.17, Lager 0.64.156); Schritt 3 offen** ([INF-114](../../neues-konzept-eingang.md#inf-114--standort-beim-einloggen-und-drucker-je-standort-2026-11-08)).
+**Stand 2026-11-20. Stufe 1 entschieden ([D-1502](../../NewConcept/90-decision-log.md), A1–A4 wie unten) und gebaut (Schritte 1–2: Etiketten 0.0.17, Lager 0.64.156); Schritt 3 entschieden ([D-1518](../../NewConcept/90-decision-log.md)) und gebaut (Etiketten 0.0.29, Lager 0.64.164)** ([INF-114](../../neues-konzept-eingang.md#inf-114--standort-beim-einloggen-und-drucker-je-standort-2026-11-08)).
 Alles ist mein Vorschlag (`INFERRED`), bis es eine `D-<nnn>` hat (`PR-3`).
 
 **Seine Worte (2026-11-08):**
