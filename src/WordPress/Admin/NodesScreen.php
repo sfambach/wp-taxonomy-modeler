@@ -573,7 +573,7 @@ final class NodesScreen
             $held[$wert->relationId] ??= $wert->value;
         }
 
-        $typed = array_filter(array_map('strval', $values), static fn (string $one): bool => $one !== '');
+        $typed = array_filter(array_map(static fn (mixed $one): string => is_array($one) ? '' : (string) $one, $values), static fn (string $one): bool => $one !== '');
 
         foreach ($typed === [] ? [] : $this->rendering->valuesFrom($felder, $typed) as $relationId => $value) {
             $held[$relationId] = $value;
@@ -589,7 +589,8 @@ final class NodesScreen
             ->withChoiceAt(array_map(static fn (Relation $r): int => $r->id, $felder));
 
         // D-1538: a part field (a unit value) shows the part the record holds, addressed by its id, as the record editor does.
-        $parts = $recordId > 0 ? $this->rendering->partsOfRecord($recordId, $felder) : [];
+        // A part handed in, in the form typed() gives back, stands in its controls instead — a form drawn again after a GET keeps them.
+        $parts = $this->partsFromTyped($felder, $values) + ($recordId > 0 ? $this->rendering->partsOfRecord($recordId, $felder) : []);
 
         foreach ($rendering->fieldsFor($felder, $held, Purpose::Edit, $prefix, $this->localeFromRequest(), Level::Admin, true, $formId, parts: $parts, recordId: $recordId) as $field) {
             $out[$field->relation->id] = \Taxmod\WordPress\Draw\Markup::of($field->result);
@@ -653,6 +654,46 @@ final class NodesScreen
         }
 
         return $out + $parts;
+    }
+
+    /**
+     * Parts in the form {@see typedValues()} gives back, as the drawing takes them: relation ⇒ rows of part id, node, values, parts.
+     * The characters go through each inner field's converter, as when they are saved (D-1538). Read once per level (CD-7).
+     *
+     * @param list<Relation>            $felder
+     * @param array<int|string, mixed>  $values relation id ⇒ characters, or part key ⇒ inner relation ⇒ characters
+     * @return array<int, list<array{id: int, nodeId: int, werte: array<int, TypedValue>, teile: array}>>
+     */
+    private function partsFromTyped(array $felder, array $values, int $depth = 0): array
+    {
+        $out = [];
+
+        foreach ($depth > 3 ? [] : $felder as $relation) {
+            $given = $values[$relation->id] ?? null;
+
+            if ($relation->kind !== RelationKind::Composition || ! is_array($given) || isset($given['values'])) {
+                continue;
+            }
+
+            $inner = $this->editor->fieldsOf($relation->toNodeId);
+
+            foreach ($given as $partKey => $byField) {
+                if (! is_array($byField)) {
+                    continue;
+                }
+
+                $characters = array_filter(array_map(static fn (mixed $one): string => is_array($one) ? '' : trim((string) $one), $byField), static fn (string $one): bool => $one !== '');
+
+                $out[$relation->id][] = [
+                    'id'     => absint($partKey),
+                    'nodeId' => $relation->toNodeId,
+                    'werte'  => $characters === [] ? [] : $this->rendering->valuesFrom($inner, $characters),
+                    'teile'  => $this->partsFromTyped($inner, $byField, $depth + 1),
+                ];
+            }
+        }
+
+        return $out;
     }
 
     /**
