@@ -8608,7 +8608,9 @@ final class Rendering implements Presets, \Taxmod\Core\Port\FieldAddons
                     value: TypedValue::nothing(),
                     // ⚠️ *Dieselbe Naht wie in {@see self::nodeAsForm()}: ein Teil wird von demselben
                     // gewählten Behälter gezeichnet und muss dieselben Angaben bekommen.*
-                    settings: $relation->isSetting() ? [] : $this->withRendererValues($ziel),
+                    // D-1538: what this use site says about its container (`with_label` of a compact unit value at one field) wins over
+                    // what the target says for everywhere, as the choice of the container itself does.
+                    settings: $relation->isSetting() ? [] : [...$this->withRendererValues($ziel), ...($this->resolver?->forUseSite($relation) ?? [])],
                     locale: $locale,
                     level: $level,
                     editable: $editable,
