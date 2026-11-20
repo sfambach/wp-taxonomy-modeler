@@ -39,6 +39,8 @@ try {
     $says('a stored «Y-m-d H:i:s» with time', ListPage::date('2026-11-20 08:05:00', true) === '20.11.2026 08:05');
     $says('empty and unreadable values give nothing', ListPage::date('') === '' && ListPage::date(null) === '' && ListPage::date('kein Datum') === '');
 
+    $says('a date cell sorts by its moment', ListPage::dateCell('2026-11-20') === '<span data-taxmod-sort="2026-11-20">20.11.2026</span>');
+
     $money = ListPage::money(1234.5, 'EUR');
     $says('money carries the amount and its currency (' . $money . ')', preg_match('/1.?234[,.]50/u', $money) === 1 && (str_contains($money, '€') || str_contains($money, 'EUR')));
     $says('money of another currency names it (' . ListPage::money('3.2', 'usd') . ')', preg_match('/\$|USD/', ListPage::money('3.2', 'usd')) === 1);

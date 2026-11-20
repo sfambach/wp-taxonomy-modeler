@@ -1039,6 +1039,27 @@ final class ListPage
     }
 
     /**
+     * D-1500: {@see self::date()} for a table cell, escaped, carrying its sortable value (`Y-m-d H:i`), so the head sorts by the
+     * moment whatever the site's date format reads like.
+     */
+    public static function dateCell(int|string|\DateTimeInterface|null $value, bool $withTime = false): string
+    {
+        $shown = self::date($value, $withTime);
+
+        if ($shown === '') {
+            return '';
+        }
+
+        $moment = match (true) {
+            $value instanceof \DateTimeInterface => $value->getTimestamp(),
+            is_int($value) || ctype_digit((string) $value) => (int) $value,
+            default => (int) strtotime((string) $value),
+        };
+
+        return '<span data-taxmod-sort="' . esc_attr(is_string($value) && preg_match('/^\d{4}-\d{2}-\d{2}/', $value) === 1 ? substr($value, 0, 16) : wp_date('Y-m-d H:i', $moment)) . '">' . esc_html($shown) . '</span>';
+    }
+
+    /**
      * D-1500: an amount of money in the site's language — «1.234,50 €» on a German site. `$currency` is the ISO 4217 code
      * (EUR, USD, CNY …); where PHP's intl is missing, the number in the site's decimal sign and the code follow.
      */
