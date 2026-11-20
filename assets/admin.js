@@ -3542,9 +3542,7 @@
 
 	function zeilenVorbereiten() {
 		document.querySelectorAll( '.taxmod-record-tree[data-taxmod-drag] .taxmod-tree-row' ).forEach( function ( zeile ) {
-			if ( idVon( zeile ) !== null ) {
-				zeile.setAttribute( 'draggable', 'true' );
-			}
+			zeileZiehbar( { target: zeile } );
 		} );
 	}
 
@@ -3553,6 +3551,30 @@
 	} else {
 		zeilenVorbereiten();
 	}
+
+	// *His report 2026-11-20 20:28: «Wenn ich ohne den anzuwählen vorher den drauf drücke und ziehe, dann passiert nichts, dann
+	// selektiert er im Baum.» The press lands on the row's label, which some browsers treat as a click on its radio rather than
+	// the start of a drag of the row around it — so the label is draggable itself (its dragstart reaches the row's handler), and
+	// a row drawn after the page (a dialog's body, a branch loaded later) gets the same the moment the pointer is over it.*
+	function zeileZiehbar( ereignis ) {
+		var zeile = ereignis.target && ereignis.target.closest ? ereignis.target.closest( '.taxmod-record-tree[data-taxmod-drag] .taxmod-tree-row' ) : null;
+		var schild;
+
+		if ( ! zeile || zeile.hasAttribute( 'data-taxmod-ziehbar' ) || idVon( zeile ) === null ) {
+			return;
+		}
+
+		zeile.setAttribute( 'data-taxmod-ziehbar', '' );
+		zeile.setAttribute( 'draggable', 'true' );
+		schild = zeile.querySelector( 'label' );
+
+		if ( schild ) {
+			schild.setAttribute( 'draggable', 'true' );
+		}
+	}
+
+	document.addEventListener( 'mouseover', zeileZiehbar );
+	document.addEventListener( 'pointerdown', zeileZiehbar, true );
 
 	// *His report 2026-11-19 05:49: «wenn ich nochmal auf 7 Segment Anzeige klicke … lädt aber nicht» — a click on the row already
 	// chosen sends no change, so the click opens it too; and the page opened from the tree starts at its top («scrollt nach unten

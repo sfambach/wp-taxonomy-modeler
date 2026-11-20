@@ -706,9 +706,13 @@
 			};
 
 			units.forEach( function ( unit ) {
-				var keep = ( needle === '' || textsOf( unit ).some( function ( text ) {
-					return matches( text, needle );
-				} ) ) && active.every( function ( input ) {
+				// As `ListView::holdsEveryWord()`: each word of the search in some cell, «10k THT» across name and group.
+				var texts = textsOf( unit );
+				var keep = needle.split( /\s+/ ).every( function ( word ) {
+					return word === '' || texts.some( function ( text ) {
+						return matches( text, word );
+					} );
+				} ) && active.every( function ( input ) {
 					return filterMatches( cellText( unit, +input.dataset.column ), input.value, numbers[ input.name ] || false );
 				} );
 

@@ -207,12 +207,7 @@ const OWN_HEAD = '/ListPage::head\s*\(/';
 const BAR_PENDING = [
     'wp_tax_stock/src/WordPress/Admin/StockPage.php'          => 'Lager, next release',
 ];
-const HEAD_PENDING = [
-    'wp_tax_stock/src/WordPress/Admin/ChoiceListsPage.php'   => 'Lager, next release',
-    'wp_tax_stock/src/WordPress/Admin/ContactsPage.php'      => 'Lager, next release',
-    'wp_tax_stock/src/WordPress/Admin/PurchasePage.php'      => 'Lager, next release',
-    'wp_tax_stock/src/WordPress/Admin/StockPage.php'         => 'Lager, next release',
-];
+const HEAD_PENDING = [];
 
 foreach ($repos as $repo) {
     if (! is_dir($repo . '/src')) {

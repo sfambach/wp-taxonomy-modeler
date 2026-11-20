@@ -183,6 +183,10 @@ $pruefe(str_contains($fest, 'data-taxmod-pick="') && str_contains($fest, 'ort=__
 $pruefe(str_contains($fest, '__rc Kiste (12)') && $tiefe($fest, $r['kiste']) === 3, 'inline: the suffix follows the word, the order stays');
 $pruefe((bool) preg_match('~value="' . $r['regal'] . '"[^>]*checked|checked[^>]*value="' . $r['regal'] . '"~', $fest), 'inline: the opened record is the chosen one');
 $pruefe(wp_script_is('taxmod-admin', 'enqueued'), 'inline: the modeller\'s script comes along');
+// His report 2026-11-20 20:28 «ohne den anzuwählen … drücke und ziehe, dann passiert nichts»: a row's label drags its row, and a
+// row drawn after the page becomes draggable when the pointer reaches it.
+$skript = (string) file_get_contents(dirname(__DIR__, 2) . '/assets/admin.js');
+$pruefe(str_contains($skript, "schild.setAttribute( 'draggable', 'true' )") && str_contains($skript, "addEventListener( 'pointerdown', zeileZiehbar, true )"), 'inline: an unchosen row drags at once — its label is draggable, a later row on hover');
 
 // ⚠️ **D-1521, his word 2026-11-20:** *«wenn die Struktur nur 1 tief ist … dann ist es eine Liste. Und wenn es tiefer ist, ist es ein Baum»*
 // — the record editor's own field pointing at «Ort» shows the places as a tree by their «Übergeordnet», not as one flat list.

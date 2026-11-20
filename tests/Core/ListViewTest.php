@@ -62,6 +62,20 @@ final class ListViewTest extends TestCase
     }
 
     #[Test]
+    public function each_word_of_the_search_may_stand_in_another_column_and_all_must_be_found(): void
+    {
+        $names = static fn (array $rows): array => array_map(static fn (array $r): string => $r['cells']['name'], $rows);
+        $rows  = [...$this->rows(), ['cells' => ['nr' => '4', 'name' => '10 kΩ · ±1 % · 0207', 'group' => 'Widerstände ▸ THT', 'stock' => '270', 'maker' => ''], 'sort' => ['stock' => 270.0]]];
+
+        // His word 2026-11-20 20:23: «10 Kilo Leerzeichen THT … zwischen 10 Kilo und THT könnte ja natürlich ein bisschen was sein».
+        self::assertSame(['10 kΩ · ±1 % · 0207'], $names((new ListView($this->columns(), search: '10k THT'))->apply($rows)));
+        self::assertSame(['10 kΩ · ±1 % · 0207'], $names((new ListView($this->columns(), search: 'tht  10k'))->apply($rows)), 'the order of the words does not count');
+        self::assertSame([], $names((new ListView($this->columns(), search: '10k SMD'))->apply($rows)), 'every word must be found');
+        self::assertSame(['Quarz 8 MHz'], $names((new ListView($this->columns(), search: 'quarz 8 MHz'))->apply($rows)), 'a name with spaces still finds itself');
+        self::assertTrue(ListView::holdsEveryWord(['a', 'b'], ''), 'an empty search holds everything');
+    }
+
+    #[Test]
     public function a_page_out_of_range_shows_the_last_one(): void
     {
         self::assertSame([3], ListView::page([1, 2, 3], 9, 2));
