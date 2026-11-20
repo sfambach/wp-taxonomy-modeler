@@ -19,6 +19,8 @@ enum InputKind: string
     case Decimal = 'decimal';
     /** D-1501: a secret such as a password or a key; never sent back filled in. */
     case Secret = 'secret';
+    /** D-1501: a file to upload; `note` holds what it accepts, a name ending in `[]` takes several. */
+    case Upload = 'upload';
     /** A number between `min` and `max`, shown with its value beside it. */
     case Range = 'range';
     case Colour = 'colour';
