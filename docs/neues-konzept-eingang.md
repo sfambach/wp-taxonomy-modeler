@@ -1245,13 +1245,14 @@ Anlass: [INF-073](#inf-073--bestand-und-fertigung-vom-wareneingang-über-die-pla
 - **Offen für Stefan:** A, B oder C? Rechnet sich die Bezeichnung der Variante, oder wird sie gepflegt? Darf eine Variante ein Feld des Modells überschreiben, zum Beispiel ein eigenes Bild? Kommt «Displayfarbe» in «Farben» auf?
 - **Gebaut:** nein.
 
-## INF-114 · Standort beim Einloggen und Drucker je Standort (2026-11-08)
+## INF-114 · Standort beim Einloggen und Drucker je Standort (2026-11-08) — entschieden: D-1502
 
 - **2026-11-08, sein Wunsch:** *«vermerke, ob ich mich oben oder unten befinde beim Einloggen. Sodass ich in meinem persönlichen Einstellungen zuweisen kann, welche Drucker oben gültig sind und welche»* [unten].
 - **Offen:** Wo der Standort gewählt wird (Login, Kopfzeile), wo die Zuordnung Drucker ↔ Standort liegt (Benutzereinstellungen im Lager), was ohne Standort gilt.
 - **2026-11-08, ergänzt:** Arbeitsplatz statt oben/unten, Drucker je Arbeitsplatz, Wechsel jederzeit über eine Benutzereinstellung.
 - **Entwurf:** [pakete/arbeitsplatz/konzept.md](pakete/arbeitsplatz/konzept.md).
-- **Gebaut:** nein. Abschalten eines Druckers: [D-1231](NewConcept/90-decision-log.md).
+- **2026-11-20, seine Karte:** A1–A4 wie vorgeschlagen (gemeinsame Plätze, Standarddrucker am Platz, Lagerort vorsehen, je Benutzer). **Entschieden:** [D-1502](NewConcept/90-decision-log.md).
+- **Gebaut:** Stufe 1 (Schritte 1–2 des Entwurfs) in Etiketten 0.0.17, Lager 0.64.156. Offen: Schritt 3 (Kopfzeile, Abfrage beim Anmelden); Lagerort als Testplatz-Vorschlag (Lager). Abschalten eines Druckers: [D-1231](NewConcept/90-decision-log.md).
 
 ## INF-115 · Posten aufteilen und zusammenbuchen, Bestands-Split (2026-11-08)
 
