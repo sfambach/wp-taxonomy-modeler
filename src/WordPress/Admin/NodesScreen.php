@@ -588,7 +588,10 @@ final class NodesScreen
         $rendering = $this->rendering->withoutSharedRecordBodies()->withoutSharedPicker()->withRecordCreation(...$this->recordCreation())
             ->withChoiceAt(array_map(static fn (Relation $r): int => $r->id, $felder));
 
-        foreach ($rendering->fieldsFor($felder, $held, Purpose::Edit, $prefix, $this->localeFromRequest(), Level::Admin, true, $formId) as $field) {
+        // D-1538: a part field (a unit value) shows the part the record holds, addressed by its id, as the record editor does.
+        $parts = $recordId > 0 ? $this->rendering->partsOfRecord($recordId, $felder) : [];
+
+        foreach ($rendering->fieldsFor($felder, $held, Purpose::Edit, $prefix, $this->localeFromRequest(), Level::Admin, true, $formId, parts: $parts, recordId: $recordId) as $field) {
             $out[$field->relation->id] = \Taxmod\WordPress\Draw\Markup::of($field->result);
         }
 
@@ -605,13 +608,34 @@ final class NodesScreen
      * What was typed into those controls, as raw values for `taxmod/write-data` — the converter's way back, so «10 St» is
      * stored as the unit value it means. An empty field is left out: unanswered, never a made-up default (D-1250).
      *
+     * A part field (a composition, such as a weight or a size as unit value) posts its own fields one level deeper; it comes
+     * back in the part form `taxmod/write-data` takes, part key ⇒ inner relation ⇒ characters, for the writer to convert (D-1538).
+     *
      * @param array<int|string, mixed> $submitted relation id → characters, as posted (slashed)
-     * @return array<int, string> relation id → raw value
+     * @return array<int, string|array<int|string, array<int, string>>> relation id → raw value, or part key → inner relation → characters
      */
     public function typedValues(int $nodeId, array $submitted): array
     {
         $felder = $this->editor->fieldsOf($nodeId);
         $typed  = [];
+        $parts  = [];
+
+        foreach ($felder as $relation) {
+            $roh = $submitted[$relation->id] ?? null;
+
+            if ($relation->kind === RelationKind::Composition && is_array($roh) && ! isset($roh['values'])) {
+                foreach ($roh as $partKey => $inner) {
+                    $filled = is_array($inner) ? array_filter(array_map(
+                        static fn (mixed $one): string => is_array($one) ? '' : self::typedText((string) $one),
+                        array_filter($inner, static fn (mixed $one, int|string $key): bool => absint($key) > 0, ARRAY_FILTER_USE_BOTH)
+                    ), static fn (string $one): bool => $one !== '') : [];
+
+                    if ($filled !== []) {
+                        $parts[$relation->id][sanitize_key((string) $partKey)] = array_combine(array_map('absint', array_keys($filled)), $filled);
+                    }
+                }
+            }
+        }
 
         foreach ($submitted as $relationId => $roh) {
             $zeichen = is_array($roh) ? '' : self::typedText((string) $roh);
@@ -633,7 +657,7 @@ final class NodesScreen
             }
         }
 
-        return $out;
+        return $out + $parts;
     }
 
     /**

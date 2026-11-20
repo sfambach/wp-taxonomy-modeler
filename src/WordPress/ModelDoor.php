@@ -330,10 +330,11 @@ final class ModelDoor
     }
 
     /**
-     * What was typed into {@see controls()}, as raw values for {@see write()}; an empty field is left out.
+     * What was typed into {@see controls()}, as raw values for {@see write()}; an empty field is left out. A part field
+     * (composition, e.g. a unit value) comes back in the part form of write-data: part key → inner relation → characters (D-1538).
      *
      * @param array<int|string, mixed> $submitted `$_POST[$prefix]`, as posted
-     * @return array<int, string> relation id → raw value
+     * @return array<int, string|array<int|string, array<int, string>>> relation id → raw value, or the parts
      */
     public function typed(int $node, array $submitted): array
     {
