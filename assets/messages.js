@@ -66,7 +66,7 @@
 		return last;
 	}
 
-	function toast( text, tone ) {
+	function toast( text, tone, echo ) {
 		document.querySelectorAll( '.taxmod-toast' ).forEach( function ( old ) {
 			old.parentNode.removeChild( old );
 		} );
@@ -75,6 +75,10 @@
 		node.className = 'taxmod-toast ' + ( tone === 'bad' ? 'taxmod-toast-bad' : 'taxmod-toast-ok' );
 		node.setAttribute( 'role', 'status' );
 		node.textContent = text;
+		if ( echo ) {
+			// Already in the field: gather() must not take it in a second time.
+			node.setAttribute( 'data-taxmod-echo', '' );
+		}
 		document.body.appendChild( node );
 	}
 
@@ -106,6 +110,19 @@
 		window.setTimeout( function () {
 			field.classList.remove( 'is-fresh' );
 		}, 4000 );
+
+		// D-1533: a refusal is seen where one acted. ⚠️ *Stefan 20.11. «beim ersten Mal nicht gespeichert»: the live page kept him
+		// down at the rows while the refusal stood in the field up beside the heading.* Out of sight, it shows as a toast as well.
+		var box = field.getBoundingClientRect();
+
+		if ( tone === 'bad' && ( box.bottom < 0 || box.top > window.innerHeight ) ) {
+			toast( text, tone, true );
+			window.setTimeout( function () {
+				document.querySelectorAll( '.taxmod-toast' ).forEach( function ( old ) {
+					old.parentNode.removeChild( old );
+				} );
+			}, 10000 );
+		}
 	}
 
 	window.taxmodMessage = say;
@@ -125,7 +142,7 @@
 
 	// A notice WordPress drew after a reload carries no buttons of its own: its words move into the field.
 	function gather( field ) {
-		document.querySelectorAll( '.wrap .notice, .taxmod-toast' ).forEach( function ( notice ) {
+		document.querySelectorAll( '.wrap .notice, .taxmod-toast:not([data-taxmod-echo])' ).forEach( function ( notice ) {
 			if ( notice.closest( '.taxmod-dialog' ) || notice.classList.contains( 'inline' ) || notice.querySelector( 'a, button, form, input, select' ) ) {
 				return;
 			}
