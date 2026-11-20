@@ -199,7 +199,6 @@ const OWN_HEAD = '/ListPage::head\s*\(/';
 
 /** Known when D-1526 came; each falls out with its module's next release, and turns red when fixed but still listed. */
 const BAR_PENDING = [
-    'wp_tax_manufacturing/src/WordPress/Admin/OrdersPage.php' => 'Fertigung, next release',
     'wp_tax_stock/src/WordPress/Admin/StockPage.php'          => 'Lager, next release',
 ];
 const HEAD_PENDING = [
