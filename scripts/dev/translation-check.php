@@ -9,6 +9,8 @@
  *
  *     php scripts/dev/translation-check.php   (this repository and every wp_tax_* beside it)
  *
+ * Script words (wp.i18n) are counted the same way against the script's JSON in `languages/`.
+ *
  * Needs no WordPress.
  *
  * @see docs/NewConcept/90-decision-log.md D-1501
@@ -175,6 +177,28 @@ foreach (CEILINGS as $name => $ceiling) {
 
         if ($a !== $b && ! str_contains((string) $text, "\0")) {
             $broken[] = $source[$key];
+        }
+    }
+
+    // The script words (wp.i18n, D-1500): each `__( '…'` in a script under assets/ has its German in the JSON WordPress loads
+    // for that script, languages/<domain>-de_DE-<md5 of its path>.json.
+    foreach (glob($repository . '/assets/*.js') ?: [] as $script) {
+        preg_match_all("/__\\(\\s*'((?:[^'\\\\]|\\\\.)*)'/", (string) file_get_contents($script), $calls);
+
+        if ($calls[1] === []) {
+            continue;
+        }
+
+        $relative = substr($script, strlen($repository) + 1);
+        $json     = $repository . '/languages/' . $domain . '-de_DE-' . md5($relative) . '.json';
+        $known    = is_file($json) ? (array) (json_decode((string) file_get_contents($json), true)['locale_data']['messages'] ?? []) : [];
+
+        foreach (array_unique($calls[1]) as $text) {
+            $text = str_replace("\\'", "'", $text);
+
+            if (! isset($known[$text])) {
+                $miss[$relative . ': ' . $text] = $relative . ': ' . $text;
+            }
         }
     }
 

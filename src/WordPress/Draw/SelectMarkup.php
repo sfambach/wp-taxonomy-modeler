@@ -27,6 +27,7 @@ final class SelectMarkup
      *
      * @param array<int|string, string> $options    Wert => Wort, in der Reihenfolge der Anzeige.
      * @param array<string, string>     $attributes Weitere Merkmale (`class`, `title`, `style`, `data-…`); `class` wird angehängt.
+     * @param list<int|string>          $locked     D-1504: Werte, die zu sehen, aber nicht zu wählen sind.
      */
     public static function of(
         string $name,
@@ -37,8 +38,20 @@ final class SelectMarkup
         array $attributes = [],
         bool $editable = true,
         string $nothingWord = '',
+        array $locked = [],
     ): string {
-        return self::select(Choosing::offer($name, $options, $now, $mayBeNothing, $formId, editable: $editable, nothingWord: $nothingWord), $attributes);
+        $wahl   = Choosing::offer($name, $options, $now, $mayBeNothing, $formId, editable: $editable, nothingWord: $nothingWord);
+        $markup = self::select($wahl, $attributes, $locked);
+
+        // D-1504: a page's select with exactly one answer stands greyed and disabled (R30), and a disabled select sends nothing.
+        // The hand-written select it replaces sent that answer, so the page still gets it — as a hidden field beside it. A select
+        // shown read-only on purpose (editable false) keeps sending nothing (Prüftor 20.11.).
+        if ($editable && $name !== '' && ! $wahl->operable && $wahl->decided && ! $mayBeNothing && count($options) === 1) {
+            $markup .= '<input type="hidden" name="' . self::e($name) . '"' . ($formId === '' ? '' : ' form="' . self::e($formId) . '"')
+                . ' value="' . self::e((string) array_key_first($options)) . '">';
+        }
+
+        return $markup;
     }
 
     /** @param array<int|string, string> $options */
@@ -61,7 +74,8 @@ final class SelectMarkup
     }
 
     /** @param array<string, string> $attributes */
-    public static function select(Choosing $wahl, array $attributes = []): string
+    /** @param list<int|string> $locked D-1504: options shown but not to be taken */
+    public static function select(Choosing $wahl, array $attributes = [], array $locked = []): string
     {
         $now    = $wahl->now;
         $klasse = trim('taxmod-choice ' . ($attributes['class'] ?? '') . ($wahl->unsatisfiable ? ' taxmod-unsatisfiable' : ''));
@@ -84,11 +98,13 @@ final class SelectMarkup
             $markup .= '<option value=""' . ($now === null || $now === '' ? ' selected' : '') . '>' . self::e($wahl->nothingWord) . '</option>';
         }
 
+        $gesperrt = array_map('strval', $locked);
+
         foreach ($wahl->options as $wert => $wort) {
             $wert = (string) $wert;
             // *R30: mit genau einer Möglichkeit ist sie die Antwort und steht gewählt da.*
             $gewaehlt = $now === $wert || ($wahl->decided && ! $wahl->mayBeNothing && count($wahl->options) === 1);
-            $markup  .= '<option value="' . self::e($wert) . '"' . ($gewaehlt ? ' selected' : '') . '>' . self::e($wort) . '</option>';
+            $markup  .= '<option value="' . self::e($wert) . '"' . ($gewaehlt ? ' selected' : '') . (in_array($wert, $gesperrt, true) ? ' disabled' : '') . '>' . self::e($wort) . '</option>';
         }
 
         return $markup . '</select>';

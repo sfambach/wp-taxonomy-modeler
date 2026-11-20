@@ -33,6 +33,26 @@ final class ValueInput implements Describes
         /** D-1501: the id a page's label points at (`for`), and the grey hint inside an empty box. */
         public readonly string $id = '',
         public readonly string $placeholder = '',
+        /** D-1504: a Tick that stands ticked. */
+        public readonly bool $checked = false,
+        /**
+         * D-1504: a Choice's possibilities, value → word, in the order shown.
+         *
+         * @var array<int|string, string>
+         */
+        public readonly array $choices = [],
+        /**
+         * D-1504: values of a Choice that are shown but cannot be taken.
+         *
+         * @var list<int|string>
+         */
+        public readonly array $locked = [],
+        /** D-1504: the id of a datalist that suggests values for a Line. */
+        public readonly string $suggestions = '',
+        /** D-1504: a Choice with each possibility on its own line. */
+        public readonly bool $lines = false,
+        /** D-1504: the name a screen reader says for a box without a visible label of its own (a table cell). */
+        public readonly string $ariaLabel = '',
     ) {
     }
 
@@ -56,6 +76,12 @@ final class ValueInput implements Describes
             'shown'      => $this->shown,
             'id'         => $this->id,
             'placeholder' => $this->placeholder,
+            'checked'    => $this->checked,
+            'choices'    => $this->choices,
+            'locked'     => $this->locked,
+            'suggestions' => $this->suggestions,
+            'lines'      => $this->lines,
+            'aria_label' => $this->ariaLabel,
         ];
     }
 }

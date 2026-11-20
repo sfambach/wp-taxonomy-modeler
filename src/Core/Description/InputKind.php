@@ -33,4 +33,11 @@ enum InputKind: string
     case Moment = 'moment';
     /** Shown but not changeable here (`reason` says why); the stored value travels hidden. */
     case Fixed = 'fixed';
+    /**
+     * D-1504: page forms only, never chosen for a model field — a checkbox that sends its own value when ticked and nothing
+     * when not (no hidden 0), exactly as the hand-written page boxes did.
+     */
+    case Tick = 'tick';
+    /** D-1504: page forms only — one choice of several shown as radio buttons, each with its word; a locked one is greyed. */
+    case Choice = 'choice';
 }

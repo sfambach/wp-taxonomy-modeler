@@ -883,19 +883,19 @@ final class EdgeDrawer implements Drawer
         return match ($in->kind) {
             InputKind::Unchosen => self::tag('input', ['type' => 'text', 'class' => 'taxmod-no-renderer', 'name' => $in->name, 'form' => $in->form, 'aria-required' => $required, 'value' => $in->value]),
             InputKind::Line     => self::tag('input', [
-                'type' => 'text', 'id' => $in->id, 'placeholder' => $in->placeholder, 'name' => $in->name, 'form' => $in->form, 'aria-required' => $required, 'value' => $in->value,
-                'size' => $in->size, 'pattern' => $in->pattern, 'inputmode' => $in->inputMode,
+                'type' => 'text', 'id' => $in->id, 'aria-label' => $in->ariaLabel, 'placeholder' => $in->placeholder, 'name' => $in->name, 'form' => $in->form, 'aria-required' => $required, 'value' => $in->value,
+                'size' => $in->size, 'pattern' => $in->pattern, 'inputmode' => $in->inputMode, 'list' => $in->suggestions,
             ]),
             InputKind::Number   => self::tag('input', [
-                'type' => 'number', 'id' => $in->id, 'placeholder' => $in->placeholder, 'name' => $in->name, 'form' => $in->form, 'aria-required' => $required, 'value' => $in->value,
+                'type' => 'number', 'id' => $in->id, 'aria-label' => $in->ariaLabel, 'placeholder' => $in->placeholder, 'name' => $in->name, 'form' => $in->form, 'aria-required' => $required, 'value' => $in->value,
                 'min' => $in->min, 'max' => $in->max, 'step' => $in->step,
             ]),
             InputKind::Decimal  => self::tag('input', [
-                'type' => 'text', 'id' => $in->id, 'placeholder' => $in->placeholder, 'inputmode' => 'decimal', 'name' => $in->name, 'form' => $in->form, 'aria-required' => $required,
+                'type' => 'text', 'id' => $in->id, 'aria-label' => $in->ariaLabel, 'placeholder' => $in->placeholder, 'inputmode' => 'decimal', 'name' => $in->name, 'form' => $in->form, 'aria-required' => $required,
                 'value' => $in->value, 'size' => $in->size,
             ]),
             InputKind::Secret   => self::tag('input', [
-                'type' => 'password', 'id' => $in->id, 'placeholder' => $in->placeholder, 'name' => $in->name, 'form' => $in->form, 'aria-required' => $required, 'value' => '',
+                'type' => 'password', 'id' => $in->id, 'aria-label' => $in->ariaLabel, 'placeholder' => $in->placeholder, 'name' => $in->name, 'form' => $in->form, 'aria-required' => $required, 'value' => '',
                 'autocomplete' => 'new-password', 'size' => $in->size,
             ]),
             InputKind::Upload   => self::tag('input', [
@@ -909,7 +909,7 @@ final class EdgeDrawer implements Drawer
             InputKind::Colour   => $in->value !== '' && ! self::isPatchable($in->value)
                 ? self::tag('input', ['type' => 'text', 'name' => $in->name, 'form' => $in->form, 'value' => $in->value])
                 : self::tag('input', ['type' => 'color', 'name' => $in->name, 'form' => $in->form, 'value' => $in->value]),
-            InputKind::Email    => self::tag('input', ['type' => 'email', 'id' => $in->id, 'placeholder' => $in->placeholder, 'name' => $in->name, 'form' => $in->form, 'aria-required' => $required, 'value' => $in->value]),
+            InputKind::Email    => self::tag('input', ['type' => 'email', 'id' => $in->id, 'aria-label' => $in->ariaLabel, 'placeholder' => $in->placeholder, 'name' => $in->name, 'form' => $in->form, 'aria-required' => $required, 'value' => $in->value]),
             InputKind::LongText => '<textarea' . self::attribute('id', $in->id) . self::attribute('placeholder', $in->placeholder) . self::attribute('name', $in->name) . self::attribute('form', $in->form)
                 . ($in->required ? ' aria-required="true"' : '') . self::attribute('cols', $in->columns) . self::attribute('rows', $in->rows)
                 . '>' . self::e($in->value) . '</textarea>',
@@ -920,8 +920,10 @@ final class EdgeDrawer implements Drawer
             InputKind::Flag     => self::tag('input', ['type' => 'hidden', 'name' => $in->name, 'form' => $in->form, 'value' => '0'])
                 . self::tag('input', ['type' => 'checkbox', 'name' => $in->name, 'form' => $in->form, 'value' => '1', 'checked' => $in->value === '1']),
             InputKind::Switch   => ToggleMarkup::input($in->name, $in->value === '1', $in->form),
+            InputKind::Tick     => self::tag('input', ['type' => 'checkbox', 'id' => $in->id, 'aria-label' => $in->ariaLabel, 'name' => $in->name, 'form' => $in->form, 'value' => $in->value, 'checked' => $in->checked]),
+            InputKind::Choice   => self::choice($in),
             InputKind::Moment   => self::tag('input', [
-                'type' => self::momentType($in->note), 'id' => $in->id, 'placeholder' => $in->placeholder, 'name' => $in->name, 'form' => $in->form, 'aria-required' => $required, 'value' => $in->value,
+                'type' => self::momentType($in->note), 'id' => $in->id, 'aria-label' => $in->ariaLabel, 'placeholder' => $in->placeholder, 'name' => $in->name, 'form' => $in->form, 'aria-required' => $required, 'value' => $in->value,
                 'pattern' => $in->pattern, 'min' => $in->min, 'max' => $in->max,
             ]),
             InputKind::Fixed    => self::tag('input', ['type' => 'text', 'class' => 'taxmod-locked', 'value' => $in->shown ?? '', 'disabled' => true, 'title' => $in->note])
@@ -1034,6 +1036,22 @@ final class EdgeDrawer implements Drawer
     }
 
     /** @param array<string, string|bool|null> $attributes empty, null and false leave the attribute out; true writes it bare */
+    /** D-1504: the radio buttons of a page's Choice, each inside its label so the word is the target. */
+    private static function choice(ValueInput $in): string
+    {
+        $markup = '';
+
+        foreach ($in->choices as $value => $word) {
+            $value   = (string) $value;
+            $markup .= '<label' . ($in->lines ? ' style="display:block"' : '') . '>' . self::tag('input', [
+                'type' => 'radio', 'name' => $in->name, 'form' => $in->form, 'value' => $value, 'checked' => $in->value === $value,
+                'disabled' => in_array($value, array_map('strval', $in->locked), true), 'aria-required' => $in->required ? 'true' : null,
+            ]) . ' ' . self::e($word) . '</label>' . ($in->lines ? '' : ' ');
+        }
+
+        return $in->lines ? $markup : rtrim($markup);
+    }
+
     private static function tag(string $name, array $attributes): string
     {
         $markup = '<' . $name;
