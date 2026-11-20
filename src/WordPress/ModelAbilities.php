@@ -89,7 +89,7 @@ final class ModelAbilities
         'set_multiplicity' => '{node, field, multiplicity} — sets how often a field the node owns may hold a value (1..1 makes it mandatory), the values stay',
         'move_record' => '{record, node, anywhere?, drop?} — moves a record to the parent or a child of its node (with anywhere: to any node of its branch) and rewrites its path, calculated and summary fields; refused if a value would be dropped, unless drop is true, and always if a field of another record that chooses it could not choose it at the new node',
         'set_list' => '{node, attribute, members: [relation or node ids]} — sets a list setting of the node itself (e.g. summary_fields) to exactly these members; with field {set_list, node: target of the field, field, attribute, members} only at that use site (e.g. erlaubte_einheiten of a unit-value field)',
-        'set_label' => '{node, role, text, locale?} — sets one label of the node (role help, select, form …) as the labels box would; empty text removes it',
+        'set_label' => '{node, field?, role, text, locale?} — sets one label of the node (role help, select, form …) as the labels box would; with field the label belongs to that field of the node, e.g. its own help before the help of its target (D-1524); empty text removes it',
         'set_addons' => '{node, field?, addons: [{name, fields: {attribute: text or @ref}}]} — replaces the add-on functions of the node or, with field, of that use site (node then being the target of the field), in this order; name calculate with fields operation (plus, minus, times, divided_by) and field (a field of the record) makes the field a calculated one: read-only, every record recalculated (also when the steps are unchanged — sending them again recalculates); name metric on a node with fields title, measure (count, sum), value_field, date_field, filter_field (fields of the node), filter_value and months makes a key figure shown as a tile per month',
         'hide_field'  => '{node, field, hidden} — the eye at a field row: at the field\'s owner it hides the field everywhere, at any other node only there and below (D-1144); hidden true or false.',
         'set_setting' => '{node, attribute, value, field?} — sets one plain setting (e.g. with_label, name_as_link_text) as the screen would; with field only at that use site, node then being the target of the field; an empty value removes it.',
@@ -1249,15 +1249,17 @@ final class ModelAbilities
                 // mal anpassen so das man das beim auswählen sieht». Eine Beschriftung des Knotens wie in der Maske; leer entfernt sie.*
                 $nodeId = $this->node($at('node'))->id;
                 $role   = SeededRole::tryFrom((string) ($change['role'] ?? '')) ?? throw new \InvalidArgumentException('set_label needs a role.');
+                // *D-1524: a field's own label — its help belongs to the use, not to the node it points at.*
+                $feld   = isset($change['field']) ? $this->editor()->ownAttribute($nodeId, $at('field')) : null;
                 // *Ohne Sprache die Standardsprache: die Hilfe fällt nur auf sie zurück, nie auf eine sprachneutrale Zeile (D-645).*
                 $locale = (string) ($change['locale'] ?? '') === '' ? SettingsScreen::neutralLocale() : (string) $change['locale'];
-                $label  = new Label($nodeId, IdentitySpace::Node, $role, Label::BASE_NUMBER, $locale, sanitize_textarea_field((string) ($change['text'] ?? '')));
+                $label  = new Label($feld?->id ?? $nodeId, $feld === null ? IdentitySpace::Node : IdentitySpace::Relation, $role, Label::BASE_NUMBER, $locale, sanitize_textarea_field((string) ($change['text'] ?? '')));
                 // *Über den Dienst, damit die Änderung im Änderungsbuch steht und sich zurücknehmen lässt (D-1010).*
                 $labels = new \Taxmod\Core\Service\Labels(new WpdbLabelRepository(), SettingsScreen::neutralLocale(), ($this->changelog)());
 
                 $label->text === '' ? $labels->forget($label) : $labels->put($label);
 
-                return $nodeId;
+                return $feld?->id ?? $nodeId;
         }
 
         throw new \InvalidArgumentException('Unknown op.');
