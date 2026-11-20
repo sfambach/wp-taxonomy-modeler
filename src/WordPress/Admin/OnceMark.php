@@ -2,6 +2,8 @@
 
 namespace Taxmod\WordPress\Admin;
 
+use Taxmod\WordPress\Persistence\Query;
+
 /**
  * The one-time mark of a form (D-1434): the first act that carries it uses it up, a second request with the same mark acts no more
  * and goes where the first went.
@@ -12,6 +14,7 @@ namespace Taxmod\WordPress\Admin;
  *   C -->|new| W["act runs"] --> S["settle: where it went"]
  *   C -->|known| E["no act: the first one's way"]
  *   W -->|failed| F["release: a retry may act"]
+ *   W -->|download, nothing written| F
  * ```
  *
  * ⚠️ *His word 2026-11-18 07:53: «wenn man dann zweimal Buttons drückt, dass die Aktion zum Beispiel zweimal Platz anlegt».* The page
@@ -44,6 +47,9 @@ final class OnceMark
 
     /** The mark this request used up and has not yet settled. */
     private static ?string $current = null;
+
+    /** {@see Query::writes()} when the mark was claimed — a request that ends on the same count wrote nothing. */
+    private static int $writesAtStart = 0;
 
     /**
      * For every admin-post request (`admin_init`): a mark used before ends the request where the first one went; a new one is
@@ -81,6 +87,8 @@ final class OnceMark
 
         if ($earlier === null) {
             self::$current = $mark;
+            // *Counted from here: the mark's own row is written, what follows is the act's.*
+            self::$writesAtStart = Query::writes();
         }
 
         return $earlier;
@@ -106,7 +114,7 @@ final class OnceMark
         }
     }
 
-    /** A request that ended without going anywhere: a crash or a refusal gives the mark back, a download or a page counts as done. */
+    /** A request that ended without going anywhere: a crash, a refusal or a download that wrote nothing gives the mark back, a page counts as done. */
     public static function atEnd(): void
     {
         $error = error_get_last();
@@ -118,7 +126,42 @@ final class OnceMark
             return;
         }
 
+        self::endWith(headers_list());
+    }
+
+    /**
+     * The request ends on an answer of its own. A download that wrote nothing changes nothing a second one would double, and
+     * its page stays standing with the same form and the same mark: given back, so the person may ask for the file again.
+     * A download that wrote — an export that notes «exported» — stays once, like a page.
+     *
+     * @param list<string> $headers the answer's header lines
+     */
+    private static function endWith(array $headers): void
+    {
+        if (self::isDownload($headers) && Query::writes() === self::$writesAtStart) {
+            self::giveBack();
+
+            return;
+        }
+
         self::leave('');
+    }
+
+    /**
+     * Whether the answer is a file and not a page: it says so (`Content-Disposition`), or its type is a file's (PDF, bytes, an archive).
+     *
+     * @param list<string> $headers the answer's header lines
+     */
+    private static function isDownload(array $headers): bool
+    {
+        foreach ($headers as $header) {
+            if (preg_match('/^content-disposition\s*:/i', $header) === 1
+                || preg_match('/^content-type\s*:\s*application\/(pdf|octet-stream|zip)\b/i', $header) === 1) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**
@@ -141,10 +184,23 @@ final class OnceMark
             return null;
         }
 
+        return self::awaitFirst($mark);
+    }
+
+    /**
+     * The mark is another request's: where that one went, waiting while it still runs. Empty: back to its page — also when the
+     * first act failed and gave its mark back while this request waited, since there is nothing to follow and nothing to wait for.
+     */
+    private static function awaitFirst(string $mark): string
+    {
         for ($i = 0; $i < self::WAIT_TENTHS; $i++) {
             $went = self::wentTo($mark);
 
-            if ($went !== null && $went !== self::RUNNING) {
+            if ($went === null) {
+                return '';
+            }
+
+            if ($went !== self::RUNNING) {
                 return $went === 'back' ? '' : $went;
             }
 

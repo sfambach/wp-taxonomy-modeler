@@ -103,14 +103,6 @@ final class WpdbRecordRepository implements RecordRepository
         return $aus;
     }
 
-    /**
-     * ⚠️ **`AND relation_id = 0`, seit Fassung 37** ([D-667](../../../docs/NewConcept/90-decision-log.md)):
-     * *die Sätze **des Knotens**, nicht die seiner Verwendungsstellen. Ein Satz einer Kante trägt in
-     * `node_id` weiter ihren **Halter** — sonst wüsste niemand, wohin er gehört —, und ohne diese
-     * Bedingung läse die Kette des Knotens die Überschreibung **einer** Stelle als seine eigene
-     * Angabe. **Gemessen, als sie fehlte: `renderer-choice-check` meldete an sechs Knoten
-     * «gespeichert `table`, gezeichnet `plain`».*** Zu ihnen führt {@see self::ofRelation()}.
-     */
     public function countOfNode(int $nodeId): int
     {
         global $wpdb;
@@ -122,6 +114,14 @@ final class WpdbRecordRepository implements RecordRepository
         ))[0] ?? 0);
     }
 
+    /**
+     * ⚠️ **`AND relation_id = 0`, seit Fassung 37** ([D-667](../../../docs/NewConcept/90-decision-log.md)):
+     * *die Sätze **des Knotens**, nicht die seiner Verwendungsstellen. Ein Satz einer Kante trägt in
+     * `node_id` weiter ihren **Halter** — sonst wüsste niemand, wohin er gehört —, und ohne diese
+     * Bedingung läse die Kette des Knotens die Überschreibung **einer** Stelle als seine eigene
+     * Angabe. **Gemessen, als sie fehlte: `renderer-choice-check` meldete an sechs Knoten
+     * «gespeichert `table`, gezeichnet `plain`».*** Zu ihnen führt {@see self::ofRelation()}.
+     */
     public function ofNode(int $nodeId): array
     {
         global $wpdb;
@@ -352,45 +352,6 @@ final class WpdbRecordRepository implements RecordRepository
         );
     }
 
-    /**
-     * Einen Wert schreiben — **einfügen, wenn er keine Id hat, sonst genau diese Zeile ändern**.
-     *
-     * ⚠️ **Hier stand `$wpdb->replace()` auf dem Schlüssel `(node_record_id, path, locale)`, und das war
-     * der ganze Grund für eine erfundene laufende Nummer** ([D-530](../../../docs/NewConcept/90-decision-log.md)).
-     * *Drei Werte eines Feldes teilen sich eine Kante und damit einen Pfad — `replace()` behielt einen
-     * davon. **Der Eigentümer sah es sofort:** «warum führen wir jetzt eine neue Zahl ein, wo wir doch
-     * die Id des Records haben?»*
-     *
-     * ⚠️ *`insert()` und `update()` statt `replace()`: `replace` löscht und schreibt neu, **die Zeile
-     * bekäme also bei jedem Speichern eine neue Id** — und an der Id hängt jetzt, welcher Wert das ist.*
-     */
-    /**
-     * Eine Wertzeile aus einer Datenbankzeile — **an einer Stelle**.
-     *
-     * ⚠️ *Diese fünfzehn Zeilen standen dreimal da, einmal je Abfrage. Die vierte Abschrift wäre die
-     * vierte Gelegenheit, eine Spalte zu vergessen.*
-     *
-     * @param array<string, mixed> $r
-     */
-    private function valueFromRow(array $r): RelationRecord
-    {
-        return new RelationRecord(
-            (int) $r['node_record_id'],
-            (int) $r['relation_id'],
-            (string) $r['locale'],
-            TypedValue::fromStorage(
-                $r['value_int'] === null ? null : (int) $r['value_int'],
-                StoredDecimal::read($r['value_decimal']),
-                $r['value_text'] === null ? null : (string) $r['value_text'],
-                $r['value_date'] === null ? null : (string) $r['value_date'],
-                $r['value_ref'] === null ? null : (int) $r['value_ref'],
-                ReferenceSpace::tryFrom((string) ($r['value_ref_kind'] ?? '')),
-                \Taxmod\Core\Model\ValuePrecision::tryFrom((string) ($r['value_precision'] ?? '')),
-            ),
-            (int) $r['id'],
-            (int) $r['position'],
-        );
-    }
     public function referrersOf(int $recordId): array
     {
         global $wpdb;
@@ -403,7 +364,7 @@ final class WpdbRecordRepository implements RecordRepository
             $recordId
         ));
 
-        return array_map(fn (array $r): RelationRecord => $this->valueFromRow($r), $rows);
+        return array_map(static fn (array $r): RelationRecord => self::wert($r), $rows);
     }
 
     public function nodeReferrers(int $nodeId): array
@@ -418,7 +379,7 @@ final class WpdbRecordRepository implements RecordRepository
             $nodeId
         ));
 
-        return array_map(fn (array $r): RelationRecord => $this->valueFromRow($r), $rows);
+        return array_map(static fn (array $r): RelationRecord => self::wert($r), $rows);
     }
 
     public function nodeReferrerCounts(array $nodeIds): array
@@ -477,7 +438,7 @@ final class WpdbRecordRepository implements RecordRepository
         $aus = [];
 
         foreach ($rows as $r) {
-            $aus[(int) $r['value_ref']][] = $this->valueFromRow($r);
+            $aus[(int) $r['value_ref']][] = self::wert($r);
         }
 
         return $aus;
@@ -549,11 +510,24 @@ final class WpdbRecordRepository implements RecordRepository
                 continue;
             }
 
-            $aus[$ziel] = $this->valueFromRow($r);
+            $aus[$ziel] = self::wert($r);
         }
 
         return $aus;
     }
+
+    /**
+     * Einen Wert schreiben — **einfügen, wenn er keine Id hat, sonst genau diese Zeile ändern**.
+     *
+     * ⚠️ **Hier stand `$wpdb->replace()` auf dem Schlüssel `(node_record_id, path, locale)`, und das war
+     * der ganze Grund für eine erfundene laufende Nummer** ([D-530](../../../docs/NewConcept/90-decision-log.md)).
+     * *Drei Werte eines Feldes teilen sich eine Kante und damit einen Pfad — `replace()` behielt einen
+     * davon. **Der Eigentümer sah es sofort:** «warum führen wir jetzt eine neue Zahl ein, wo wir doch
+     * die Id des Records haben?»*
+     *
+     * ⚠️ *`insert()` und `update()` statt `replace()`: `replace` löscht und schreibt neu, **die Zeile
+     * bekäme also bei jedem Speichern eine neue Id** — und an der Id hängt jetzt, welcher Wert das ist.*
+     */
     public function putValue(RelationRecord $value): int
     {
         global $wpdb;
