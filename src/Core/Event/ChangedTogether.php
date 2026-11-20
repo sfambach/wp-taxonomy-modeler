@@ -9,6 +9,8 @@ namespace Taxmod\Core\Event;
  */
 final class ChangedTogether
 {
+    use EventId;
+
     private ?int $act = null;
 
     /**

@@ -23,6 +23,8 @@ const CEILINGS = [
     'core files handing markup through'  => 0,
     // A20: the one question the core asks the edge — never a way back into drawing.
     'places asking whether a piece shows' => 2,
+    // D-1499: WordPress hooks kept beside a core event until every module listens and is live; falls to 0.
+    'event bridges to WordPress hooks'    => 2,
 ];
 
 const HTML_TAG = '/<(div|span|a|table|tr|td|th|p|ul|ol|li|input|select|option|label|form|button|details|summary|img|strong|em|h[1-6]|br|textarea|nav|section|fieldset|legend|dl|dt|dd|code|small|time|figure|svg|template)[ >\/"\']/';
@@ -114,6 +116,19 @@ foreach (phpFiles(ROOT . '/src/WordPress') as $file) {
 
 // A17, D-1430: the drawing classes that left the core keep their old name for the modules, in one list; it may only shrink.
 $counts['old names bridged for the modules'] = preg_match_all("/^\s*'Taxmod\\\\\\\\Core\\\\\\\\[^']+'\s*=>/m", (string) file_get_contents(ROOT . '/src/WordPress/Draw/FormerNames.php'));
+
+// D-1499: each bridge carries the marker «event bridge (D-1499)» where the old hook is still fired or asked.
+$counts['event bridges to WordPress hooks'] = 0;
+$where['event bridges to WordPress hooks']  = [];
+
+foreach (new RecursiveIteratorIterator(new RecursiveDirectoryIterator(ROOT . '/src/WordPress', FilesystemIterator::SKIP_DOTS)) as $edgeFile) {
+    $found = substr_count((string) file_get_contents((string) $edgeFile), 'event bridge (D-1499)');
+
+    if ($found > 0) {
+        $counts['event bridges to WordPress hooks'] += $found;
+        $where['event bridges to WordPress hooks'][] = substr((string) $edgeFile, strlen(ROOT) + 1);
+    }
+}
 
 $red = 0;
 

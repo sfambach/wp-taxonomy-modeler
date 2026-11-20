@@ -50,7 +50,7 @@ use Taxmod\WordPress\Persistence\WpdbRelationRepository;
  */
 final class Plugin
 {
-    public const VERSION     = '0.2.169';
+    public const VERSION     = '0.2.171';
 
     /** `apply_filters(RECORD_EDITOR_FILTER, '', $recordId, $returnTo, $toolbar)`: the record's edit form for a module's page (D-1025); `$toolbar` = the module's own button groups (escaped HTML), placed after «Save» in the one toolbar (D-1308). */
     public const RECORD_EDITOR_FILTER = 'taxmod_record_editor';
@@ -139,12 +139,28 @@ final class Plugin
     {
     }
 
+    /** D-1498: `do_action(LISTEN_ACTION, ListenerProvider)` — where modules subscribe to the core's events. */
+    public const LISTEN_ACTION = 'taxmod_listen';
+
     public static function boot(string $file): void
     {
         $plugin = new self($file);
 
         // D-1419: a module's several writes as one act need the one changelog the abilities write to.
         ModelDoor::useChangelog($plugin->changelog(...));
+
+        // D-1498: the listeners of every model change and core event, gathered once before the first event; a module
+        // subscribes with `add_action('taxmod_listen', fn (ListenerProvider $listeners) => $listeners->listen(…))`.
+        // Before `init` not every module has hooked in yet: such an early change (a migration) goes unheard, as before.
+        \Taxmod\Core\Event\SharedListeners::gatherWith(static function (\Taxmod\Core\Event\ListenerProvider $listeners): bool {
+            if (did_action('init') === 0) {
+                return false;
+            }
+
+            do_action(self::LISTEN_ACTION, $listeners);
+
+            return true;
+        });
 
         register_activation_hook($file, $plugin->activate(...));
 

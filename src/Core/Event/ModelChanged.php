@@ -20,6 +20,8 @@ namespace Taxmod\Core\Event;
  */
 abstract class ModelChanged
 {
+    use EventId;
+
     private ?int $act = null;
 
     final public function __construct(
