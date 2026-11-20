@@ -1352,6 +1352,8 @@ final class ListPage
         string $submitLabel,
         string $form = '',
         string $icon = '',
+        /** D-1539: wide for a dialog that lists things to choose from — {@see DialogMarkup::WIDE}. */
+        bool $wide = false,
     ): string {
         $submit = '<button type="submit" class="button button-primary" name="' . esc_attr($submitName) . '" value="' . esc_attr($submitValue) . '"'
             . ($form === '' ? '' : ' form="' . esc_attr($form) . '"') . '>' . esc_html($submitLabel) . '</button>';
@@ -1367,6 +1369,7 @@ final class ListPage
             '',
             __('Cancel', 'taxmod'),
             openerTitle: $icon === '' ? '' : $opener,
+            wide: $wide,
         );
     }
 

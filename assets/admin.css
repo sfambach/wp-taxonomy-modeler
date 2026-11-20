@@ -1814,6 +1814,12 @@ ol.taxmod-switch-cascade .taxmod-list-remove,
     min-width: 0;
 }
 
+/* D-1539: the one wider size, for a dialog that lists things to choose from. */
+.taxmod-dialog-wide > .taxmod-dialog-panel {
+    min-width: min(60em, calc(100vw - 2em));
+    max-width: min(90em, calc(100vw - 2em));
+}
+
 .taxmod-dialog-panel .taxmod-chooser > .taxmod-dialog > .taxmod-dialog-panel {
     position: static;
     inset: auto;
