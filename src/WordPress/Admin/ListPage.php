@@ -911,7 +911,8 @@ final class ListPage
     public static function record(string $title, array $steps, string $active, string $back, string $forward, array $actions, string $details, array $sections = []): string
     {
         $html = '<div class="taxmod-record-page">'
-            . '<h2 class="taxmod-record-page-title">' . esc_html($title) . '</h2>'
+            // An empty title leaves the heading out: a page with ListPage::recordHead names its record once (D-1526).
+            . ($title === '' ? '' : '<h2 class="taxmod-record-page-title">' . esc_html($title) . '</h2>')
             . self::steps($steps, $active, null)
             . self::toolbar([$back, $actions, $forward === '' ? '' : '<span class="taxmod-record-forward">' . $forward . '</span>'])
             . $details;
@@ -1305,7 +1306,7 @@ final class ListPage
      * mit Tooltip») — a link when `$url` is given, else a submit button with `$name`/`$value`. `$disabled` names why it cannot act
      * now; the reason becomes the tooltip.
      */
-    public static function iconButton(string $icon, string $label, string $url = '', string $name = '', string $value = '', string $form = '', string $disabled = ''): string
+    public static function iconButton(string $icon, string $label, string $url = '', string $name = '', string $value = '', string $form = '', string $disabled = '', string $formAction = ''): string
     {
         if ($disabled !== '') {
             return '<button type="button" class="button taxmod-square" disabled title="' . esc_attr($disabled) . '">' . self::icon($icon, $disabled) . '</button>';
@@ -1315,7 +1316,9 @@ final class ListPage
             ? self::iconLink($icon, $label, $url)
             : '<button type="submit" class="button taxmod-square" title="' . esc_attr($label) . '"'
                 . ($name === '' ? '' : ' name="' . esc_attr($name) . '" value="' . esc_attr($value) . '"')
-                . ($form === '' ? '' : ' form="' . esc_attr($form) . '"') . '>' . self::icon($icon, $label) . '</button>';
+                . ($form === '' ? '' : ' form="' . esc_attr($form) . '"')
+                // A row's own button that sends the shared form to another address, e.g. naming its row (Fertigung 0.0.93).
+                . ($formAction === '' ? '' : ' formaction="' . esc_url($formAction) . '"') . '>' . self::icon($icon, $label) . '</button>';
     }
 
     /** @param array<string, string> $attributes */
