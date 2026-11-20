@@ -206,13 +206,36 @@ final class Labels
      */
     public function helpFor(array $nodes, string $locale = ''): array
     {
-        if ($nodes === []) {
+        return $this->helpOf(array_map(static fn (Node $n): int => $n->id, $nodes), IdentitySpace::Node, $locale);
+    }
+
+    /**
+     * Die Hilfe, die an einem **Feld** selbst steht — vor der Hilfe des Knotens, auf den es zeigt (D-1524).
+     *
+     * ⚠️ *Sein Befund 20.11.: «Ach nee, ist der Standardtext vom Textfeld. Das ist natürlich blöd. Das erklärt, warum Drucker und
+     * Standarddrucker keine Hilfe haben.» Zwei Felder auf denselben Knoten meinen Verschiedenes; die Hilfe gehört an die Verwendung.*
+     *
+     * @param  list<int>          $relationIds
+     * @return array<int, string> Nach Kanten-Id — nur die, die eine eigene Hilfe tragen.
+     */
+    public function helpForFields(array $relationIds, string $locale = ''): array
+    {
+        return $this->helpOf($relationIds, IdentitySpace::Relation, $locale);
+    }
+
+    /**
+     * @param  list<int>          $ownerIds
+     * @return array<int, string>
+     */
+    private function helpOf(array $ownerIds, IdentitySpace $space, string $locale): array
+    {
+        if ($ownerIds === []) {
             return [];
         }
 
         $stored = [];
 
-        foreach ($this->labels->forOwners(array_map(static fn (Node $n): int => $n->id, $nodes), IdentitySpace::Node) as $label) {
+        foreach ($this->labels->forOwners($ownerIds, $space) as $label) {
             if ($label->role !== SeededRole::Help) {
                 continue;
             }
@@ -227,12 +250,12 @@ final class Labels
 
         $found = [];
 
-        foreach ($nodes as $node) {
+        foreach ($ownerIds as $ownerId) {
             foreach ($locales as $tryLocale) {
-                $text = $stored[$node->id][$tryLocale] ?? '';
+                $text = $stored[$ownerId][$tryLocale] ?? '';
 
                 if ($text !== '') {
-                    $found[$node->id] = $text;
+                    $found[$ownerId] = $text;
 
                     break;
                 }

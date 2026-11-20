@@ -2426,6 +2426,75 @@ fieldset.taxmod-read-only {
     max-width: 100%;
 }
 
+/* Stefan 20.11. 18:07 («wenn ich das verschiebe, dann wachsen die Felder über die Box hinaus»): nothing in a form field grows past
+ * its column — a narrower window shrinks inputs and openers, and buttons wrap under them instead of running into the box beside. */
+.taxmod-form-row > *,
+.taxmod-form-field {
+    min-width: 0;
+}
+
+.taxmod-form-field {
+    max-width: 100%;
+}
+
+.taxmod-form-field .taxmod-switch-picker,
+.taxmod-form-field .taxmod-switch-add,
+.taxmod-form-field .taxmod-record-pick,
+.taxmod-form-field .taxmod-media-input,
+.taxmod-form-field .taxmod-ref-field {
+    max-width: 100%;
+    box-sizing: border-box;
+}
+
+.taxmod-form-field .taxmod-switch-add,
+.taxmod-form-field .taxmod-media-input {
+    display: flex;
+    flex-wrap: wrap;
+}
+
+.taxmod-form-field .taxmod-switch-add > input,
+.taxmod-form-field .taxmod-switch-add > select,
+.taxmod-form-field .taxmod-media-input > input {
+    flex: 1 1 8em;
+    min-width: 0;
+    max-width: 100%;
+}
+
+.taxmod-form-field .taxmod-record-pick .taxmod-record-dialog-open,
+.taxmod-form-field .taxmod-record-pick .taxmod-dialog-open,
+.taxmod-form-field .taxmod-ref-rows select {
+    min-width: 0;
+    max-width: 100%;
+}
+
+.taxmod-form-field .taxmod-record-pick .taxmod-record-dialog-open {
+    flex: 0 1 22em;
+}
+
+.taxmod-form-field .taxmod-ref-rows {
+    max-width: 100%;
+    border-collapse: collapse;
+}
+
+/* Stefan 20.11. 18:07, a trial on one page («Kannst du die mal hinter das Label machen? Gerade nur für diese Seite»): inside
+ * `.taxmod-hints-at-label` the «?» stands at the end of the label column, before the field, instead of after the field. */
+.taxmod-hints-at-label .taxmod-form-row > .taxmod-form-label {
+    grid-column: 1;
+    grid-row: 1;
+    padding-right: 1.6em;
+}
+
+.taxmod-hints-at-label .taxmod-form-row > .taxmod-hint {
+    grid-column: 1;
+    grid-row: 1;
+    justify-self: end;
+}
+
+.taxmod-hints-at-label .taxmod-form-row > .taxmod-form-field {
+    grid-column: 2;
+    grid-row: 1;
+}
+
 /* ⚠️ D-1521: a text field fills its column up to a readable width — his word 2026-11-20 «die Beschreibung des Textfelds, das
  * könnten wir ein bisschen länger machen». The `size` attribute alone left «Arbeitsplatz im Ergeschoss» cut off. */
 .taxmod-form-field > input[type="text"],

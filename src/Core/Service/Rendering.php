@@ -1656,11 +1656,13 @@ final class Rendering implements Presets, \Taxmod\Core\Port\FieldAddons
 
         $targets = $this->gemerkteKnoten(array_map(static fn (Relation $e): int => $e->toNodeId, $relations));
         $hilfen  = $this->labels->helpFor(array_values($targets), $locale);
+        // ⚠️ *Die Hilfe am Feld selbst geht vor (D-1524) — der Knoten, auf den es zeigt, ist nur der Rückfall.*
+        $eigene  = $this->labels->helpForFields(array_map(static fn (Relation $e): int => $e->id, $relations), $locale);
 
         $found = [];
 
         foreach ($relations as $relation) {
-            $text = $hilfen[$relation->toNodeId] ?? '';
+            $text = $eigene[$relation->id] ?? $hilfen[$relation->toNodeId] ?? '';
 
             if ($text !== '') {
                 $found[$relation->id] = $text;
