@@ -449,8 +449,12 @@
 				( nav.querySelector( '.tablenav-pages' ) || nav.lastElementChild ).before( actions );
 			}
 
-			var toggle = element( 'button', 'button', word( 'filterRow', 'Filter row' ) );
+			// D-1500: the same icon square as the server's filter switch (ListPage::filterToggle), the word as tooltip.
+			var toggle = element( 'button', 'button taxmod-square' );
 			toggle.type = 'button';
+			toggle.title = word( 'filterRow', 'Filter row' );
+			toggle.setAttribute( 'aria-label', toggle.title );
+			toggle.appendChild( element( 'span', 'dashicons dashicons-filter' ) );
 			toggle.addEventListener( 'click', function () {
 				var own = table.tHead.querySelector( '.taxmod-filter-row-client' );
 				own.hidden = ! own.hidden;

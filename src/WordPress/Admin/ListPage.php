@@ -380,7 +380,7 @@ final class ListPage
     /** The button that shows or hides the filter row. */
     public static function filterToggle(): string
     {
-        return '<div class="alignleft actions"><button type="button" class="button" onclick="'
+        return '<div class="alignleft actions"><button type="button" class="button taxmod-square" onclick="'
             . esc_attr("this.closest('.wrap').querySelectorAll('.taxmod-filter-row').forEach(function(r){r.hidden=!r.hidden})") . '">'
             // D-1462: an icon, so the bar keeps one row beside a navigation; the word stays as tooltip and for the screen reader.
             . self::icon('filter', __('Filter row', 'taxmod')) . '</button></div>';
@@ -783,12 +783,32 @@ final class ListPage
         // WordPress's own words, untranslated here, so the bar reads like every other admin list (D-1433 G).
         // D-1462: one row — bulk actions, the page's filters, «Filter row», «Columns», expand and collapse as icons, the search on
         // the right, the count last. Architecture gate 18.11.: «Gefordert sind eine Zeile und das Suchfeld rechts darin.»
-        return '<div class="tablenav top taxmod-list-bar"><form method="post" id="' . esc_attr($formId) . '" action="' . esc_url(admin_url('admin-post.php')) . '" class="alignleft actions bulkactions" onsubmit="' . esc_attr(self::confirmBulk($formId)) . '">'
+        return self::barRow('<form method="post" id="' . esc_attr($formId) . '" action="' . esc_url(admin_url('admin-post.php')) . '" class="alignleft actions bulkactions" onsubmit="' . esc_attr(self::confirmBulk($formId)) . '">'
             . wp_nonce_field($nonceAction, '_wpnonce', true, false)
             . '<label class="screen-reader-text" for="' . esc_attr($formId) . '-action">' . esc_html__('Select bulk action') . '</label>'
             . '<select name="action" id="' . esc_attr($formId) . '-action">' . $options . '</select> '
             . get_submit_button(__('Apply'), 'action', '', false) . '</form>'
-            . ($dialogs === '' ? '' : '<div class="taxmod-bulk-asks">' . $dialogs . '</div>')
+            . ($dialogs === '' ? '' : '<div class="taxmod-bulk-asks">' . $dialogs . '</div>'), $count, $filters, $expandable, $search);
+    }
+
+    /**
+     * D-1500: the bar of a list that has nothing to do with ticked rows — the same one row as {@see self::bulkBar()} (the page's
+     * filters, the head's icons, the search on the right, the count last), only without the choice of actions. Every
+     * {@see self::table()} stands under one of the two, so no list draws a second kind of head (list-head.js builds its own row
+     * only where neither stands).
+     *
+     * @param string $filters from {@see self::filters()}
+     * @param string $search  from {@see self::searchBox()}
+     */
+    public static function listBar(string $count, string $filters = '', string $search = '', bool $expandable = false): string
+    {
+        return self::barRow('', $count, $filters, $expandable, $search);
+    }
+
+    /** The one row of {@see self::bulkBar()} and {@see self::listBar()}: `$start` first, then filters, fold icons, search, count. */
+    private static function barRow(string $start, string $count, string $filters, bool $expandable, string $search): string
+    {
+        return '<div class="tablenav top taxmod-list-bar">' . $start
             . $filters
             . (! $expandable ? '' : '<div class="alignleft actions taxmod-list-fold">'
             . '<button type="button" class="button" onclick="' . esc_attr(self::toggleAll(false)) . '">' . self::icon('arrow-down-alt2', __('Expand all', 'taxmod')) . '</button> '
@@ -983,6 +1003,95 @@ final class ListPage
     }
 
     /**
+     * D-1500: a date, or a date with its time, as the site writes it (the WordPress options «Datumsformat» and «Zeitformat», AR-2:
+     * nothing written in by hand). Accepts what the modules hold — a timestamp, `Y-m-d`, `Y-m-d H:i[:s]` or ISO 8601; an empty or
+     * unreadable value gives ''. A stored `Y-m-d` without a time is a calendar day and is not shifted by the time zone.
+     */
+    public static function date(int|string|\DateTimeInterface|null $value, bool $withTime = false): string
+    {
+        $format = (string) get_option('date_format', 'd.m.Y') . ($withTime ? ' ' . (string) get_option('time_format', 'H:i') : '');
+
+        if ($value instanceof \DateTimeInterface) {
+            return wp_date($format, $value->getTimestamp()) ?: '';
+        }
+
+        if ($value === null || $value === '' || $value === 0) {
+            return '';
+        }
+
+        if (is_int($value) || ctype_digit($value)) {
+            return wp_date($format, (int) $value) ?: '';
+        }
+
+        if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $value) === 1) {
+            $day = \DateTimeImmutable::createFromFormat('!Y-m-d', $value, wp_timezone());
+
+            return $day === false ? '' : (wp_date((string) get_option('date_format', 'd.m.Y'), $day->getTimestamp()) ?: '');
+        }
+
+        try {
+            $moment = new \DateTimeImmutable($value, wp_timezone());
+        } catch (\Exception) {
+            return '';
+        }
+
+        return wp_date($format, $moment->getTimestamp()) ?: '';
+    }
+
+    /**
+     * D-1500: {@see self::date()} for a table cell, escaped, carrying its sortable value (`Y-m-d H:i`), so the head sorts by the
+     * moment whatever the site's date format reads like.
+     */
+    public static function dateCell(int|string|\DateTimeInterface|null $value, bool $withTime = false): string
+    {
+        $shown = self::date($value, $withTime);
+
+        if ($shown === '') {
+            return '';
+        }
+
+        $moment = match (true) {
+            $value instanceof \DateTimeInterface => $value->getTimestamp(),
+            is_int($value) || ctype_digit((string) $value) => (int) $value,
+            default => (int) strtotime((string) $value),
+        };
+
+        return '<span data-taxmod-sort="' . esc_attr(is_string($value) && preg_match('/^\d{4}-\d{2}-\d{2}/', $value) === 1 ? substr($value, 0, 16) : wp_date('Y-m-d H:i', $moment)) . '">' . esc_html($shown) . '</span>';
+    }
+
+    /**
+     * D-1500: an amount of money in the site's language — «1.234,50 €» on a German site. `$currency` is the ISO 4217 code
+     * (EUR, USD, CNY …); where PHP's intl is missing, the number in the site's decimal sign and the code follow.
+     */
+    public static function money(float|int|string $amount, string $currency = 'EUR'): string
+    {
+        $currency = strtoupper(trim($currency)) ?: 'EUR';
+        $value    = (float) str_replace(',', '.', (string) $amount);
+
+        if (class_exists(\NumberFormatter::class)) {
+            $shown = (new \NumberFormatter((string) get_locale(), \NumberFormatter::CURRENCY))->formatCurrency($value, $currency);
+
+            if (is_string($shown) && $shown !== '') {
+                return $shown;
+            }
+        }
+
+        return number_format_i18n($value, 2) . "\u{00A0}" . $currency;
+    }
+
+    /**
+     * D-1500 (D-1436: «Menge immer als Zahl + Einheit, Einheit auch bei nur Stück»): the one field for a quantity — a decimal box
+     * and its unit beside it. The unit is the model's word for it, handed in by the caller; this never guesses one.
+     *
+     * @param array<string, string> $attributes further attributes of the box, unescaped values (e.g. `form`, `required`, `min`)
+     */
+    public static function quantity(string $name, string $unit, string $value = '', array $attributes = []): string
+    {
+        return '<span class="taxmod-quantity"><input type="text" inputmode="decimal" class="taxmod-quantity-value" name="' . esc_attr($name) . '" value="' . esc_attr($value) . '"'
+            . self::attributes($attributes) . '><span class="taxmod-quantity-unit">' . esc_html($unit) . '</span></span>';
+    }
+
+    /**
      * The table: a checkbox column first, the given columns, the actions column last. A column with a sort address is
      * sortable; its state says whether the list is sorted by it now.
      *
@@ -1065,7 +1174,57 @@ final class ListPage
 
     public static function iconLink(string $icon, string $label, string $url): string
     {
-        return '<a class="button" href="' . esc_url($url) . '" title="' . esc_attr($label) . '">' . self::icon($icon, $label) . '</a>';
+        return '<a class="button taxmod-square" href="' . esc_url($url) . '" title="' . esc_attr($label) . '">' . self::icon($icon, $label) . '</a>';
+    }
+
+    /**
+     * D-1500: the one text button of every Taxmod page — a link when `$url` is given, else a submit button with `$name`/`$value`
+     * (sent with `$form` when it stands outside its form). One height for all of them comes from the stylesheet
+     * (`--taxmod-control-height`), so no page sizes its own. A button that acts on one row is an {@see self::iconButton()}.
+     *
+     * @param array<string, string> $attributes further attributes, unescaped values (e.g. `formtarget`, `title`, `disabled`); `type` replaces «submit» for a button that only scripts act on
+     */
+    public static function button(string $label, string $url = '', bool $primary = false, string $name = '', string $value = '', string $form = '', array $attributes = []): string
+    {
+        $class = 'button taxmod-button' . ($primary ? ' button-primary' : '');
+        $type  = (string) ($attributes['type'] ?? 'submit');
+        unset($attributes['type']);
+
+        return $url !== ''
+            ? '<a class="' . $class . '" href="' . esc_url($url) . '"' . self::attributes($attributes) . '>' . esc_html($label) . '</a>'
+            : '<button type="' . esc_attr($type) . '" class="' . $class . '"'
+                . ($name === '' ? '' : ' name="' . esc_attr($name) . '" value="' . esc_attr($value) . '"')
+                . ($form === '' ? '' : ' form="' . esc_attr($form) . '"') . self::attributes($attributes) . '>' . esc_html($label) . '</button>';
+    }
+
+    /**
+     * D-1500: an action as an icon square with its word as tooltip (his word 18.11.: «Buttons einheitliche Größe, Icon-Quadrate
+     * mit Tooltip») — a link when `$url` is given, else a submit button with `$name`/`$value`. `$disabled` names why it cannot act
+     * now; the reason becomes the tooltip.
+     */
+    public static function iconButton(string $icon, string $label, string $url = '', string $name = '', string $value = '', string $form = '', string $disabled = ''): string
+    {
+        if ($disabled !== '') {
+            return '<button type="button" class="button taxmod-square" disabled title="' . esc_attr($disabled) . '">' . self::icon($icon, $disabled) . '</button>';
+        }
+
+        return $url !== ''
+            ? self::iconLink($icon, $label, $url)
+            : '<button type="submit" class="button taxmod-square" title="' . esc_attr($label) . '"'
+                . ($name === '' ? '' : ' name="' . esc_attr($name) . '" value="' . esc_attr($value) . '"')
+                . ($form === '' ? '' : ' form="' . esc_attr($form) . '"') . '>' . self::icon($icon, $label) . '</button>';
+    }
+
+    /** @param array<string, string> $attributes */
+    private static function attributes(array $attributes): string
+    {
+        $html = '';
+
+        foreach ($attributes as $key => $value) {
+            $html .= ' ' . esc_attr($key) . ($value === '' ? '' : '="' . esc_attr($value) . '"');
+        }
+
+        return $html;
     }
 
     /**
@@ -1097,7 +1256,8 @@ final class ListPage
             esc_html($title),
             '<span class="taxmod-dialog-body" style="display:block;padding:.75em 1em;white-space:normal;text-align:left">' . $body . '</span>',
             $submit,
-            'button taxmod-dialog-open',
+            // D-1500: an opener drawn as its icon is an icon square like every other row action.
+            $icon === '' ? 'button taxmod-dialog-open' : 'button taxmod-square taxmod-dialog-open',
             '',
             __('Cancel', 'taxmod'),
             openerTitle: $icon === '' ? '' : $opener,
