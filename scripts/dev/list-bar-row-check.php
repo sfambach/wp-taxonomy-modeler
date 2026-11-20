@@ -62,6 +62,8 @@ foreach (['wp-includes/css/dashicons.css', 'wp-includes/css/buttons.css', 'wp-ad
     }
 }
 
+$styles .= '<link rel="stylesheet" href="file://' . dirname(__DIR__, 2) . '/assets/admin.css">';
+
 check('WordPress\'s admin styles are there to measure with', str_contains($styles, 'common.css') && str_contains($styles, 'list-tables.css'));
 
 $dir  = sys_get_temp_dir() . '/taxmod-list-bar-' . getmypid();
@@ -92,7 +94,12 @@ const { chromium } = require('playwright');
       const search = bar.querySelector('input[name="s"]');
       const shown = Array.from(bar.querySelectorAll('input[type="submit"], button')).filter(e => e.offsetParent !== null && !e.closest('details form') && !e.classList.contains('screen-reader-text')).map(e => (e.value || e.textContent).trim());
       const right = Math.max(...items.map(e => e.getBoundingClientRect().right));
-      return { inside: right <= bar.getBoundingClientRect().right + 1, mids: Array.from(new Set(items.map(mid))), count: items.length, searchInBar: !!search,
+      // D-1527: every icon in a box sits in its middle — its glyph's line no taller than the icon, its middle on the box's.
+      const icons = Array.from(bar.querySelectorAll('.button .dashicons, button .dashicons')).filter(e => e.offsetParent !== null).map(e => {
+        const r = e.getBoundingClientRect(), box = e.closest('.button, button').getBoundingClientRect();
+        return Math.max(parseFloat(getComputedStyle(e).lineHeight) - r.height, Math.abs((r.top + r.height / 2) - (box.top + box.height / 2)));
+      });
+      return { icons: icons, inside: right <= bar.getBoundingClientRect().right + 1, mids: Array.from(new Set(items.map(mid))), count: items.length, searchInBar: !!search,
         searchRight: search ? search.getBoundingClientRect().left > bar.getBoundingClientRect().left + bar.clientWidth / 2 : false, buttons: shown };
     });
   }
@@ -111,6 +118,7 @@ foreach (['full' => 'a full admin page', 'beside' => 'beside the Logistik naviga
     check("$where: every control of the bar stands in one row", $m['count'] > 5 && $spread <= 4, 'middles ' . implode(', ', $m['mids']));
     check("$where: nothing runs past the list's width", ($m['inside'] ?? false) === true);
     check("$where: the search stands in the bar, on the right", $m['searchInBar'] && $m['searchRight']);
+    check("$where: every icon sits in the middle of its box (D-1527)", ($m['icons'] ?? []) !== [] && max($m['icons']) <= 2, 'offsets ' . implode(', ', array_map(static fn ($o): string => (string) round((float) $o, 1), $m['icons'] ?? [])));
     check("$where: no «Search» and no «Filter» button beside it", ! in_array('Search', $m['buttons'], true) && ! in_array('Filter', $m['buttons'], true), implode(' | ', $m['buttons']));
 }
 
