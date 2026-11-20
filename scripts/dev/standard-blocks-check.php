@@ -77,10 +77,6 @@ const BACK_BUTTON = '/ListPage::back\s*\(/';
 const BACK_PENDING = [
     'wp_tax_api_jlcpcb/src/WordPress/ReorderPage.php'       => 'JLCPCB, next release',
     'wp_tax_shipping/src/WordPress/ShippingPage.php'        => 'Versand, next release',
-    'wp_tax_stock/src/WordPress/Admin/ChoiceListsPage.php'  => 'Lager, next release',
-    'wp_tax_stock/src/WordPress/Admin/ContactsPage.php'     => 'Lager, next release',
-    'wp_tax_stock/src/WordPress/Admin/PurchasePage.php'     => 'Lager, next release',
-    'wp_tax_stock/src/WordPress/Admin/StockPage.php'        => 'Lager, next release',
 ];
 
 /** A printer or print-queue setting or field: a stored key, a drawn field, a select of printers. */
