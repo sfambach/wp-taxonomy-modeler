@@ -2398,10 +2398,22 @@ fieldset.taxmod-read-only {
  */
 .taxmod-form-row {
     display: grid;
-    grid-template-columns: minmax(6em, 11em) minmax(0, 1fr) auto;
+    /* D-1521, his word 2026-11-20: «dass das Fragezeichen ganz nach rechts gewandert ist … direkt ans Feld pappen» — the field
+     * column ends at the readable width of a text field, the «?» or the explanation follows right after it; every row of a
+     * page shares the three columns, so nothing jumps with the length of a label. */
+    grid-template-columns: minmax(6em, 14em) minmax(0, 40em) minmax(0, 1fr);
     column-gap: .5em;
     align-items: center;
     margin: .2em 0;
+}
+
+.taxmod-form-row > :nth-child(3) {
+    justify-self: start;
+}
+
+.taxmod-form-explain {
+    color: #50575e;
+    font-size: 13px;
 }
 
 .taxmod-form-label {
@@ -2412,6 +2424,17 @@ fieldset.taxmod-read-only {
 .taxmod-form-field > select,
 .taxmod-form-field > textarea {
     max-width: 100%;
+}
+
+/* ⚠️ D-1521: a text field fills its column up to a readable width — his word 2026-11-20 «die Beschreibung des Textfelds, das
+ * könnten wir ein bisschen länger machen». The `size` attribute alone left «Arbeitsplatz im Ergeschoss» cut off. */
+.taxmod-form-field > input[type="text"],
+.taxmod-form-field > input[type="email"],
+.taxmod-form-field > input[type="url"],
+.taxmod-form-field > textarea {
+    width: 100%;
+    max-width: 40em;
+    box-sizing: border-box;
 }
 
 
@@ -2987,6 +3010,8 @@ pre.taxmod-code {
 .taxmod-beside-facts {
 	max-width: 60em;
 	margin-bottom: 1em;
+	min-width: 0;
+	overflow-wrap: anywhere;
 }
 @media (min-width: 1100px) {
 	.taxmod-beside {
@@ -3299,4 +3324,28 @@ details.taxmod-record-section > summary {
 .taxmod-quantity-value {
     width: 6em;
     text-align: right;
+}
+
+/* ── D-1521: the head of a page — the way back and the title in one white box over the full width ─────
+ * His word 2026-11-20: «wenn das Workbench-EG auch in einer weißen Box wäre … von links bis ganz rechts». The same height as the
+ * box above a module's menu, so menu and content start on one line. */
+:root {
+    --taxmod-head-height: 44px;
+}
+
+.taxmod-page-head {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-height: var(--taxmod-head-height);
+    box-sizing: border-box;
+    margin: 0 0 12px;
+    padding: 4px 12px;
+    background: #fff;
+    border: 1px solid #c3c4c7;
+}
+
+.taxmod-page-head > h2 {
+    margin: 0;
+    font-size: 1.3em;
 }

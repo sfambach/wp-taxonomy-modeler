@@ -60,5 +60,10 @@ check('the back link is ← with its address, as an icon button (D-1316)', str_c
 
 check('a long dialog scrolls between head and buttons, the panel never ends before them (D-1313)', str_contains($css, '.taxmod-dialog-panel > :not(.taxmod-dialog-head):not(.taxmod-dialog-foot)') && str_contains($css, 'min-height: 0;'));
 
+// D-1521, his word 2026-11-20 «die Beschreibung des Textfelds, das könnten wir ein bisschen länger machen».
+check('a text field fills its column up to a readable width (D-1521)', (bool) preg_match('~\.taxmod-form-field > input\[type="text"\][^{]*\{[^}]*width: 100%;[^}]*max-width: 40em;~', $css));
+check('the box beside a form wraps its words instead of leaving the screen (D-1521)', (bool) preg_match('~\.taxmod-beside-facts \{[^}]*min-width: 0;[^}]*overflow-wrap: anywhere;~', $css));
+check('the «?» or the explanation stands right after the field, the three columns shared by every row (D-1521)', (bool) preg_match('~\.taxmod-form-row \{[^}]*grid-template-columns: minmax\(6em, 14em\) minmax\(0, 40em\) minmax\(0, 1fr\);~', $css) && str_contains($css, ".taxmod-form-row > :nth-child(3) {\n    justify-self: start;"));
+
 echo $bad === 0 ? "\nall green\n" : "\n$bad failed\n";
 exit($bad === 0 ? 0 : 1);

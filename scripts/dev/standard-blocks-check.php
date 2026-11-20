@@ -64,6 +64,19 @@ const PDF_PENDING = [
     'wp_tax_ebay/src/Core/Shipping/LabelText.php'     => 'same repository under its old name',
 ];
 
+/** D-1521: the way back stands in the page head (ListPage::head), never as a button of its own in a toolbar. */
+const BACK_BUTTON = '/ListPage::back\s*\(/';
+
+/** Known before D-1521; each falls out when its page takes ListPage::head, and turns red when gone but still listed. */
+const BACK_PENDING = [
+    'wp_tax_api_jlcpcb/src/WordPress/ReorderPage.php'       => 'JLCPCB, next release',
+    'wp_tax_shipping/src/WordPress/ShippingPage.php'        => 'Versand, next release',
+    'wp_tax_stock/src/WordPress/Admin/ChoiceListsPage.php'  => 'Lager, next release',
+    'wp_tax_stock/src/WordPress/Admin/ContactsPage.php'     => 'Lager, next release',
+    'wp_tax_stock/src/WordPress/Admin/PurchasePage.php'     => 'Lager, next release',
+    'wp_tax_stock/src/WordPress/Admin/StockPage.php'        => 'Lager, next release',
+];
+
 /** A printer or print-queue setting or field: a stored key, a drawn field, a select of printers. */
 const PRINTER_SETTING = [
     '/update_option\s*\([^;]*[\'"](printer|printer_id|queue|drucker)[\'"]\s*=>/is',
@@ -103,6 +116,17 @@ foreach ($repos as $repo) {
                 $red++;
             } elseif ($count > 0) {
                 $seen[$name] = $count;
+            }
+        }
+
+        if (! str_ends_with($name, '/ListPage.php')) {
+            $back = preg_match(BACK_BUTTON, $source) === 1;
+            if ($back && ! isset(BACK_PENDING[$name])) {
+                printf("FAIL %s: a back button of its own — the way back stands before the title in ListPage::head (D-1521)\n", $name);
+                $red++;
+            } elseif (! $back && isset(BACK_PENDING[$name])) {
+                printf("FAIL %s: no back button any more — strike it from BACK_PENDING\n", $name);
+                $red++;
             }
         }
 

@@ -565,18 +565,44 @@ final class ListPage
         $out = '';
 
         foreach ($rows as $row) {
-            $for  = (string) ($row['for'] ?? '');
-            $out .= '<div class="taxmod-form-row">'
-                . ($for === ''
-                    ? '<span class="taxmod-form-label">' . esc_html($row['label']) . '</span>'
-                    : '<label class="taxmod-form-label" for="' . esc_attr($for) . '">' . esc_html($row['label']) . '</label>')
-                . '<span class="taxmod-form-field">' . $row['control'] . '</span>'
-                . \Taxmod\Core\Renderer\HintMarkup::icon((string) ($row['hint'] ?? ''))
-                . '</div>';
+            $out .= self::formRow($row, \Taxmod\Core\Renderer\HintMarkup::icon((string) ($row['hint'] ?? '')));
         }
 
         // D-1308: the buttons stand above the fields, as the toolbar.
         return '<div class="taxmod-form">' . self::toolbar([$actions]) . $out . '</div>';
+    }
+
+    /**
+     * D-1521: a settings page in three columns — name, field, and what is expected written out beside it, not below. ⚠️ *His
+     * word 2026-11-20: «die Feldbenamsung, das Feld und in der dritten Spalte steht dann die Erklärung dazu … wir haben rechts
+     * genügend Platz … wir müssen es nicht drunter machen und die Seite damit höher».* Same rows as `form()`; `hint` is the text.
+     *
+     * @param list<array{label: string, control: string, hint?: string, for?: string}> $rows
+     */
+    public static function settings(array $rows, string $actions = ''): string
+    {
+        $out = '';
+
+        foreach ($rows as $row) {
+            $hint = (string) ($row['hint'] ?? '');
+            $out .= self::formRow($row, $hint === '' ? '' : '<span class="taxmod-form-explain">' . esc_html($hint) . '</span>');
+        }
+
+        return '<div class="taxmod-form taxmod-form-settings">' . ($actions === '' ? '' : self::toolbar([$actions])) . $out . '</div>';
+    }
+
+    /** @param array{label: string, control: string, for?: string} $row */
+    private static function formRow(array $row, string $third): string
+    {
+        $for = (string) ($row['for'] ?? '');
+
+        return '<div class="taxmod-form-row">'
+            . ($for === ''
+                ? '<span class="taxmod-form-label">' . esc_html($row['label']) . '</span>'
+                : '<label class="taxmod-form-label" for="' . esc_attr($for) . '">' . esc_html($row['label']) . '</label>')
+            . '<span class="taxmod-form-field">' . $row['control'] . '</span>'
+            . $third
+            . '</div>';
     }
 
     /**
@@ -1201,6 +1227,18 @@ final class ListPage
      * ⚠️ *His word, 2026-11-12: «Rücksprung sollte natürlich überall vorhanden sein».* The page knows where back is (the list it
      * came from), so it passes the address; the record editor's «return to» is where a save lands, not where back is.
      */
+    /**
+     * D-1521: the one head of a page — the way back and the title in one white box across the whole width. ⚠️ *His word
+     * 2026-11-20: «warum machen wir den Pfeil nicht vor den Workbench-EG … dass wir da diese Zeile, die extra nicht brauchen»,
+     * «wenn das Workbench-EG auch in einer weißen Box wäre … von links bis ganz rechts».* The back arrow belongs here, never
+     * in the toolbar below.
+     */
+    public static function head(string $title, string $backUrl = '', string $backLabel = ''): string
+    {
+        return '<div class="taxmod-page-head">' . ($backUrl === '' ? '' : self::back($backUrl, $backLabel))
+            . '<h2>' . esc_html($title) . '</h2></div>';
+    }
+
     public static function back(string $url, string $label = ''): string
     {
         return '<a class="button taxmod-icon-button taxmod-back" href="' . esc_url($url) . '" title="' . esc_attr($label === '' ? __('Back', 'taxmod') : $label) . '">'

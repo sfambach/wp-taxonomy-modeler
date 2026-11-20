@@ -6006,7 +6006,8 @@ final class Rendering implements Presets, \Taxmod\Core\Port\FieldAddons
             // ansicht … wo ich erst den knoten auswähle … dann … datensatz aus». Dieselben Sätze wie das Angebot, nur nach ihren Knoten
             // gelegt; aus dem schon geladenen Unterbaum, ohne weitere Abfrage.*
             if ($purpose === Purpose::Edit && isset($ziele[$relation->toNodeId])) {
-                $aus['baum'][$relation->id] = $this->recordTreeOf($ziele[$relation->toNodeId], $saetzeJeKnoten, $aus['angebot'][$relation->id] ?? [], $suche, $passend);
+                $ziel = $ziele[$relation->toNodeId];
+                $aus['baum'][$relation->id] = $this->recordTreeOf($ziel, $saetzeJeKnoten, $aus['angebot'][$relation->id] ?? [], $suche, $passend, $this->parentsInOffer($ziel, $unterZiel[$ziel->id] ?? [$ziel->id], $aus['angebot'][$relation->id] ?? [], $werte));
             }
         }
 
@@ -6115,6 +6116,58 @@ final class Rendering implements Presets, \Taxmod\Core\Port\FieldAddons
         };
     }
 
+    /** @var array<int, ?int> Je Ziel die Kante, über die seine Sätze einander als Vater tragen (D-1521). */
+    private array $vaterKante = [];
+
+    /**
+     * Welcher angebotene Satz welchen anderen angebotenen Satz als Vater trägt ([D-1521](../../../docs/NewConcept/90-decision-log.md)).
+     *
+     * ⚠️ *Der Vater ist keine Sonderregel für Lagerorte: es ist die **eine** einwertige Kante, die aus dem Ziel (oder einem Knoten darunter)
+     * wieder auf das Ziel zeigt. Gibt es keine oder mehrere, bleibt es eine Liste. Aus den schon gelesenen Werten, ohne weitere Abfrage
+     * je Satz (`CD-7`).*
+     *
+     * @param  list<int>                $unter  das Ziel und seine Knoten
+     * @param  array<int, string>       $angebot
+     * @param  array<int, list<\Taxmod\Core\Model\RelationRecord>> $werte
+     * @return array<int, int> Satz ⇒ Vater
+     */
+    private function parentsInOffer(Node $ziel, array $unter, array $angebot, array $werte): array
+    {
+        if ($angebot === [] || $this->relations === null) {
+            return [];
+        }
+
+        if (! array_key_exists($ziel->id, $this->vaterKante)) {
+            $innen   = array_fill_keys($unter, true);
+            $kandidat = array_values(array_filter(
+                $this->relations->fieldRelationsTo([$ziel->id]),
+                static fn (Relation $r): bool => isset($innen[$r->fromNodeId]) && ! $r->multiplicity->allowsMany()
+            ));
+            $this->vaterKante[$ziel->id] = count($kandidat) === 1 ? $kandidat[0]->id : null;
+        }
+
+        $kante = $this->vaterKante[$ziel->id];
+
+        if ($kante === null) {
+            return [];
+        }
+
+        $eltern = [];
+
+        foreach (array_keys($angebot) as $satzId) {
+            foreach ($werte[$satzId] ?? [] as $zeile) {
+                $vater = $zeile->value->reference;
+
+                if ($zeile->relationId === $kante && $zeile->value->referenceSpace === ReferenceSpace::Record && $vater !== null && $vater !== $satzId && isset($angebot[$vater])) {
+                    $eltern[$satzId] = $vater;
+                    break;
+                }
+            }
+        }
+
+        return $eltern;
+    }
+
     /**
      * Die Sätze unter einem Ziel als Baum seiner Knoten — je Knoten Tiefe, Name und seine eigenen Sätze; ein Ast ohne Satz fällt
      * weg, damit der Dialog nicht durch leere Ordner führt (D-791).
@@ -6124,7 +6177,7 @@ final class Rendering implements Presets, \Taxmod\Core\Port\FieldAddons
      * @param  array<int, string>                              $suche Was die Suche im Dialog je Satz-Id durchsucht (Schritt 2).
      * @return list<array{depth: int, name: string, records: array<int, string>, search: array<int, string>}>
      */
-    private function recordTreeOf(Node $ziel, array $saetzeJeKnoten, array $worte, array $suche = [], ?array $passend = null): array
+    private function recordTreeOf(Node $ziel, array $saetzeJeKnoten, array $worte, array $suche = [], ?array $passend = null, array $eltern = []): array
     {
         $kinder = [];
 
@@ -6140,7 +6193,7 @@ final class Rendering implements Presets, \Taxmod\Core\Port\FieldAddons
         }
 
         $zeilen = [];
-        $lauf   = function (Node $knoten, int $tiefe) use (&$lauf, &$zeilen, $kinder, $saetzeJeKnoten, $worte, $suche, $passend): bool {
+        $lauf   = function (Node $knoten, int $tiefe) use (&$lauf, &$zeilen, $kinder, $saetzeJeKnoten, $worte, $suche, $passend, $eltern): bool {
             $eigene  = [];
             $gesucht = [];
 
@@ -6164,10 +6217,23 @@ final class Rendering implements Presets, \Taxmod\Core\Port\FieldAddons
                 $eigene = array_replace(array_intersect_key($eigene, $treffer), $eigene);
             }
 
+            // ⚠️ **Sätze, die einander als Vater tragen, stehen als Baum** ([D-1521](../../../docs/NewConcept/90-decision-log.md)) — *sein Wort
+            // 2026-11-20: «wenn die Struktur nur 1 tief ist … dann ist es eine Liste. Und wenn es tiefer ist, ist es ein Baum».* Am Knoten
+            // stehen nur die Sätze ohne Vater im Angebot; die Kinder eines Satzes folgen als eigener Ast unter seinem Wort.
+            $kinderSaetze = [];
+
+            foreach (array_keys($eigene) as $satzId) {
+                if (isset($eltern[$satzId])) {
+                    $kinderSaetze[$eltern[$satzId]][] = $satzId;
+                }
+            }
+
+            $oben = array_diff_key($eigene, $eltern);
+
             $zeilen[] = [
                 'depth'   => $tiefe,
                 'name'    => $knoten->name,
-                'records' => $eigene,
+                'records' => $kinderSaetze === [] ? $eigene : $oben,
                 'search'  => $gesucht,
                 'match'   => $treffer,
                 // *Wo ein neuer Satz entstehen kann — die Seite des Knotens, vom Rand (Zeile 154).*
@@ -6179,6 +6245,32 @@ final class Rendering implements Presets, \Taxmod\Core\Port\FieldAddons
                 'createWord' => $this->createWord,
             ];
             $etwas    = $eigene !== [];
+
+            if ($kinderSaetze !== []) {
+                $satzAst = function (int $vater, int $tief, array $gesehen) use (&$satzAst, &$zeilen, $kinderSaetze, $eigene, $gesucht, $treffer, $knoten): void {
+                    $reihe = array_intersect_key($eigene, array_flip($kinderSaetze[$vater] ?? []));
+                    $zeilen[] = [
+                        'depth'   => $tief,
+                        'name'    => (string) ($eigene[$vater] ?? '#' . $vater),
+                        'records' => $reihe,
+                        'search'  => array_intersect_key($gesucht, $reihe),
+                        'match'   => array_intersect_key($treffer, $reihe),
+                        'node'    => $knoten->id,
+                    ];
+
+                    foreach (array_keys($reihe) as $kind) {
+                        if (isset($kinderSaetze[$kind]) && ! isset($gesehen[$kind])) {
+                            $satzAst($kind, $tief + 1, $gesehen + [$kind => true]);
+                        }
+                    }
+                };
+
+                foreach (array_keys($oben) as $wurzel) {
+                    if (isset($kinderSaetze[$wurzel])) {
+                        $satzAst($wurzel, $tiefe + 1, [$wurzel => true]);
+                    }
+                }
+            }
 
             foreach ($kinder[$knoten->id] ?? [] as $kind) {
                 $etwas = $lauf($kind, $tiefe + 1) || $etwas;
