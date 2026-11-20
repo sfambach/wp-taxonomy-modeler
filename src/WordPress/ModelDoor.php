@@ -8,6 +8,7 @@ use Taxmod\Core\Exception\ModelDoorRefused;
 use Taxmod\Core\Model\RecordType;
 use Taxmod\Core\Model\Setting\NodeProperties;
 use Taxmod\Core\Model\Variants;
+use Taxmod\Core\Rules\RuleBook;
 use Taxmod\WordPress\Persistence\WpdbRecordRepository;
 
 /**
@@ -700,6 +701,20 @@ final class ModelDoor
     public static function remembering(callable $work): mixed
     {
         return Persistence\Query::remembering($work);
+    }
+
+    /**
+     * The first rule whose every condition and filter holds — one rule set for printing and testing (D-1541), so no module
+     * builds its own. The module reads its rule records and hands them in; an empty answer is the caller's default.
+     *
+     * @param list<array{id: int, position: int, conditions: array<int, int>, filters?: list<array{field: int, value: string, operator?: string}>}> $rules
+     * @param array<int, list<int>>    $context condition key → the nodes that count, a thing with every node above
+     * @param array<int, list<string>> $values  field → the thing's values, for the filters
+     * @param ?\Closure(int): bool     $usable  a further test the caller adds per rule
+     */
+    public function firstRule(array $rules, array $context, array $values = [], ?\Closure $usable = null): ?int
+    {
+        return (new RuleBook($rules))->first($context, $values, $usable);
     }
 
     /**
