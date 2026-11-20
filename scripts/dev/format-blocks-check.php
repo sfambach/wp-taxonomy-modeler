@@ -51,6 +51,7 @@ try {
     $says('a text button is a link or a submit, one class for its height',
         str_contains(ListPage::button('Anlegen', 'https://example.org/'), 'class="button taxmod-button"')
         && str_contains(ListPage::button('Speichern', '', true, 'do', 'save'), '<button type="submit" class="button taxmod-button button-primary" name="do" value="save"'));
+    $says('a script-only button is no submit', str_contains(ListPage::button('Drucken', attributes: ['type' => 'button']), '<button type="button" class="button taxmod-button"'));
     $says('an icon button is a square with its word as tooltip',
         str_contains(ListPage::iconButton('edit', 'Bearbeiten', 'https://example.org/'), 'taxmod-square')
         && str_contains(ListPage::iconButton('edit', 'Bearbeiten', 'https://example.org/'), 'title="Bearbeiten"'));

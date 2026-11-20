@@ -1182,15 +1182,17 @@ final class ListPage
      * (sent with `$form` when it stands outside its form). One height for all of them comes from the stylesheet
      * (`--taxmod-control-height`), so no page sizes its own. A button that acts on one row is an {@see self::iconButton()}.
      *
-     * @param array<string, string> $attributes further attributes, unescaped values (e.g. `formtarget`, `title`, `disabled`)
+     * @param array<string, string> $attributes further attributes, unescaped values (e.g. `formtarget`, `title`, `disabled`); `type` replaces «submit» for a button that only scripts act on
      */
     public static function button(string $label, string $url = '', bool $primary = false, string $name = '', string $value = '', string $form = '', array $attributes = []): string
     {
         $class = 'button taxmod-button' . ($primary ? ' button-primary' : '');
+        $type  = (string) ($attributes['type'] ?? 'submit');
+        unset($attributes['type']);
 
         return $url !== ''
             ? '<a class="' . $class . '" href="' . esc_url($url) . '"' . self::attributes($attributes) . '>' . esc_html($label) . '</a>'
-            : '<button type="submit" class="' . $class . '"'
+            : '<button type="' . esc_attr($type) . '" class="' . $class . '"'
                 . ($name === '' ? '' : ' name="' . esc_attr($name) . '" value="' . esc_attr($value) . '"')
                 . ($form === '' ? '' : ' form="' . esc_attr($form) . '"') . self::attributes($attributes) . '>' . esc_html($label) . '</button>';
     }
@@ -1254,7 +1256,8 @@ final class ListPage
             esc_html($title),
             '<span class="taxmod-dialog-body" style="display:block;padding:.75em 1em;white-space:normal;text-align:left">' . $body . '</span>',
             $submit,
-            'button taxmod-dialog-open',
+            // D-1500: an opener drawn as its icon is an icon square like every other row action.
+            $icon === '' ? 'button taxmod-dialog-open' : 'button taxmod-square taxmod-dialog-open',
             '',
             __('Cancel', 'taxmod'),
             openerTitle: $icon === '' ? '' : $opener,
