@@ -869,17 +869,34 @@ final class EdgeDrawer implements Drawer
 
     private function input(ValueInput $in): string
     {
+        return self::control($in);
+    }
+
+    /**
+     * D-1501: the markup of one input as the form renderer draws it — the single place every page form and module form
+     * reaches through `ListPage::field`, so no page writes its own `<input>`.
+     */
+    public static function control(ValueInput $in): string
+    {
         $required = $in->required ? 'true' : null;
 
         return match ($in->kind) {
             InputKind::Unchosen => self::tag('input', ['type' => 'text', 'class' => 'taxmod-no-renderer', 'name' => $in->name, 'form' => $in->form, 'aria-required' => $required, 'value' => $in->value]),
             InputKind::Line     => self::tag('input', [
-                'type' => 'text', 'name' => $in->name, 'form' => $in->form, 'aria-required' => $required, 'value' => $in->value,
+                'type' => 'text', 'id' => $in->id, 'placeholder' => $in->placeholder, 'name' => $in->name, 'form' => $in->form, 'aria-required' => $required, 'value' => $in->value,
                 'size' => $in->size, 'pattern' => $in->pattern, 'inputmode' => $in->inputMode,
             ]),
             InputKind::Number   => self::tag('input', [
-                'type' => 'number', 'name' => $in->name, 'form' => $in->form, 'aria-required' => $required, 'value' => $in->value,
+                'type' => 'number', 'id' => $in->id, 'placeholder' => $in->placeholder, 'name' => $in->name, 'form' => $in->form, 'aria-required' => $required, 'value' => $in->value,
                 'min' => $in->min, 'max' => $in->max, 'step' => $in->step,
+            ]),
+            InputKind::Decimal  => self::tag('input', [
+                'type' => 'text', 'id' => $in->id, 'placeholder' => $in->placeholder, 'inputmode' => 'decimal', 'name' => $in->name, 'form' => $in->form, 'aria-required' => $required,
+                'value' => $in->value, 'size' => $in->size,
+            ]),
+            InputKind::Secret   => self::tag('input', [
+                'type' => 'password', 'id' => $in->id, 'placeholder' => $in->placeholder, 'name' => $in->name, 'form' => $in->form, 'aria-required' => $required, 'value' => '',
+                'autocomplete' => 'new-password', 'size' => $in->size,
             ]),
             InputKind::Range    => self::tag('input', [
                 'type' => 'range', 'name' => $in->name, 'form' => $in->form, 'aria-required' => $required, 'value' => $in->value,
@@ -888,8 +905,8 @@ final class EdgeDrawer implements Drawer
             InputKind::Colour   => $in->value !== '' && ! self::isPatchable($in->value)
                 ? self::tag('input', ['type' => 'text', 'name' => $in->name, 'form' => $in->form, 'value' => $in->value])
                 : self::tag('input', ['type' => 'color', 'name' => $in->name, 'form' => $in->form, 'value' => $in->value]),
-            InputKind::Email    => self::tag('input', ['type' => 'email', 'name' => $in->name, 'form' => $in->form, 'aria-required' => $required, 'value' => $in->value]),
-            InputKind::LongText => '<textarea' . self::attribute('name', $in->name) . self::attribute('form', $in->form)
+            InputKind::Email    => self::tag('input', ['type' => 'email', 'id' => $in->id, 'placeholder' => $in->placeholder, 'name' => $in->name, 'form' => $in->form, 'aria-required' => $required, 'value' => $in->value]),
+            InputKind::LongText => '<textarea' . self::attribute('id', $in->id) . self::attribute('placeholder', $in->placeholder) . self::attribute('name', $in->name) . self::attribute('form', $in->form)
                 . ($in->required ? ' aria-required="true"' : '') . self::attribute('cols', $in->columns) . self::attribute('rows', $in->rows)
                 . '>' . self::e($in->value) . '</textarea>',
             InputKind::Code     => '<textarea class="large-text code taxmod-code" spellcheck="false"' . self::attribute('data-taxmod-code', $in->note)
@@ -900,7 +917,7 @@ final class EdgeDrawer implements Drawer
                 . self::tag('input', ['type' => 'checkbox', 'name' => $in->name, 'form' => $in->form, 'value' => '1', 'checked' => $in->value === '1']),
             InputKind::Switch   => ToggleMarkup::input($in->name, $in->value === '1', $in->form),
             InputKind::Moment   => self::tag('input', [
-                'type' => self::momentType($in->note), 'name' => $in->name, 'form' => $in->form, 'aria-required' => $required, 'value' => $in->value,
+                'type' => self::momentType($in->note), 'id' => $in->id, 'placeholder' => $in->placeholder, 'name' => $in->name, 'form' => $in->form, 'aria-required' => $required, 'value' => $in->value,
                 'pattern' => $in->pattern, 'min' => $in->min, 'max' => $in->max,
             ]),
             InputKind::Fixed    => self::tag('input', ['type' => 'text', 'class' => 'taxmod-locked', 'value' => $in->shown ?? '', 'disabled' => true, 'title' => $in->note])
