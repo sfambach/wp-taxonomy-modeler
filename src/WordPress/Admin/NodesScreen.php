@@ -1279,7 +1279,7 @@ final class NodesScreen
             $this->types ?? throw new \LogicException('No type nodes.'),
             $this->rendering,
             $this->changelog,
-            // The filter stays one version as a bridge for modules not yet listening to `RecordsMerging`.
+            // event bridge (D-1499): the filter stays until every module listens to `RecordsMerging` and is live.
             [new \Taxmod\Core\Event\SharedMergeParticipant(), new \Taxmod\WordPress\FilterMergeParticipant()]
         ))->merge($from, $into);
 

@@ -25,9 +25,12 @@ final class JournalListener
         $provider->listen(ModelChanged::class, $listener->changed(...));
         $provider->listen(ChangedTogether::class, $listener->together(...));
         // After the chronicle, so a listener finds the act number on the event and writes inside the same act.
-        $shared = SharedListeners::dispatcher();
-        $provider->listen(ModelChanged::class, $shared->dispatch(...));
-        $provider->listen(ChangedTogether::class, $shared->dispatch(...));
+        // Asked at sending, not here: a service is often built before every module has subscribed.
+        $relay = static function (object $event): void {
+            SharedListeners::dispatcher()->dispatch($event);
+        };
+        $provider->listen(ModelChanged::class, $relay);
+        $provider->listen(ChangedTogether::class, $relay);
 
         return new Dispatcher($provider);
     }

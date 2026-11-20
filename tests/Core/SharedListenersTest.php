@@ -112,4 +112,44 @@ final class SharedListenersTest extends TestCase
     {
         self::assertSame([], (new SharedMergeParticipant())->onMerge(1, 2));
     }
+
+    public function testTheListenersAreGatheredOnceBeforeTheFirstEvent(): void
+    {
+        $asked = 0;
+        $heard = 0;
+        SharedListeners::gatherWith(static function ($listeners) use (&$asked, &$heard): bool {
+            ++$asked;
+            $listeners->listen(NodeChanged::class, static function () use (&$heard): void {
+                ++$heard;
+            });
+
+            return true;
+        });
+        $dispatcher = JournalListener::dispatcherFor(new RecordedChanges());
+        self::assertSame(0, $asked, 'Building a service gathers nothing yet.');
+
+        $dispatcher->dispatch(ModelChanged::of('node', 3, 'renamed', 'a', 'b', 2));
+        $dispatcher->dispatch(ModelChanged::of('node', 3, 'renamed', 'b', 'c', 3));
+
+        self::assertSame(1, $asked);
+        self::assertSame(2, $heard);
+    }
+
+    public function testAGatheringTooEarlyIsTriedAgain(): void
+    {
+        $ready = false;
+        $asked = 0;
+        SharedListeners::gatherWith(static function () use (&$ready, &$asked): bool {
+            ++$asked;
+
+            return $ready;
+        });
+
+        SharedListeners::provider();
+        $ready = true;
+        SharedListeners::provider();
+        SharedListeners::provider();
+
+        self::assertSame(2, $asked);
+    }
 }

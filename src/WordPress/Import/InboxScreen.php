@@ -955,6 +955,9 @@ final class InboxScreen
         }
 
         foreach ($events as $event) {
+            // D-1499: the core event; a listener throwing fails the take visibly, like any other refusal.
+            \Taxmod\Core\Event\SharedListeners::dispatcher()->dispatch(new \Taxmod\Core\Event\OrderReported(...$event));
+            // event bridge (D-1499): the action stays until every module listens to `OrderReported` and is live.
             do_action(self::STOCK_EVENT, ...$event);
         }
 

@@ -207,3 +207,9 @@ Am Gate bestätigt (18.11., D-1429 A14), mit Bedingung: eine neue Art nur, wenn 
 - Prüfungsänderungen Teil 14b (PR-9, benannt): die Kerntests und Grenzlauf-Prüfungen lesen das Ergebnis nicht mehr als `->markup`, sondern zeichnen es mit dem Rand-Zeichner (`Draw/Markup::of`), weil `RenderResult` kein Markup mehr trägt; die Erwartungen sind unverändert. Wo Tests einem Behälter erfundene Teile gaben, sind es Beschreibungen (`tests/Support/Fixture`: Worte statt `<i>…</i>`/`<input …>`, die Zeichen `«…»` stehen für sie); die Behälterregeln, die sie prüfen, sind dieselben. `DialogNumberTest` nennt die Klasse an ihrem neuen Ort. `core-html-ratchet-check`: «core files handing markup through» zählt jetzt `Drawn`, `->markup`, `drawWith` und `RenderResult::draw` im Kern (Decke 1 → 0), neu «places asking whether a piece shows» (Decke 2, A20), «old names bridged» 10 → 11 (D-1431).
 - Prüfungsänderungen Teil 9 (PR-9, benannt): `FlatRecordDialogTest`, `RecordDialogCreateTest`, `PickFieldTest` zeichnen das Ergebnis jetzt mit dem Rand-Zeichner, weil `browserBody`/`pick` Beschreibungen geben; die Erwartungen bleiben.
 - `design-guard`: die geteilten Bausteine stehen jetzt unter `src/WordPress/Draw/TileGrid.php` statt `src/Core/Tile/` (benannte Prüfungsänderung, PR-9: nur der Pfad folgt dem Umzug).
+
+### A8 · Ein Verteiler fürs Plugin — gebaut 20.11.2026 (D-1498, D-1499)
+
+- `SharedListeners`: jede Modelländerung geht nach dem Änderungsbuch an die gemeinsamen Zuhörer; Module melden sich über die Action `taxmod_listen` an. Ereignis-ID je Ereignis (`EventId`).
+- Echte Ereignisse im Kern: `RecordsMerging` (statt `taxmod_merge_record`), `OrderReported` (statt `taxmod_stock_event`); die alten Hooks als Brücken, gezählt von der Ratsche (Decke 2 → 0).
+- Lager hört beide (0.64.153). Abfragen und Beiträge bleiben WP-Filter (Gate 20.11.).
