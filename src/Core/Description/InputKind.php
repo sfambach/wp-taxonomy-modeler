@@ -15,6 +15,10 @@ enum InputKind: string
     case LongText = 'long_text';
     case Code = 'code';
     case Number = 'number';
+    /** D-1501: a decimal typed in the site's notation (1,5), read back by `DecimalText::typed`. */
+    case Decimal = 'decimal';
+    /** D-1501: a secret such as a password or a key; never sent back filled in. */
+    case Secret = 'secret';
     /** A number between `min` and `max`, shown with its value beside it. */
     case Range = 'range';
     case Colour = 'colour';
