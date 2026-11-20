@@ -14,9 +14,12 @@
  *
  *     php scripts/dev/standard-blocks-check.php
  *
+ * 3. Same function, same building block (D-1511, Stefan 20.11. «ist die gleiche Funktionalität»): reading the text of a
+ *    label or stamp PDF belongs to the label module — no other module parses a PDF, in PHP or in its scripts.
+ *
  * Needs no WordPress.
  *
- * @see docs/NewConcept/90-decision-log.md D-1508, D-1488, D-1502
+ * @see docs/NewConcept/90-decision-log.md D-1508, D-1511, D-1488, D-1502
  */
 
 /** Counted 2026-11-20 on main; only ever lowered. Each entry: a fixed word list, not a choice of records. */
@@ -51,6 +54,16 @@ const PRINTER_OWNERS = ['wp_tax_label/', 'wp-taxonomy-modeler/src/WordPress/Prin
 
 /** Known before this guard; each falls out with the named release, and the guard turns red when it is gone but still listed. */
 const PRINTER_PENDING = [
+];
+
+/** Reading a PDF's text: only the label module (D-1511). */
+const PDF_READER = '/getTextContent\s*\(|ToUnicode|FlateDecode/';
+
+/** Known before D-1511; each falls out when its module takes the label module's reader, and turns red when gone but still listed. */
+const PDF_PENDING = [
+    'wp_tax_api_ebay/src/Core/Shipping/LabelText.php' => 'eBay reads labels through the label module (D-1511)',
+    'wp_tax_ebay/src/Core/Shipping/LabelText.php'     => 'same repository under its old name',
+    'wp_tax_shipping/assets/stamp-upload.js'          => 'Versand takes stamps from the mail chain (D-1511)',
 ];
 
 /** A printer or print-queue setting or field: a stored key, a drawn field, a select of printers. */
@@ -116,6 +129,33 @@ foreach ($repos as $repo) {
             }
             if (! $found && isset(PRINTER_PENDING[$name])) {
                 printf("FAIL %s: no printer setting any more — strike it from PRINTER_PENDING\n", $name);
+                $red++;
+            }
+        }
+    }
+}
+
+foreach ($repos as $repo) {
+    foreach (['src', 'assets'] as $folder) {
+        if (! is_dir($repo . '/' . $folder) || str_starts_with(basename($repo), 'wp_tax_label')) {
+            continue;
+        }
+
+        foreach (new RecursiveIteratorIterator(new RecursiveDirectoryIterator($repo . '/' . $folder, FilesystemIterator::SKIP_DOTS)) as $file) {
+            $path = (string) $file;
+            $name = basename($repo) . substr($path, strlen($repo));
+
+            if (str_contains($name, '/pdfjs/') || ! preg_match('/\.(php|js)$/', $path)) {
+                continue;
+            }
+
+            $reads = preg_match(PDF_READER, (string) file_get_contents($path)) === 1;
+
+            if ($reads && ! isset(PDF_PENDING[$name])) {
+                printf("FAIL %s: reads a PDF itself — that is the label module's building block (D-1511)\n", $name);
+                $red++;
+            } elseif (! $reads && isset(PDF_PENDING[$name]) && is_file($path)) {
+                printf("FAIL %s: reads no PDF any more — strike it from PDF_PENDING\n", $name);
                 $red++;
             }
         }
