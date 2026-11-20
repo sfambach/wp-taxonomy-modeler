@@ -2398,10 +2398,22 @@ fieldset.taxmod-read-only {
  */
 .taxmod-form-row {
     display: grid;
-    grid-template-columns: minmax(6em, 11em) minmax(0, 1fr) auto;
+    /* D-1521, his word 2026-11-20: «dass das Fragezeichen ganz nach rechts gewandert ist … direkt ans Feld pappen» — the field
+     * column ends at the readable width of a text field, the «?» or the explanation follows right after it; every row of a
+     * page shares the three columns, so nothing jumps with the length of a label. */
+    grid-template-columns: minmax(6em, 14em) minmax(0, 40em) minmax(0, 1fr);
     column-gap: .5em;
     align-items: center;
     margin: .2em 0;
+}
+
+.taxmod-form-row > :nth-child(3) {
+    justify-self: start;
+}
+
+.taxmod-form-explain {
+    color: #50575e;
+    font-size: 13px;
 }
 
 .taxmod-form-label {

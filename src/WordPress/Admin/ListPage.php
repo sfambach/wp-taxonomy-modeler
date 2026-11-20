@@ -565,18 +565,44 @@ final class ListPage
         $out = '';
 
         foreach ($rows as $row) {
-            $for  = (string) ($row['for'] ?? '');
-            $out .= '<div class="taxmod-form-row">'
-                . ($for === ''
-                    ? '<span class="taxmod-form-label">' . esc_html($row['label']) . '</span>'
-                    : '<label class="taxmod-form-label" for="' . esc_attr($for) . '">' . esc_html($row['label']) . '</label>')
-                . '<span class="taxmod-form-field">' . $row['control'] . '</span>'
-                . \Taxmod\Core\Renderer\HintMarkup::icon((string) ($row['hint'] ?? ''))
-                . '</div>';
+            $out .= self::formRow($row, \Taxmod\Core\Renderer\HintMarkup::icon((string) ($row['hint'] ?? '')));
         }
 
         // D-1308: the buttons stand above the fields, as the toolbar.
         return '<div class="taxmod-form">' . self::toolbar([$actions]) . $out . '</div>';
+    }
+
+    /**
+     * D-1521: a settings page in three columns — name, field, and what is expected written out beside it, not below. ⚠️ *His
+     * word 2026-11-20: «die Feldbenamsung, das Feld und in der dritten Spalte steht dann die Erklärung dazu … wir haben rechts
+     * genügend Platz … wir müssen es nicht drunter machen und die Seite damit höher».* Same rows as `form()`; `hint` is the text.
+     *
+     * @param list<array{label: string, control: string, hint?: string, for?: string}> $rows
+     */
+    public static function settings(array $rows, string $actions = ''): string
+    {
+        $out = '';
+
+        foreach ($rows as $row) {
+            $hint = (string) ($row['hint'] ?? '');
+            $out .= self::formRow($row, $hint === '' ? '' : '<span class="taxmod-form-explain">' . esc_html($hint) . '</span>');
+        }
+
+        return '<div class="taxmod-form taxmod-form-settings">' . ($actions === '' ? '' : self::toolbar([$actions])) . $out . '</div>';
+    }
+
+    /** @param array{label: string, control: string, for?: string} $row */
+    private static function formRow(array $row, string $third): string
+    {
+        $for = (string) ($row['for'] ?? '');
+
+        return '<div class="taxmod-form-row">'
+            . ($for === ''
+                ? '<span class="taxmod-form-label">' . esc_html($row['label']) . '</span>'
+                : '<label class="taxmod-form-label" for="' . esc_attr($for) . '">' . esc_html($row['label']) . '</label>')
+            . '<span class="taxmod-form-field">' . $row['control'] . '</span>'
+            . $third
+            . '</div>';
     }
 
     /**
