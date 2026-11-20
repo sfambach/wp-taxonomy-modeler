@@ -13,25 +13,25 @@
  * @see docs/NewConcept/90-decision-log.md D-1500
  */
 
-/** Counted 2026-11-20 on main; only ever lowered. */
+/** Counted 2026-11-20 on main, lowered the same day after the D-1500 module PRs; only ever lowered. */
 const CEILINGS = [
     'wp-taxonomy-modeler'    => 22,
     'wp_tax_api_amazon'      => 0,
-    'wp_tax_api_dhl'         => 1,
+    'wp_tax_api_dhl'         => 0,
     'wp_tax_api_dpd'         => 0,
-    'wp_tax_api_ebay'        => 12,
+    'wp_tax_api_ebay'        => 6,
     'wp_tax_api_gls'         => 0,
     'wp_tax_api_hermes'      => 0,
-    'wp_tax_api_jlcpcb'      => 3,
+    'wp_tax_api_jlcpcb'      => 2,
     'wp_tax_api_mailreaders' => 0,
     'wp_tax_api_mouser'      => 0,
     'wp_tax_api_paypal'      => 0,
     'wp_tax_ebay'            => 12,
-    'wp_tax_label'           => 2,
+    'wp_tax_label'           => 1,
     'wp_tax_log_sales'       => 0,
     'wp_tax_mail'            => 0,
-    'wp_tax_manufacturing'   => 3,
-    'wp_tax_stock'           => 18,
+    'wp_tax_manufacturing'   => 1,
+    'wp_tax_stock'           => 3,
 ];
 
 $self  = dirname(__DIR__, 2);
