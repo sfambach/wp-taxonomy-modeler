@@ -2,7 +2,7 @@
 
 /**
  * D-1500: the shared building blocks of a page's look keep their promises — `ListPage::date`, `money`, `quantity`, `button`,
- * `iconButton`, `listBar`. Boundary run (PR-9): needs a WordPress (`WP_ROOT`), writes nothing but two options it restores.
+ * `iconButton`, `listBar`. Boundary run (PR-9): needs a WordPress (`WP_ROOT`), writes nothing but two options it restores, inside the no-write bracket.
  *
  *     WP_ROOT=/home/user/wordpress php scripts/dev/format-blocks-check.php
  *
@@ -12,6 +12,8 @@
 define('WP_USE_THEMES', false);
 
 require rtrim(getenv('WP_ROOT') ?: '/home/user/wordpress', '/') . '/wp-load.php';
+// ⚠️ **Kein Wächter schreibt in das Modell des Eigentümers** — siehe `lib/no-write.php`; die zwei Optionen stellt er ohnehin zurück.
+require __DIR__ . '/lib/no-write.php';
 
 use Taxmod\WordPress\Admin\ListPage;
 
