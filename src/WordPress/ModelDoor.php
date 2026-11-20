@@ -358,6 +358,30 @@ final class ModelDoor
         return $out;
     }
 
+    /**
+     * The symbol of each of these nodes (D-1534) — a code that stays when the name is translated, such as the ISO code of a
+     * country under «Länder» («DE» beside «Deutschland» / «Germany»). Only a stored symbol counts, never the name as a
+     * fallback: a node without one is absent. The default language wins over another one. One query (CD-7).
+     *
+     * @param list<int> $nodes
+     * @return array<int, string> node id → symbol
+     */
+    public function symbolsOf(array $nodes): array
+    {
+        $ids     = array_values(array_unique(array_map('intval', $nodes)));
+        $default = Admin\SettingsScreen::neutralLocale();
+        $out     = [];
+
+        foreach ($ids === [] ? [] : (new Persistence\WpdbLabelRepository())->forOwners($ids, \Taxmod\Core\Model\IdentitySpace::Node) as $label) {
+            if ($label->role === \Taxmod\Core\Model\SeededRole::Symbol && $label->number === \Taxmod\Core\Model\Label::BASE_NUMBER && $label->text !== ''
+                && (! isset($out[$label->ownerId]) || $label->locale === $default)) {
+                $out[$label->ownerId] = $label->text;
+            }
+        }
+
+        return $out;
+    }
+
     /** @return array<int, string> child node id → name */
     public function children(int $node): array
     {
