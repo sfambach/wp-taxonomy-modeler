@@ -22,6 +22,9 @@ final class DialogMarkup
     /** Die Klasse eines Dialogs ohne Titel — gezählt vom Wächter, nie gestaltet. */
     public const UNTITLED = 'taxmod-dialog-untitled';
 
+    /** The one wider size of a dialog (D-1539). */
+    public const WIDE = 'taxmod-dialog-wide';
+
     /**
      * @param string $switch Die `id` des Schalters — eindeutig auf der Seite.
      * @param string $opener Was als Öffner steht (Wort, Icon, der gewählte Name).
@@ -48,6 +51,8 @@ final class DialogMarkup
         string $openerTitle = '',
         /** The title as text (verb + subject, D-1436), where `$head` is not the title but the current choice of a chooser. */
         string $title = '',
+        /** D-1539: a dialog whose content is a list to choose from (stock, substitutes) opens wide — one size more, the same everywhere. */
+        bool $wide = false,
     ): string {
         $id = Html::escape($switch);
 
@@ -82,7 +87,7 @@ final class DialogMarkup
                 : (str_contains($openerClass, ControlMarkup::ICON_ONLY) && preg_match('/aria-label="([^"]*)"/', $opener, $name) === 1 ? ' title="' . $name[1] . '"' : ''))
             . '>' . $opener . '</label>'
             . $baum
-            . '<span class="taxmod-dialog' . (trim(strip_tags($title !== '' ? $title : $head)) === '' ? ' ' . self::UNTITLED : '') . '">'
+            . '<span class="taxmod-dialog' . (trim(strip_tags($title !== '' ? $title : $head)) === '' ? ' ' . self::UNTITLED : '') . ($wide ? ' ' . self::WIDE : '') . '">'
             . '<span class="taxmod-dialog-shade"></span>'
             . '<span class="taxmod-dialog-panel">'
             // *Die Wahl bleibt in `.taxmod-chooser-current`, denn dort schreibt das Skript eine neue hinein.*

@@ -50,6 +50,8 @@ $wahl = DialogMarkup::of('dt-c', 'x', '—', '', '', title: 'Choose: Lagerort');
 $say(str_contains($ohne, DialogMarkup::UNTITLED), 'ein Dialog ohne Titel trägt die Klasse');
 $say(! str_contains($mit, DialogMarkup::UNTITLED) && str_contains($mit, 'taxmod-dialog-title" role="heading" aria-level="2"><span class="taxmod-chooser-current">Umbuchen: Widerstand'), 'einer mit Titel nicht, und der Titel steht in der Leiste');
 $say(str_contains($wahl, '>Choose: Lagerort</span>') && str_contains($wahl, 'taxmod-dialog-current"><span class="taxmod-chooser-current">—'), 'ein Wähler: Titel in der Leiste, die Wahl darunter');
+$weit = \Taxmod\WordPress\Admin\ListPage::dialogAction('dt-d', 'Ersatz', 'Ersatz wählen: Sicherung', '', 'do', 'x', 'OK', wide: true);
+$say(str_contains($weit, 'taxmod-dialog ' . DialogMarkup::WIDE) && ! str_contains($mit, DialogMarkup::WIDE), 'ein breiter Dialog trägt die eine breite Grösse, ein gewöhnlicher nicht (D-1539)');
 
 echo "\n== Modeller-Seiten ==\n";
 $plugin = (new ReflectionClass(\Taxmod\WordPress\Plugin::class))->newInstanceWithoutConstructor();
