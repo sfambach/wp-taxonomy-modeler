@@ -3221,8 +3221,10 @@ details.taxmod-record-section > summary {
     min-width: 0;
 }
 
-/* ListPage::grid — the one read-only table (plan-dubletten row 8). */
-.taxmod-grid { width: auto; max-width: 60em; }
+/* ListPage::grid — the one read-only table (plan-dubletten row 8). D-1529: a list is as wide as its page, like ListPage::table.
+ * ⚠️ *His word 2026-11-20: «die Tabellenansichten sollen möglichst immer die volle Breite haben … Formularansichten können
+ * schmaler sein».* No list class sets a width of its own (standard-blocks-check rule 9). */
+.taxmod-grid { width: 100%; }
 .taxmod-grid .is-number { text-align: right; white-space: nowrap; }
 
 /* D-1413: ein nicht veröffentlichter eigener Beitrag sagt seinen Status neben dem Link. */
