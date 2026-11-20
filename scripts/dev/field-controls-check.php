@@ -102,6 +102,14 @@ $wrote = $tr === [] ? null : wp_get_ability('taxmod/apply')->execute(['changes' 
 check('write-data takes the part form as it comes', is_array($wrote), is_wp_error($wrote) ? $wrote->get_error_message() : wp_json_encode($wrote));
 $back = $tr === [] ? '' : ($door->controls($ref['k'], [$tr['mass']], 'buy', '', $ref['r'])[$tr['mass']] ?? '');
 check('the written part stands in its control again', str_contains($back, 'value="3"'), $back);
+$dimension = wp_get_ability('taxmod/apply')->execute(['changes' => [
+    ['op' => 'add_field', 'ref' => 'abm', 'node' => $ref['k'], 'target' => 13411, 'name' => '__fc Abmessung', 'kind' => 'composition', 'multiplicity' => '0..1'],
+]]);
+$abm    = is_array($dimension) ? $dimension['refs']['abm'] : 0;
+$deep   = $abm === 0 ? [] : $door->typed($ref['k'], [$abm => ['0' => [13413 => ['0' => [4234 => '12', 4236 => '']], 13414 => ['0' => [4234 => '']]]]]);
+check('a part inside a part comes back one level deeper, the same form (D-1538)', ($deep[$abm]['0'][13413]['0'][4234] ?? null) === '12' && ! isset($deep[$abm]['0'][13414]), wp_json_encode($deep));
+$wroteDeep = $abm === 0 ? null : wp_get_ability('taxmod/apply')->execute(['changes' => [['op' => 'set_values', 'record' => $ref['r'], 'values' => $deep]]]);
+check('write-data takes the deeper form as it comes', is_array($wroteDeep), is_wp_error($wroteDeep) ? $wroteDeep->get_error_message() : wp_json_encode($wroteDeep));
 
 wp_set_current_user(0);
 check('without the capability no control is drawn', $door->controls($ref['k'], [$ref['count']], 'buy') === []);

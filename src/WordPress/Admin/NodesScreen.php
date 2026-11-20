@@ -624,15 +624,10 @@ final class NodesScreen
             $roh = $submitted[$relation->id] ?? null;
 
             if ($relation->kind === RelationKind::Composition && is_array($roh) && ! isset($roh['values'])) {
-                foreach ($roh as $partKey => $inner) {
-                    $filled = is_array($inner) ? array_filter(array_map(
-                        static fn (mixed $one): string => is_array($one) ? '' : self::typedText((string) $one),
-                        array_filter($inner, static fn (mixed $one, int|string $key): bool => absint($key) > 0, ARRAY_FILTER_USE_BOTH)
-                    ), static fn (string $one): bool => $one !== '') : [];
+                $filled = self::typedParts($roh);
 
-                    if ($filled !== []) {
-                        $parts[$relation->id][sanitize_key((string) $partKey)] = array_combine(array_map('absint', array_keys($filled)), $filled);
-                    }
+                if ($filled !== []) {
+                    $parts[$relation->id] = $filled;
                 }
             }
         }
@@ -658,6 +653,44 @@ final class NodesScreen
         }
 
         return $out + $parts;
+    }
+
+    /**
+     * The parts of a part field as posted, part key ⇒ inner relation ⇒ characters — or, for a part inside a part (the length of a
+     * size is itself a unit value), the same form again one level down (D-1538). Empty parts are left out.
+     *
+     * @param array<int|string, mixed> $byPart
+     * @return array<string, array<int, string|array<string, mixed>>>
+     */
+    private static function typedParts(array $byPart, int $depth = 0): array
+    {
+        $out = [];
+
+        foreach ($depth > 3 ? [] : $byPart as $partKey => $inner) {
+            if (! is_array($inner)) {
+                continue;
+            }
+
+            $filled = [];
+
+            foreach ($inner as $relationId => $one) {
+                if (absint($relationId) === 0) {
+                    continue;
+                }
+
+                $value = is_array($one) ? (isset($one['values']) ? [] : self::typedParts($one, $depth + 1)) : self::typedText((string) $one);
+
+                if ($value !== '' && $value !== []) {
+                    $filled[absint($relationId)] = $value;
+                }
+            }
+
+            if ($filled !== []) {
+                $out[sanitize_key((string) $partKey)] = $filled;
+            }
+        }
+
+        return $out;
     }
 
     /**
