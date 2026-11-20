@@ -3020,9 +3020,17 @@ pre.taxmod-code {
     margin-top: .75em;
 }
 
+/* D-1519, his wish 2026-11-20 19:12: «der Druckerdialog könnte etwas größer sein … auch größere Etiketten … komplett. Und …
+ * dass oben das Feld für Labels nicht in die Voransicht reinkommt» — a wider dialog and preview, and no field wider than its column. */
+.taxmod-label-dialog-options select,
+.taxmod-label-dialog-options input[type=text] {
+    max-width: 100%;
+    box-sizing: border-box;
+}
+
 @media (min-width: 783px) {
     .taxmod-dialog-panel:has(.taxmod-label-dialog-preview) {
-        width: min(52em, calc(100vw - 2em));
+        width: min(68em, calc(100vw - 2em));
     }
 
     .taxmod-label-dialog {
@@ -3037,7 +3045,7 @@ pre.taxmod-code {
     }
 
     .taxmod-label-dialog-preview {
-        flex: 0 0 320px;
+        flex: 0 0 min(440px, 50%);
         margin-top: 0;
     }
 }

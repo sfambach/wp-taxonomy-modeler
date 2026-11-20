@@ -1,6 +1,6 @@
 # Paket · Druckregeln — Konzeptentwurf
 
-**Stand 2026-11-20. Entwurf, nichts entschieden, nichts gebaut.** Alles ist Vorschlag (`INFERRED`), bis es eine `D-<nnn>` hat (`PR-3`).
+**Stand 2026-11-20. Entschieden als [D-1519](../../NewConcept/90-decision-log.md) (seine Karte 17:39, R1–R4; R3 17:44: der Standarddrucker bleibt). Gebaut: Etiketten 0.0.34, Lager 0.64.167; Modelländerung [`modellaenderung.json`](modellaenderung.json). Offen: das Entfernen der alten Wege (eigener Schritt).**
 
 **Seine Worte (2026-11-20, 17:07):**
 
