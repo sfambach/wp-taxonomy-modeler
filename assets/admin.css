@@ -3383,6 +3383,13 @@ details.taxmod-record-section > summary {
     padding: 0;
 }
 
+/* D-1527: an icon in a control box sits in its middle. ⚠️ *His word 2026-11-20: «das Filter-Icon ist immer noch verrutscht nach
+ * unten».* The glyph inherited the box's line height (30–38 px) inside its 20 px span, so it was drawn at the bottom; one line
+ * height of its own font size centres it in every square, every text button and every bar. Guarded by list-bar-row-check. */
+:is(.taxmod-page, .taxmod-shell-main, .wrap) :is(.button, .taxmod-square, button) .dashicons {
+    line-height: 1;
+}
+
 .taxmod-quantity {
     display: inline-flex;
     align-items: center;
