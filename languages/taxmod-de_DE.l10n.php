@@ -364,6 +364,7 @@ return [
         'One print service per computer with printers. It fetches only the jobs for the printers CUPS has on that computer.' => 'Ein Druckdienst je Rechner mit Druckern. Er holt nur die Aufträge für die Drucker, die CUPS auf diesem Rechner hat.',
         'Only a node that can be drawn has something to preview: one with fields of its own, or a simple type. A model is drawn by a renderer that does not exist yet.' => 'Nur ein zeichenbarer Knoten hat eine Vorschau: einer mit eigenen Feldern oder ein einfacher Typ. Ein Modell zeichnet ein Renderer, den es noch nicht gibt.',
         'Only updates — new orders and their data come from the API'                     => 'Nur Aktualisierungen — neue Bestellungen und ihre Daten kommen aus der API',
+        'Open'                                                                           => 'Öffnen',
         'Open %1$d · taken %2$d · discarded %3$d'                                        => 'Offen %1$d · übernommen %2$d · verworfen %3$d',
         'Open fully'                                                                     => 'Ganz öffnen',
         'Open in its module'                                                             => 'In seinem Modul öffnen',
