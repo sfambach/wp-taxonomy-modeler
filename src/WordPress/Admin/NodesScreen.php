@@ -5576,6 +5576,42 @@ final class NodesScreen
             }
         }
 
+        // ⚠️ **Auswahl aus Feld** ([D-1520](../../../docs/NewConcept/90-decision-log.md)): *gewählt werden darf nur, was das Quellfeld
+        // desselben Satzes trägt — nach diesem Speichern, also das geschickte Quellfeld, sonst das gespeicherte.*
+        $quellen   = $this->rendering->choiceSourcesOf(array_values($attributes));
+        $gespeichert = null;
+
+        foreach ($quellen as $relationId => $quelle) {
+            if (! array_key_exists($relationId, $submitted)) {
+                continue;
+            }
+
+            $gewaehlt = self::recordIdsIn($submitted[$relationId]);
+
+            if ($gewaehlt === []) {
+                continue;
+            }
+
+            if (array_key_exists($quelle, $submitted)) {
+                $erlaubt = self::recordIdsIn($submitted[$quelle]);
+            } else {
+                $gespeichert ??= $recordId === 0 ? [] : $this->data->valuesOf($recordId);
+                $erlaubt       = [];
+
+                foreach ($gespeichert as $zeile) {
+                    if ($zeile->relationId === $quelle && $zeile->value->reference !== null) {
+                        $erlaubt[] = (int) $zeile->value->reference;
+                    }
+                }
+            }
+
+            foreach (\Taxmod\Core\Addon\ChoiceFromFieldAddon::complaintsAbout($gewaehlt, $erlaubt) as $complaint) {
+                $quellName     = isset($attributes[$quelle]) ? $attributes[$quelle]->name : '#' . $quelle;
+                $beschwerden[] = $attributes[$relationId]->name . ': ' . str_replace('{field}', $quellName, $this->complaintText($complaint));
+                $gesammelt[]   = $complaint->at(\Taxmod\Core\Event\Address::ofEdge($attributes[$relationId]->fromNodeId, $relationId));
+            }
+        }
+
         if ($beschwerden !== []) {
             throw new \Taxmod\Core\Exception\RefusedByValidators(sprintf('Not saved — %s.', implode('; ', $beschwerden)), $gesammelt);
         }
@@ -5683,6 +5719,26 @@ final class NodesScreen
      *
      * ⚠️ *Eine vom Autor ersetzte Meldung (D-158) ist noch nicht gebaut; hier steht die mitgelieferte.*
      */
+    /**
+     * Die Satz-Ids eines geschickten Verweisfelds — ein Wert oder `['values' => [...]]` (D-1520).
+     *
+     * @return list<int>
+     */
+    private static function recordIdsIn(mixed $raw): array
+    {
+        // *`mixed`, weil die Maske einen Wert oder eine Liste schickt.*
+        $roh = is_array($raw) ? ($raw['values'] ?? []) : [$raw];
+        $aus = [];
+
+        foreach (is_array($roh) ? $roh : [] as $eines) {
+            if (! is_array($eines) && ($id = absint(wp_unslash((string) $eines))) > 0) {
+                $aus[] = $id;
+            }
+        }
+
+        return $aus;
+    }
+
     private function complaintText(\Taxmod\Core\Addon\Complaint $complaint): string
     {
         $text = match ($complaint->key) {
@@ -5691,6 +5747,8 @@ final class NodesScreen
             'wrong_shape' => __('«{value}» does not have the required shape', 'taxmod'),
             /* translators: {line} and {column} are where the JSON text first goes wrong. */
             'invalid_json' => __('invalid JSON in line {line}, column {column}', 'taxmod'),
+            /* translators: {record} is the number of the chosen record, {field} the field it must come from (D-1520). */
+            'not_in_source' => __('record #{record} is not in «{field}» of this record', 'taxmod'),
             default       => $complaint->validator . ': ' . $complaint->key,
         };
 

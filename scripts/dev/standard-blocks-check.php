@@ -17,6 +17,12 @@
  * 3. Same function, same building block (D-1511, Stefan 20.11. «ist die gleiche Funktionalität»): reading the text of a
  *    label or stamp PDF belongs to the label module — no other module parses a PDF, in PHP or in its scripts.
  *
+ * 4. The way back stands in the page head (D-1521).
+ * 5. One process bar, one look (Stefan 20.11. «dass du hier unterschiedliche Sachen wieder verwendest … jedes Mal wieder sagen»):
+ *    the arrows of a process are `ListPage::steps` everywhere — list, status of a record, a section — and the Modeller's
+ *    stylesheet draws them once. No other file carries the `taxmod-step…` classes (no own markup, no own CSS, no own script),
+ *    and a variant of the bar (`.is-status`) may change only how wide it is, never its height, padding, alignment or type.
+ *
  * Needs no WordPress.
  *
  * @see docs/NewConcept/90-decision-log.md D-1508, D-1511, D-1488, D-1502
@@ -180,6 +186,52 @@ foreach ($repos as $repo) {
                 printf("FAIL %s: reads no PDF any more — strike it from PDF_PENDING\n", $name);
                 $red++;
             }
+        }
+    }
+}
+
+// Rule 5: the process bar has one owner and one look.
+const STEPS_CLASS = '/(?<![a-z0-9_-])taxmod-steps?(?:-[a-z]+)*(?![a-z0-9_-])/';
+const STEPS_OWNERS = ['wp-taxonomy-modeler/src/WordPress/Admin/ListPage.php', 'wp-taxonomy-modeler/assets/admin.css'];
+/** What a variant of the bar may set: its width and the cursor — nothing that changes how a tile looks. */
+const STEPS_VARIANT_MAY = ['cursor', 'margin', 'flex', 'flex-wrap', 'min-width'];
+
+foreach ($repos as $repo) {
+    foreach (['src', 'assets'] as $folder) {
+        if (! is_dir($repo . '/' . $folder)) {
+            continue;
+        }
+
+        foreach (new RecursiveIteratorIterator(new RecursiveDirectoryIterator($repo . '/' . $folder, FilesystemIterator::SKIP_DOTS)) as $file) {
+            $path = (string) $file;
+            $name = basename($repo) . substr($path, strlen($repo));
+
+            if (in_array($name, STEPS_OWNERS, true) || ! preg_match('/\.(php|js|css)$/', $path) || str_contains($name, '/vendor/')) {
+                continue;
+            }
+
+            if (preg_match(STEPS_CLASS, (string) file_get_contents($path), $m) === 1) {
+                printf("FAIL %s: «%s» — the process bar is ListPage::steps, drawn by the Modeller's stylesheet only (rule 5)\n", $name, $m[0]);
+                $red++;
+            }
+        }
+    }
+}
+
+$css = (string) file_get_contents($root . '/wp-taxonomy-modeler/assets/admin.css');
+preg_match_all('/([^{}]+)\{([^{}]*)\}/', (string) preg_replace('#/\*.*?\*/#s', '', $css), $rules, PREG_SET_ORDER);
+
+foreach ($rules as [, $selector, $body]) {
+    if (! str_contains($selector, '.is-status') || preg_match(STEPS_CLASS, $selector) !== 1) {
+        continue;
+    }
+
+    foreach (array_filter(array_map('trim', explode(';', $body))) as $declaration) {
+        $property = strtolower(trim(explode(':', $declaration, 2)[0]));
+
+        if (! in_array($property, STEPS_VARIANT_MAY, true)) {
+            printf("FAIL admin.css «%s»: a variant of the process bar sets «%s» — it may change only its width (rule 5)\n", trim($selector), $property);
+            $red++;
         }
     }
 }

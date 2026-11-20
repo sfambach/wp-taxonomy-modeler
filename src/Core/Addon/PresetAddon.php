@@ -48,7 +48,7 @@ final class PresetAddon implements ShapesOffer
         return [new AddonRequirement(self::BEHAVIOUR, PresetMode::class, 'offered_field')];
     }
 
-    public function judge(array $offer, array $offerValues, array $holderValues, array $settings, \Closure $matches, \Closure $behaviourAt): OfferVerdict
+    public function judge(array $offer, array $offerValues, array $holderValues, array $settings, \Closure $matches, \Closure $behaviourAt, array $holderMany = []): OfferVerdict
     {
         $quelle = ($settings['source_field'] ?? null)?->reference;
         $ziel   = ($settings['offered_field'] ?? null)?->reference;

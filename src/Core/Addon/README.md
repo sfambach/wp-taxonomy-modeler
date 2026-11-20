@@ -26,6 +26,7 @@ flowchart LR
 | [`AddonRegistry.php`](AddonRegistry.php), [`ShippedAddons.php`](ShippedAddons.php) | wer existiert, wo sie gewählt werden dürfen, und der Satz, der mitkommt |
 | [`ChosenAddon.php`](ChosenAddon.php) | eine an einer Stelle gewählte Funktion mit ihren Feldern |
 | [`PresetAddon.php`](PresetAddon.php), [`PresetMode.php`](PresetMode.php) | die Vorbelegung als Vergleichspaar, filter oder sort ([D-844](../../../docs/NewConcept/90-decision-log.md)) |
+| [`ChoiceFromFieldAddon.php`](ChoiceFromFieldAddon.php) | «Auswahl aus Feld»: nur Sätze, die ein Feld desselben Satzes trägt ([D-1520](../../../docs/NewConcept/90-decision-log.md)) |
 | [`PickRowsAddon.php`](PickRowsAddon.php) | «Mehrere hinzufügen» ([D-806](../../../docs/NewConcept/90-decision-log.md)) |
 | [`RangeValidator.php`](RangeValidator.php) | liegt der Wert in `min`/`max`? |
 | [`ShapeValidator.php`](ShapeValidator.php) | hat er die Form, die sein Typ verspricht? |
