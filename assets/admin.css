@@ -2476,21 +2476,22 @@ fieldset.taxmod-read-only {
     border-collapse: collapse;
 }
 
-/* Stefan 20.11. 18:07, a trial on one page («Kannst du die mal hinter das Label machen? Gerade nur für diese Seite»): inside
- * `.taxmod-hints-at-label` the «?» stands at the end of the label column, before the field, instead of after the field. */
-.taxmod-hints-at-label .taxmod-form-row > .taxmod-form-label {
+/* D-1531: the «?» of a field stands at the end of its label, before the field — in every form of the form renderer. Stefan 20.11.
+ * 18:07 tried it on one page («Kannst du die mal hinter das Label machen? Gerade nur für diese Seite»), 18:39: «Das Fragezeichen
+ * davor sieht besser aus.» An explanation in words stays in the third column. */
+.taxmod-form-row > .taxmod-form-label {
     grid-column: 1;
     grid-row: 1;
     padding-right: 1.6em;
 }
 
-.taxmod-hints-at-label .taxmod-form-row > .taxmod-hint {
+.taxmod-form-row > .taxmod-hint {
     grid-column: 1;
     grid-row: 1;
     justify-self: end;
 }
 
-.taxmod-hints-at-label .taxmod-form-row > .taxmod-form-field {
+.taxmod-form-row > .taxmod-form-field {
     grid-column: 2;
     grid-row: 1;
 }
@@ -2901,49 +2902,7 @@ pre.taxmod-code {
 	float: none;
 	margin: 0;
 }
-/* His wish 2026-11-09: the view over every stage, a narrow arrow under the stages and as wide as they are. */
-.taxmod-steps-process {
-	display: flex;
-	flex: 1 1 auto;
-	flex-direction: column;
-	gap: 4px;
-	min-width: 0;
-}
-/* With the arrow under them the stages share the width and stay on one line, from left to right. */
-.taxmod-steps-process ol {
-	flex-wrap: nowrap;
-	padding-right: 12px;
-}
-.taxmod-steps-process li {
-	flex: 1 1 0;
-	min-width: 0;
-}
-.taxmod-steps-process .taxmod-step {
-	min-width: 0;
-	white-space: nowrap;
-}
-.taxmod-steps-all {
-	display: flex;
-	align-items: baseline;
-	gap: 6px;
-	padding: 3px 28px 3px 16px;
-	background: #dcdcde;
-	color: #1d2327;
-	text-decoration: none;
-	clip-path: polygon(0 0, calc(100% - 12px) 0, 100% 50%, calc(100% - 12px) 100%, 0 100%);
-}
-.taxmod-steps-all:hover,
-.taxmod-steps-all:focus {
-	background: #f0f6fc;
-	color: #2271b1;
-}
-.taxmod-steps-all.is-active {
-	background: #2271b1;
-	color: #fff;
-}
-.taxmod-steps-all-count {
-	font-weight: 600;
-}
+/* D-1530: «Alle» is the first stage of the row (ListPage::steps); the narrow bar under the stages (his wish 2026-11-09) is gone. */
 
 /* D-1202: a bulk action that asks opens its dialog from the choice; its own opener is not shown. */
 .taxmod-bulk-asks > .alignleft > .taxmod-chooser > .taxmod-dialog-open,

@@ -847,8 +847,8 @@ final class ListPage
 
     /**
      * The stages of a process as arrow tiles that grip into each other, in their order, each with its count (D-1197);
-     * views beside the process follow as plain tabs. The view over the whole process («all») is a narrow arrow under the stages,
-     * as wide as they are, marked like a stage when it is the open one (his wish 2026-11-09).
+     * views beside the process follow as plain tabs. The view over the whole process («all») is the first stage of the row,
+     * marked like a stage when it is the open one (D-1530; until then a narrow bar under the stages, his wish 2026-11-09).
      *
      * @param list<array{0: string, 1: string, 2?: int|null}|list<array{0: string, 1: string, 2?: int|null}>> $steps slug, label, optional
      *        count — in process order; the last may be a list of steps, the ends a process can take side by side (half-high arrows
@@ -860,7 +860,14 @@ final class ListPage
      */
     public static function steps(array $steps, string $active, ?callable $url, array $beside = [], array $all = []): string
     {
-        $html  = '<nav class="taxmod-steps' . ($url === null ? ' is-status' : '') . '" aria-label="' . esc_attr__('Process', 'taxmod') . '">' . ($all === [] ? '' : '<div class="taxmod-steps-process">') . '<ol>';
+        // D-1530: «Alle» is the first stage of the same row, not a second bar under it. ⚠️ *His word 2026-11-20: «das sieht so ein
+        // bisschen blöd aus mit dem Alle … wenn man so eine doppelte Leiste da hat … Standardeinstellung ist alle».*
+        if ($all !== [] && $url !== null) {
+            array_unshift($steps, $all);
+            $all = [];
+        }
+
+        $html  = '<nav class="taxmod-steps' . ($url === null ? ' is-status' : '') . '" aria-label="' . esc_attr__('Process', 'taxmod') . '"><ol>';
         $arrow = static fn (array $step): string => ($url === null ? '<span' : '<a') . ' class="taxmod-step' . ($step[0] === $active ? ' is-active' : '') . (($step[2] ?? null) === 0 ? ' is-empty' : '') . '"'
             . ($url === null ? '' : ' href="' . esc_url($url($step[0])) . '"')
             . ($step[0] === $active ? ' aria-current="step"' : '') . '><span class="taxmod-step-label">' . esc_html($step[1]) . '</span>'
@@ -873,12 +880,6 @@ final class ListPage
         }
 
         $html .= '</ol>';
-
-        if ($all !== [] && $url !== null) {
-            $html .= '<a class="taxmod-steps-all' . ($all[0] === $active ? ' is-active' : '') . '" href="' . esc_url($url($all[0])) . '"'
-                . ($all[0] === $active ? ' aria-current="step"' : '') . '><span class="taxmod-step-label">' . esc_html($all[1]) . '</span>'
-                . (isset($all[2]) ? ' <span class="taxmod-steps-all-count">' . esc_html(number_format_i18n((int) $all[2])) . '</span>' : '') . '</a></div>';
-        }
 
         foreach ($url === null ? [] : $beside as $tab) {
             $html .= '<a class="nav-tab taxmod-steps-beside' . ($tab[0] === $active ? ' nav-tab-active' : '') . '" href="' . esc_url($url($tab[0])) . '">' . esc_html($tab[1])
