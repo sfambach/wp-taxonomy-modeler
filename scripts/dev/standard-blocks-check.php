@@ -208,7 +208,6 @@ const BAR_PENDING = [
     'wp_tax_stock/src/WordPress/Admin/StockPage.php'          => 'Lager, next release',
 ];
 const HEAD_PENDING = [
-    'wp_tax_label/src/WordPress/Admin/PrintersPage.php'      => 'Etiketten, next release',
     'wp_tax_stock/src/WordPress/Admin/ChoiceListsPage.php'   => 'Lager, next release',
     'wp_tax_stock/src/WordPress/Admin/ContactsPage.php'      => 'Lager, next release',
     'wp_tax_stock/src/WordPress/Admin/PurchasePage.php'      => 'Lager, next release',

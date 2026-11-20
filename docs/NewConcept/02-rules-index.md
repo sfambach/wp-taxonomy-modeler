@@ -251,10 +251,10 @@ vermutlich im Fliesstext und sollte eine eigene Zeile bekommen.
 
 | Regel | Was sie sagt | Steht in | Zitiert |
 |---|---|---|---|
-| **R1** | Display happens only through a renderer. No other path produces output. This is a hard rule. | [30-renderer.md:78](30-renderer.md) | 117 |
-| **R2** | There are several renderers, producing different representations of the same thing. | [30-renderer.md:79](30-renderer.md) | 9 |
-| **R3** | A renderer always receives a node — or possibly a set of nodes. Explicitly stated as not yet certain. | [30-renderer.md:80](30-renderer.md) | 9 |
-| **R4** | There is a renderer for every kind of display. The point is that no display logic is implemented twice. | [30-renderer.md:91](30-renderer.md) | 8 |
+| **R1** | Display happens only through a renderer. No other path produces output. This is a hard rule. | [30-renderer.md:78](30-renderer.md) | 119 |
+| **R2** | There are several renderers, producing different representations of the same thing. | [30-renderer.md:79](30-renderer.md) | 13 |
+| **R3** | A renderer always receives a node — or possibly a set of nodes. Explicitly stated as not yet certain. | [30-renderer.md:80](30-renderer.md) | 10 |
+| **R4** | There is a renderer for every kind of display. The point is that no display logic is implemented twice. | [30-renderer.md:91](30-renderer.md) | 10 |
 | **R5** | A renderer may work with trees and call other renderers. | [30-renderer.md:92](30-renderer.md) | 2 |
 | **R6** | A node is handed to the registry, not to a renderer directly. The registry looks up the node's default renderer and that renderer renders the node. | [30-renderer.md:93](30-renderer.md) | 3 |
 | **R7** | The renderer then reads the node's attributes. Attributes point at nodes; those nodes have their own renderers, which render them. The descent repe… | [30-renderer.md:94](30-renderer.md) | 6 |
