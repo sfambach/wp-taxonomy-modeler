@@ -61,9 +61,7 @@ const PDF_READER = '/getTextContent\s*\(|ToUnicode|FlateDecode/';
 
 /** Known before D-1511; each falls out when its module takes the label module's reader, and turns red when gone but still listed. */
 const PDF_PENDING = [
-    'wp_tax_api_ebay/src/Core/Shipping/LabelText.php' => 'eBay reads labels through the label module (D-1511)',
     'wp_tax_ebay/src/Core/Shipping/LabelText.php'     => 'same repository under its old name',
-    'wp_tax_shipping/assets/stamp-upload.js'          => 'Versand takes stamps from the mail chain (D-1511)',
 ];
 
 /** A printer or print-queue setting or field: a stored key, a drawn field, a select of printers. */
