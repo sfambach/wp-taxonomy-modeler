@@ -108,6 +108,10 @@ $dimension = wp_get_ability('taxmod/apply')->execute(['changes' => [
 $abm    = is_array($dimension) ? $dimension['refs']['abm'] : 0;
 $deep   = $abm === 0 ? [] : $door->typed($ref['k'], [$abm => ['0' => [13413 => ['0' => [4234 => '12', 4236 => '']], 13414 => ['0' => [4234 => '']]]]]);
 check('a part inside a part comes back one level deeper, the same form (D-1538)', ($deep[$abm]['0'][13413]['0'][4234] ?? null) === '12' && ! isset($deep[$abm]['0'][13414]), wp_json_encode($deep));
+$again = $abm === 0 ? '' : ($door->controls($ref['k'], [$abm], 'buy', '', 0, $deep)[$abm] ?? '');
+check('a part handed in the typed form stands in its controls, without a record (D-1538)', str_contains($again, 'value="12"'), $again);
+$weight = $tr === [] ? '' : ($door->controls($ref['k'], [$tr['mass']], 'buy', '', 0, [$tr['mass'] => ['0' => [4234 => '800']]])[$tr['mass']] ?? '');
+check('a unit value handed in stands in its control', str_contains($weight, 'value="800"'), $weight);
 $wroteDeep = $abm === 0 ? null : wp_get_ability('taxmod/apply')->execute(['changes' => [['op' => 'set_values', 'record' => $ref['r'], 'values' => $deep]]]);
 check('write-data takes the deeper form as it comes', is_array($wroteDeep), is_wp_error($wroteDeep) ? $wroteDeep->get_error_message() : wp_json_encode($wroteDeep));
 
