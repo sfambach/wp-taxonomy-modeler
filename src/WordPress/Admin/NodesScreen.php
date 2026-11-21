@@ -5526,7 +5526,7 @@ final class NodesScreen
 
                 $partId = $einzeln;
             } elseif ($partId === 0) {
-                if (! $this->holdsSomething($this->withoutPresetUnit($inner))) {
+                if (! $this->holdsSomething($this->withoutShownWhenEmpty($this->withoutPresetUnit($inner)))) {
                     continue;
                 }
 
@@ -5746,6 +5746,20 @@ final class NodesScreen
 
             return $relation === null || $relation->toNodeId !== $einheiten->id || ! $relation->multiplicity->requiresOne();
         }, ARRAY_FILTER_USE_BOTH);
+    }
+
+    /**
+     * Without the values a form shows in a field it cannot leave empty — a filter row's «gleich» alone is no new row (Stefan 21.11.).
+     *
+     * @param array<int|string, mixed> $inner
+     * @return array<int|string, mixed>
+     */
+    private function withoutShownWhenEmpty(array $inner): array
+    {
+        $relations = array_values(array_filter(array_map(fn (int|string $kante): ?\Taxmod\Core\Model\Relation => absint($kante) === 0 ? null : $this->editor->relationById(absint($kante)), array_keys($inner))));
+        $shown     = $relations === [] ? [] : $this->rendering->shownWhenEmpty($relations);
+
+        return array_filter($inner, static fn (mixed $wert, int|string $kante): bool => ! (isset($shown[absint($kante)]) && is_string($wert) && trim(wp_unslash($wert)) === $shown[absint($kante)]), ARRAY_FILTER_USE_BOTH);
     }
 
     /** Whether a held part is still empty — the one its holder's multiplicity made, not yet written. */

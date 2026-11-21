@@ -4687,6 +4687,30 @@ final class Rendering implements Presets, \Taxmod\Core\Port\FieldAddons
      * @return array<string,\Taxmod\Core\Model\ResolvedSetting>
      */
     /**
+     * The value a form shows in a field it cannot leave empty — a rule filter's operator shows «gleich» (D-1541) — so a new row
+     * that holds only such values is no row (Stefan 21.11.: «beim Speichern legt er deswegen gleich wieder eine Zeile an»).
+     *
+     * @param  list<Relation> $relations
+     * @return array<int, string> relation id → the value shown when nothing is stored
+     */
+    public function shownWhenEmpty(array $relations): array
+    {
+        $resolved = $this->settingsForUseSites($relations);
+        $types    = $this->typesFor($relations);
+        $out      = [];
+
+        foreach ($relations as $relation) {
+            $settings = $this->withModelValues($resolved[$relation->id] ?? [], $relation);
+
+            if ($this->renderers->chosenFor($relation, $settings, Purpose::Edit, $types[$relation->id] ?? null) instanceof \Taxmod\Core\Renderer\OperatorChoiceRenderer) {
+                $out[$relation->id] = \Taxmod\Core\Rules\RuleBook::EQUALS;
+            }
+        }
+
+        return $out;
+    }
+
+    /**
      * Was das Modell über diese Verwendungsstellen sagt — **die eine Naht**, die jeder Aufrufer nimmt.
      *
      * ⚠️ **Der Eigentümer hat den Grund benannt, bevor ich den achten Fall gefunden hatte:** *«umso

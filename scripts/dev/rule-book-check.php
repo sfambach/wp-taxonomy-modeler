@@ -89,5 +89,21 @@ if ($page === null || $page->types() === []) {
     check('the rule list draws ▲/▼ with the sibling icons', str_contains($html, 'value="up"') && str_contains($html, 'dashicons-arrow-up-alt2') && str_contains($html, 'dashicons-arrow-down-alt2'));
 }
 
+// Stefan 21.11.: a filter row's operator shows «gleich» when empty, so a new row holding only it is no row.
+$setup    = apply_filters(Taxmod\WordPress\Admin\RulesPage::SETUP_FILTER, null);
+$operator = is_array($setup) ? absint($setup['filter_fields']['operator'] ?? 0) : 0;
+$relation = $operator > 0 ? (new Taxmod\WordPress\Persistence\WpdbRelationRepository())->byId($operator) : null;
+if ($relation === null) {
+    echo "  (no rule filter set up here — «gleich» alone is not asked)\n";
+} else {
+    $nodes     = new Taxmod\WordPress\Persistence\WpdbNodeRepository();
+    $relations = new Taxmod\WordPress\Persistence\WpdbRelationRepository();
+    $framework = new Taxmod\WordPress\Persistence\SeededFrameworkNodes($nodes, $relations, new Taxmod\WordPress\Persistence\WpdbChangelog(new Taxmod\WordPress\SystemClock()));
+    $rendering = new Taxmod\Core\Service\Rendering($nodes, $framework, Taxmod\Core\Renderer\ShippedRenderers::registry(), new Taxmod\WordPress\Persistence\SeededTypeNodes($nodes, $framework),
+        relations: $relations, resolver: new Taxmod\Core\Service\SettingsResolver(new Taxmod\WordPress\Persistence\WpdbSettingsRepository(), $nodes, Taxmod\Core\Renderer\ShippedRenderers::registry(), Taxmod\Core\Converter\ShippedConverters::registry(), relations: $relations),
+        records: new Taxmod\WordPress\Persistence\WpdbRecordRepository());
+    check('a filter\'s operator shows «gleich» when empty — alone it makes no new row', $rendering->shownWhenEmpty([$relation]) === [$operator => Taxmod\Core\Rules\RuleBook::EQUALS]);
+}
+
 echo "\n$ok OK, $bad FAIL\n";
 exit($bad === 0 ? 0 : 1);
