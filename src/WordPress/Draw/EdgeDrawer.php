@@ -671,17 +671,16 @@ final class EdgeDrawer implements Drawer
         }
 
         // D-1571: an optional field of a compact form carries its relation; empty, it waits hidden for «+», and ✕ takes it away.
-        // A choice that draws its own trash («Auswahl entfernen») keeps that one alone (live check 13): two trashes in a row
-        // would do the same thing twice. ✕ and the field share one line, the field shrinking first.
+        // One building block, one word (live checks 13 and 15): ✕ replaces a choice's own trash («Auswahl entfernen»), which the
+        // stylesheet hides here and ✕ presses for it. ✕ and the field share one line, the field shrinking first.
         $optional = isset($zeile['addable'], $zeile['relation']);
         $feld     = $this->draw($zeile['field']);
-        $eigenes  = str_contains($feld, 'dashicons-trash');
         $wort     = $words['remove'] ?? '';
         $inhalt   = $optional
             ? '<span class="taxmod-form-optional"><span class="taxmod-form-optional-field">' . $feld . '</span>'
-                . ($eigenes ? '' : '<button type="button" class="button ' . ControlMarkup::ICON_ONLY . ' taxmod-field-remove"' . ($wort === '' ? '' : ' title="' . self::e($wort) . '"') . '>'
-                    . IconMarkup::dashicon('trash', $wort) . '</button>')
-                . '</span>'
+                . '<button type="button" class="button ' . ControlMarkup::ICON_ONLY . ' taxmod-field-remove"'
+                . ($wort === '' ? '' : ' title="' . self::e($wort) . '" aria-label="' . self::e($wort) . '"') . '>'
+                . IconMarkup::dashicon('trash') . '</button></span>'
             : $feld;
 
         return '<div class="taxmod-form-row"' . ($optional ? ' data-taxmod-optional="' . (int) $zeile['relation'] . '"' . ($zeile['addable'] ? ' hidden' : '') : '') . '>'
