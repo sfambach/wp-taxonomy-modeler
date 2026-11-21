@@ -75,7 +75,15 @@ $liste = static function (int $satz, int $kante) use ($wpdb): array {
 $trocken = $apply->execute(['dry_run' => true, 'changes' => [['op' => 'merge_field', 'node' => $ref['n'], 'field' => $ref['t'], 'into' => $ref['b'], 'first' => true]]]);
 $pruefe(is_array($trocken) && ($trocken['dry_run'][0] ?? null) === ['op' => 'merge_field', 'records' => 2, 'both' => 1, 'duplicates' => 1], 'the dry run counts records, records in both fields and doubled pictures — ' . wp_json_encode($trocken));
 $pruefe($liste((int) $ref['r'], (int) $ref['t']) === ['media:3'], 'the dry run wrote nothing');
-$pruefe(is_wp_error($apply->execute(['dry_run' => true, 'changes' => [['op' => 'rename_node', 'node' => $ref['n'], 'name' => 'x']]])), 'a dry run of any other op is refused');
+// ⚠️ Changed visibly (PR-9, Prüftor 21.11. 11:37 «dry_run für alle Ops … für einen grossen Umzug Pflicht»): a dry run of any other op
+// was refused; now the whole list runs and is rolled back — the answer says whether it fits and where it would be refused.
+$knotenName = static fn (): string => (string) (new \Taxmod\WordPress\Persistence\WpdbNodeRepository())->find((int) $ref['n'])?->name;
+$nameVorher = $knotenName();
+$probe      = $apply->execute(['dry_run' => true, 'changes' => [['op' => 'rename_node', 'node' => $ref['n'], 'name' => '__probe x'], ['op' => 'create_node', 'ref' => 'neu', 'name' => '__probe neu', 'parent' => $ref['n']]]]);
+$pruefe(is_array($probe) && ($probe['fits'] ?? null) === true && ($probe['written'] ?? null) === false && count($probe['applied'] ?? []) === 2 && isset($probe['refs']['neu']), 'a dry run of other ops runs the whole list and says it fits — ' . wp_json_encode($probe));
+$pruefe($knotenName() === $nameVorher && (new \Taxmod\WordPress\Persistence\WpdbNodeRepository())->find((int) ($probe['refs']['neu'] ?? 0)) === null, '… and wrote nothing');
+$abgelehnt = $apply->execute(['dry_run' => true, 'changes' => [['op' => 'rename_node', 'node' => $ref['n'], 'name' => '__probe y'], ['op' => 'rename_node', 'node' => '999999999', 'name' => 'z']]]);
+$pruefe(is_array($abgelehnt) && ($abgelehnt['fits'] ?? null) === false && str_contains((string) ($abgelehnt['refused'] ?? ''), 'Change 1'), 'a dry run that would be refused names the change — ' . wp_json_encode($abgelehnt));
 
 $ohne = $apply->execute(['changes' => [['op' => 'merge_field', 'node' => $ref['n'], 'field' => $ref['t'], 'into' => $ref['b']]]]);
 $pruefe(is_wp_error($ohne), 'without first a record holding both fields is still refused (D-941)');
