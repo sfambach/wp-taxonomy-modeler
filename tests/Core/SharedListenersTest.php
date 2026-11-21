@@ -34,6 +34,24 @@ final class SharedListenersTest extends TestCase
         self::assertSame([[9, $event->act()]], $heard);
     }
 
+    /** D-1561: a dry run is heard by no module — the chronicle still writes (and is rolled back), the modules hear nothing. */
+    public function testSilencedNoModuleHearsAndTheSilenceEnds(): void
+    {
+        $heard = 0;
+        SharedListeners::provider()->listen(NodeRecordChanged::class, static function () use (&$heard): void {
+            ++$heard;
+        });
+        $book = new RecordedChanges();
+
+        $answer = SharedListeners::silenced(static fn (): string => JournalListener::dispatcherFor($book)->dispatch(ModelChanged::of('record', 9, 'created', null, 'x', 1)) instanceof ModelChanged ? 'ran' : 'no');
+
+        self::assertSame('ran', $answer);
+        self::assertSame(0, $heard);
+
+        JournalListener::dispatcherFor($book)->dispatch(ModelChanged::of('record', 9, 'created', null, 'y', 2));
+        self::assertSame(1, $heard);
+    }
+
     public function testAListenerHearsOnlyItsKind(): void
     {
         $heard = 0;
