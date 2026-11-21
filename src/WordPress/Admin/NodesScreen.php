@@ -8435,6 +8435,42 @@ final class NodesScreen
             : null;
     }
 
+    /**
+     * Ein eingegrenzter Baum ist Ansicht, keine Berechtigung — aber kein Akt aus ihm verlässt ihn (D-1574, Prüftor 21.11.).
+     *
+     * ⚠️ *Der Akt muss an einem Knoten im Ast hängen, ein Verschieben in ihm landen; den Ast selbst verschiebt oder parkt man
+     * hier nicht, und den Papierkorb leert man im ganzen Baum.*
+     */
+    private function refuseOutsideScope(string $do, int $id, int $target): void
+    {
+        $scope = $this->scopeFromRequest();
+
+        if ($scope === null) {
+            return;
+        }
+
+        $inside = function (int $nodeId) use ($scope): bool {
+            $node = $nodeId === 0 ? null : $this->editor->find($nodeId);
+
+            return $node !== null && ($node->id === $scope->id || in_array($scope->id, $node->ancestorIds(), true));
+        };
+
+        $whole  = __('This page shows one branch only; do this in the whole model tree.', 'taxmod');
+        $movesBranch = in_array($do, ['trash', 'trash_with_uses', 'trash_node', 'move', 'up', 'down'], true);
+
+        if ($do === 'clear_trash' || ($movesBranch && $id === $scope->id)) {
+            ListPage::fail($whole);
+        }
+
+        if (! $inside($id)) {
+            ListPage::fail(__('This node lies outside the branch this page shows.', 'taxmod'));
+        }
+
+        if ($do === 'move' && ! $inside($target)) {
+            ListPage::fail(__('A node cannot be moved out of the branch this page shows.', 'taxmod'));
+        }
+    }
+
     private function showsRoot(): bool
     {
         // ⚠️ **Die Bedingung steht **hier** und nicht nur am Schalter**
@@ -8788,6 +8824,7 @@ final class NodesScreen
         // as a string would have warned and then acted on nothing, which is the worst of the three
         // outcomes.*
         $do = $this->submittedAct();
+        $this->refuseOutsideScope($do, $id, isset($_POST['target']) ? absint($_POST['target']) : 0);
         $name   = isset($_POST['name']) ? sanitize_text_field(wp_unslash($_POST['name'])) : '';
         $target       = isset($_POST['target']) ? absint($_POST['target']) : 0;
         // ⚠️ *Its own name so the two choosers cannot share a radio group ({@see fieldForm()}).*

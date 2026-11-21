@@ -3,7 +3,8 @@
 /**
  * The node page scoped to one branch (D-1574, Stefan 2026-11-21: «du musst das halt nur auf den/die materilast/äste
  * einschränken»), as a failing check: with `taxmod_scope` the tree starts at that node and shows it as its first row,
- * nothing beside it and no trash; links carry the scope; a scope that is no node, the trash or below it shows the whole tree.
+ * nothing beside it and no trash; links carry the scope; a scope that is no node, the trash or below it shows the whole tree;
+ * no act leaves the branch: a move out of it, an act beside it and parking the branch itself are refused.
  *
  *     WP_ROOT=/path/to/wordpress php scripts/dev/scope-check.php
  */
@@ -73,6 +74,43 @@ $say($row($ganz, $daneben->id) && $row($ganz, $ast->id), 'ohne Parameter steht b
 $say($row($draw('999999999'), $daneben->id), 'eine Id ohne Knoten grenzt nicht ein');
 $say($row($draw((string) $fw->trash()->id), $daneben->id), 'der Papierkorb grenzt nicht ein');
 $say($row($draw('abc'), $daneben->id), 'keine Zahl grenzt nicht ein');
+
+echo "\n== kein Akt verlässt den Ast (Prüftor 21.11.) ==\n";
+final class ScopeStop extends RuntimeException
+{
+}
+
+$went = '';
+add_filter('wp_redirect', static function (string $to) use (&$went): never {
+    $went = $to;
+    throw new ScopeStop();
+}, 1);
+
+$aktion = (string) (new ReflectionClass(\Taxmod\WordPress\Admin\NodesScreen::class))->getConstant('ACTION');
+$post   = static function (string $do, int $id, int $target = 0) use ($plugin, $aktion, $ast, &$went): string {
+    $went     = '';
+    $_GET     = [];
+    $_POST    = wp_slash(['action' => $aktion, 'id' => (string) $id, 'do' => $do, 'target' => (string) $target, 'taxmod_scope' => (string) $ast->id,
+        '_taxmod_nonce' => wp_create_nonce($aktion . '_' . $id)]);
+    $_REQUEST = $_POST;
+    ob_start();
+    try {
+        $plugin->screen()->handlePost();
+    } catch (ScopeStop) {
+    }
+    ob_end_clean();
+    parse_str((string) parse_url($went, PHP_URL_QUERY), $teile);
+
+    return rawurldecode((string) ($teile['taxmod_message'] ?? ''));
+};
+$parent = static fn (int $id): ?int => $editor->find($id)?->parentId();
+
+$say($post('move', $kind->id, $daneben->id) === __('A node cannot be moved out of the branch this page shows.', 'taxmod') && $parent($kind->id) === $ast->id,
+    'ein Verschieben aus dem Ast heraus wird abgelehnt und das Kind bleibt');
+$say($post('rename', $daneben->id) === __('This node lies outside the branch this page shows.', 'taxmod'), 'ein Akt an einem Knoten neben dem Ast wird abgelehnt');
+$say($post('trash', $ast->id) === __('This page shows one branch only; do this in the whole model tree.', 'taxmod') && $editor->find($ast->id) !== null
+    && ! in_array($fw->trash()->id, $editor->find($ast->id)->ancestorIds(), true), 'den Ast selbst parkt man hier nicht');
+$_POST = $_REQUEST = [];
 
 echo $failed === 0 ? "\nscope-check: ok\n" : "\nscope-check: {$failed} FAIL\n";
 exit($failed === 0 ? 0 : 1);
