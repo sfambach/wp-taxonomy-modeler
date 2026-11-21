@@ -3296,13 +3296,13 @@ final class NodesScreen
     private const STATEMENTS_COUNTED_FROM = 50;
 
     /**
-     * A statement without anything a record could have put into it: every text and every number becomes `?`, a list of them
+     * A statement without anything a record could have put into it: every text and every number, hexadecimal ones too, becomes `?`, a list of them
      * one `(?…)`, a long one shortened in its middle (D-1482, Nachtrag 3). What is left is the wording the code wrote — enough to tell which read
      * runs once per candidate (`CD-7`).
      */
     private static function statementShape(string $sql): string
     {
-        $shape = (string) preg_replace(["/'(?:[^'\\\\]|\\\\.|'')*'/s", '/"(?:[^"\\\\]|\\\\.)*"/s', '/\\b\\d+(?:\\.\\d+)?\\b/', '/\\(\\s*\\?(?:\\s*,\\s*\\?)+\\s*\\)/', '/\\s+/'], ['?', '?', '?', '(?…)', ' '], $sql);
+        $shape = (string) preg_replace(["/'(?:[^'\\\\]|\\\\.|'')*'/s", '/"(?:[^"\\\\]|\\\\.)*"/s', '/\\b0x[0-9a-f]+\\b/i', '/\\b\\d+(?:\\.\\d+)?\\b/', '/\\(\\s*\\?(?:\\s*,\\s*\\?)+\\s*\\)/', '/\\s+/'], ['?', '?', '?', '?', '(?…)', ' '], $sql);
 
         $shape = trim($shape);
 
