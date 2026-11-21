@@ -6,6 +6,11 @@ return [
     'language'           => 'de_DE',
     'plural-forms'       => 'nplurals=2; plural=(n != 1);',
     'messages'           => [
+        // D-1571: the compact form's «+ Festlegung».
+        '+ Setting'                                                                      => '+ Festlegung',
+        'Compact form: optional fields only once filled, «+» adds one'                   => 'Formular kompakt: optionale Felder erst, wenn gefüllt; «+» fügt eines hinzu',
+        'Remove this setting'                                                            => 'Diese Festlegung entfernen',
+        '— choose —'                                                                     => '— wählen —',
         'Rule'                                                       => 'Regel',
         'Filters'                                                    => 'Filter',
         'New rule'                                                   => 'Neue Regel',

@@ -3490,3 +3490,6 @@ details.taxmod-record-section > summary {
 	float: none;
 	margin: 0;
 }
+
+/* D-1571: an empty optional field of a compact form waits hidden for «+ Festlegung». */
+.taxmod-form-row[hidden] { display: none !important; }

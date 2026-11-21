@@ -4154,3 +4154,87 @@
 		}
 	} );
 }() );
+
+/**
+ * D-1571: «+ Festlegung» of a compact form — the chosen optional field comes into view, ✕ empties it and puts it back into the
+ * choice. Nothing is saved here: «Speichern» writes what the form holds, and an emptied field is stored as empty.
+ */
+( function () {
+	'use strict';
+
+	function formOf( element ) {
+		return element.closest( '.taxmod-form' );
+	}
+
+	function choiceOf( form ) {
+		return form ? form.querySelector( '.taxmod-form-adding .taxmod-field-choice' ) : null;
+	}
+
+	function hideShown() {
+		document.querySelectorAll( '.taxmod-form-adding .taxmod-field-choice' ).forEach( function ( choice ) {
+			var form = formOf( choice );
+			choice.querySelectorAll( 'option' ).forEach( function ( option ) {
+				var row = option.value === '' ? null : form.querySelector( '[data-taxmod-optional="' + option.value + '"]' );
+				option.hidden = !! row && ! row.hidden;
+			} );
+		} );
+	}
+
+	if ( document.readyState === 'loading' ) {
+		document.addEventListener( 'DOMContentLoaded', hideShown );
+	} else {
+		hideShown();
+	}
+
+	document.addEventListener( 'click', function ( event ) {
+		var add    = event.target.closest( '.taxmod-field-add' );
+		var remove = event.target.closest( '.taxmod-field-remove' );
+		var form, choice, row, option;
+
+		if ( add ) {
+			form   = formOf( add );
+			choice = choiceOf( form );
+			row    = choice && choice.value !== '' ? form.querySelector( '[data-taxmod-optional="' + choice.value + '"]' ) : null;
+			if ( ! row ) {
+				return;
+			}
+			row.hidden = false;
+			option     = choice.querySelector( 'option[value="' + choice.value + '"]' );
+			if ( option ) {
+				option.hidden = true;
+			}
+			choice.value = '';
+			( row.querySelector( 'input:not([type="hidden"]), select, textarea, button' ) || row ).focus();
+			return;
+		}
+
+		if ( remove ) {
+			row  = remove.closest( '[data-taxmod-optional]' );
+			form = formOf( remove );
+			if ( ! row ) {
+				return;
+			}
+			row.querySelectorAll( 'input, select, textarea' ).forEach( function ( field ) {
+				if ( field.type === 'checkbox' || field.type === 'radio' ) {
+					field.checked = false;
+				} else if ( field.tagName === 'SELECT' ) {
+					field.value = '';
+				} else if ( field.type !== 'button' && field.type !== 'submit' ) {
+					field.value = '';
+				}
+				field.dispatchEvent( new Event( 'change', { bubbles: true } ) );
+			} );
+			row.hidden = true;
+			choice     = choiceOf( form );
+			option     = choice ? choice.querySelector( 'option[value="' + row.getAttribute( 'data-taxmod-optional' ) + '"]' ) : null;
+			if ( option ) {
+				option.hidden = false;
+			} else if ( choice ) {
+				option             = document.createElement( 'option' );
+				option.value       = row.getAttribute( 'data-taxmod-optional' );
+				option.textContent = ( row.querySelector( '.taxmod-form-label' ) || {} ).textContent || option.value;
+				choice.appendChild( option );
+			}
+		}
+	} );
+}() );
