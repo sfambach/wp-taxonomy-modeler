@@ -116,6 +116,13 @@ $html  = Taxmod\WordPress\Draw\Markup::of(new Taxmod\Core\Description\FormView([
 check('an empty optional field is drawn hidden, a filled one shows', str_contains($html, 'data-taxmod-optional="572" hidden') && str_contains($html, 'data-taxmod-optional="571">'));
 check('«+ Festlegung» is the standard choice with the standard «+», ✕ the trash icon', str_contains($html, 'taxmod-field-choice') && str_contains($html, 'taxmod-field-add') && str_contains($html, 'dashicons-plus-alt2') && substr_count($html, 'taxmod-field-remove') === 2);
 check('a required field has no ✕', ! str_contains(explode('data-taxmod-optional', $html)[0], 'taxmod-field-remove'));
+// Live check 13: ✕ has its tooltip, and a choice that draws its own trash keeps that one alone.
+check('✕ carries title and aria-label', str_contains($html, 'taxmod-field-remove" title="Entfernen"') && str_contains($html, 'aria-label="Entfernen"'));
+$own  = Taxmod\WordPress\Draw\Markup::of(new Taxmod\Core\Description\FormView([
+    ['name' => 'Knoten', 'field' => Taxmod\Core\Description\Icon::named('trash', 'Auswahl entfernen'), 'hint' => '', 'relation' => 575, 'addable' => false],
+], ['remove' => 'Entfernen']));
+check('a choice with its own trash gets no second one', substr_count($own, 'dashicons-trash') === 1 && ! str_contains($own, 'taxmod-field-remove'));
+check('field and ✕ share one line', str_contains($html, 'taxmod-form-optional"><span class="taxmod-form-optional-field">'));
 
 echo "\n$ok OK, $bad FAIL\n";
 exit($bad === 0 ? 0 : 1);

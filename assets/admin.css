@@ -3494,3 +3494,27 @@ details.taxmod-record-section > summary {
 /* D-1571: an empty optional field of a compact form waits hidden for «+ Festlegung». */
 .taxmod-form-row[hidden] { display: none !important; }
 .taxmod-field-remove { color: #b32d2e; }
+
+/* D-1571, live check 13: the field and its ✕ on one line, the field shrinking first — nothing runs past the column. */
+.taxmod-form-optional {
+    display: flex;
+    align-items: center;
+    gap: .3em;
+    min-width: 0;
+    max-width: 100%;
+}
+
+.taxmod-form-optional-field {
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+.taxmod-form-optional-field > input,
+.taxmod-form-optional-field > select,
+.taxmod-form-optional-field > textarea {
+    max-width: 100%;
+}
+
+.taxmod-form-optional > .taxmod-field-remove {
+    flex: 0 0 auto;
+}
