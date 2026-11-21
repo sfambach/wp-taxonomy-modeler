@@ -206,6 +206,7 @@ final class NodesScreen
      * «nachfordern»** und braucht kein Skript.*
      */
     private const OPEN_ROWS = 'taxmod_open_rows';
+    private const SCOPE = 'taxmod_scope';
 
     /** Welche Seite der Datensätze gezeigt wird — eine Zahl oder `last` ([D-763](../../../docs/NewConcept/90-decision-log.md)). */
     private const RECORD_PAGE = 'taxmod_record_page';
@@ -1630,7 +1631,8 @@ final class NodesScreen
 
     private function drawn(): string
     {
-        $root  = $this->framework->root();
+        $scope = $this->scopeFromRequest();
+        $root  = $scope ?? $this->framework->root();
         $trash = $this->framework->trash();
         $times = $this->times = new DrawingTimes();
         $tree  = __('Tree', 'taxmod');
@@ -1689,8 +1691,8 @@ final class NodesScreen
         $this->foldStateForLinks = self::foldState($collapsed);
 
         [$rows, $parked] = $times->measure($tree, fn (): array => [
-            $this->tree->rowsUnder($root, [$trash->id], $collapsed, $showHidden, $this->showsRoot()),
-            $this->tree->rowsUnder($trash, [], $collapsed, $showHidden),
+            $this->tree->rowsUnder($root, [$trash->id], $collapsed, $showHidden, $scope !== null || $this->showsRoot()),
+            $scope !== null ? [] : $this->tree->rowsUnder($trash, [], $collapsed, $showHidden),
         ]);
 
         // ⚠️ **`hide` finally does something** ([D-396](../../../docs/NewConcept/90-decision-log.md)).
@@ -1746,7 +1748,7 @@ final class NodesScreen
         $gesucht = $this->searchTerm();
 
         if ($gesucht !== '') {
-            $rows = $times->measure($tree, fn (): array => $this->matching($this->tree->rowsUnder($root, [$trash->id], [], $showHidden, $this->showsRoot()), $gesucht));
+            $rows = $times->measure($tree, fn (): array => $this->matching($this->tree->rowsUnder($root, [$trash->id], [], $showHidden, $scope !== null || $this->showsRoot()), $gesucht));
         }
 
         // WICHTIG: Ein Suchfeld, nicht zwei. Der Baum zeichnet es selbst (der Kern kennt keine
@@ -1785,7 +1787,8 @@ final class NodesScreen
         // nur keine Liste mehr da. **Mit ihr geht `Clear`** — und der Aufräumbildschirm
         // ([D-479](../../../docs/NewConcept/90-decision-log.md)) trägt die zweite Hälfte, weshalb die
         // Vorgabe trotzdem «sichtbar» heisst.*
-        if (SettingsScreen::showsTrash()) {
+        // ⚠️ *Ein eingegrenzter Baum (D-1574) zeigt nur seinen Ast; der Papierkorb gehört dem ganzen Modell.*
+        if ($scope === null && SettingsScreen::showsTrash()) {
             // ⚠️ *Ein eigener Rahmen, damit «der Papierkorb steht da» eine Frage mit einer Antwort
             // ist. Ohne ihn müsste ein Wächter das Wort «Trash» suchen — und das steht auch im
             // Vorlesetext des Papierkorbknopfes jeder Zeile.*
@@ -1828,7 +1831,7 @@ final class NodesScreen
             // ⚠️ *Ladezeit S2/S3 (D-1417): ein Link dieser Seite lädt sie nicht neu — `assets/live.js` holt sie im Hintergrund und setzt das
             // Geänderte ein; ein Dreieck holt nur den Baum. Der Faltzustand der Adresse gilt für jeden Link, auch einen älteren (F1: die URL
             // bleibt sein Träger, nachgeführt per replaceState).*
-            . ' data-taxmod-live-links data-taxmod-fold-part="' . self::TREE_PANE . '" data-taxmod-carry="taxmod_collapsed taxmod_hidden"'
+            . ' data-taxmod-live-links data-taxmod-fold-part="' . self::TREE_PANE . '" data-taxmod-carry="taxmod_collapsed taxmod_hidden ' . self::SCOPE . '"'
             // ⚠️ *Automatisch speichern steht an der Seite (D-854); das Skript liest es dort, wie schon den Baumklick.*
             . ' data-taxmod-autosave="' . (SettingsScreen::autosaves() ? 'on' : 'off') . '" style="'
             . '--taxmod-icon:' . SettingsScreen::defaultIconSize() . 'px;'
@@ -8408,6 +8411,30 @@ final class NodesScreen
      * Wurzelknoten Felder geben möchte, muss ich ihn **kurzzeitig** sehen können.» Damit gehört
      * er neben {@see self::showsHidden()} und nicht auf die Einstellungsseite.*
      */
+    /**
+     * Der Ast, auf den die Seite eingegrenzt ist, oder `null` für den ganzen Baum.
+     *
+     * ⚠️ **Stefan 21.11.: «im grunde haben wir das ja schon du musst das halt nur auf den/die
+     * materilast/äste einschränken»** ([D-1574](../../../docs/NewConcept/90-decision-log.md)). *Die
+     * Adresse wird nicht geglaubt (`CD-5`): nur ein Knoten unter der Wurzel und nicht im Papierkorb
+     * grenzt ein, alles andere zeigt den ganzen Baum.*
+     */
+    private function scopeFromRequest(): ?Node
+    {
+        $id   = absint($this->circumstance(self::SCOPE) ?? '0');
+        $node = $id === 0 ? null : $this->editor->find($id);
+
+        if ($node === null) {
+            return null;
+        }
+
+        $ancestors = $node->ancestorIds();
+
+        return in_array($this->framework->root()->id, $ancestors, true) && ! in_array($this->framework->trash()->id, $ancestors, true)
+            ? $node
+            : null;
+    }
+
     private function showsRoot(): bool
     {
         // ⚠️ **Die Bedingung steht **hier** und nicht nur am Schalter**
@@ -9219,6 +9246,8 @@ final class NodesScreen
             // ⚠️ *Sonst klappt jedes Speichern die Zeile wieder zu, die man gerade aufgeklappt hat —
             // derselbe Verlust, den der Faltzustand dreimal erlitten hat.*
             self::OPEN_ROWS    => $this->circumstance(self::OPEN_ROWS),
+            // ⚠️ *Sonst verlässt jeder Akt den eingegrenzten Ast (D-1574).*
+            self::SCOPE        => $this->circumstance(self::SCOPE),
             // ⚠️ *Sonst springt jedes Speichern auf Seite 1 zurück, weg von dem Satz, den man gerade bearbeitet hat (D-763).*
             self::RECORD_PAGE  => $this->circumstance(self::RECORD_PAGE),
             // ⚠️ *Sonst hebt jedes Speichern den Filter auf, unter dem man gerade arbeitet (D-768).*
@@ -9326,6 +9355,8 @@ final class NodesScreen
                 // ⚠️ *Die aufgeklappten Feldzeilen sind ein Umstand wie der Faltzustand — sie müssen
                 // jeden Akt überleben, sonst klappt das Speichern zu, was man gerade geöffnet hat.*
                 self::OPEN_ROWS    => $this->circumstance(self::OPEN_ROWS),
+                // ⚠️ *Sonst verlässt jeder Link den eingegrenzten Ast (D-1574).*
+                self::SCOPE        => $this->circumstance(self::SCOPE),
                 // ⚠️ *Die Seite der Datensätze gilt nur für den Knoten, auf dem geblättert wurde — ein Link
                 // auf einen anderen beginnt bei Seite 1, wie der Merker oben (D-763).*
                 self::RECORD_PAGE  => $nodeId !== null && $nodeId === absint(wp_unslash($_POST['id'] ?? $_GET['taxmod_node'] ?? 0))
