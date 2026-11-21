@@ -55,6 +55,12 @@ final class Plugin
     /** `apply_filters(RECORD_EDITOR_FILTER, '', $recordId, $returnTo, $toolbar, $roots)`: the record's edit form for a module's page (D-1025); `$toolbar` = the module's own button groups (escaped HTML), placed after «Save» in the one toolbar (D-1308); `$roots` = relation id → the roots its choice offers, from the module's structure setting (D-1546). */
     public const RECORD_EDITOR_FILTER = 'taxmod_record_editor';
 
+    /** `apply_filters(NODE_SCREEN_FILTER, '', $scopeRoot, $hostSlug)`: the node page scoped to one branch, for a module's page `$hostSlug` (a `taxmod-…` admin page) whose links and acts come back to it (D-1574). */
+    public const NODE_SCREEN_FILTER = 'taxmod_node_screen';
+
+    /** `apply_filters(NODE_SCREEN_HOSTS_FILTER, [])`: the admin pages a module draws the node page on; only these are taken as `taxmod_host` (D-1574). */
+    public const NODE_SCREEN_HOSTS_FILTER = 'taxmod_node_screen_hosts';
+
     /** `apply_filters(CLAIMED_FIELDS_FILTER, [], $recordId, $nodeId)`: relation id → ['label' => button text, 'url' => the module's dialog] — fields a module changes only through its own dialog; the record editor shows them read-only with that button — none when 'url' is empty — and its save leaves them alone (D-1334). */
     public const CLAIMED_FIELDS_FILTER = 'taxmod_claimed_fields';
 
@@ -255,6 +261,18 @@ final class Plugin
 
             return $plugin->screen()->recordEditor($recordId, $returnTo, array_values(array_filter($toolbar, static fn (mixed $group): bool => is_string($group) || is_array($group))), $roots);
         }, 10, 5);
+
+        // D-1574, Live-Check 15: the Materialgruppen live in the module's template — the node page, scoped, drawn on its page.
+        add_filter(self::NODE_SCREEN_FILTER, static function (mixed $html, int $scopeRoot = 0, string $host = '') use ($plugin): string {
+            if ($scopeRoot <= 0 || $host === '' || ! current_user_can(self::CAPABILITY)) {
+                return is_string($html) ? $html : '';
+            }
+
+            $plugin->enqueueStyle();
+            $plugin->enqueueScript();
+
+            return $plugin->screen()->embeddedIn($scopeRoot, $host)->render();
+        }, 10, 3);
 
         // D-1250: a module's form uses the modeller's own field controls and reads them back the same way.
         add_filter(self::FIELD_CONTROLS_FILTER, static function (mixed $controls, int $node = 0, array $relations = [], string $prefix = '', string $formId = '', int $record = 0, array $values = [], array $roots = []) use ($plugin): array {

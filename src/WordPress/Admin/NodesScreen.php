@@ -190,6 +190,13 @@ final class NodesScreen
      */
     private ?string $openedPathForLinks = null;
 
+    /**
+     * Was eine Modulseite fest vorgibt, wenn sie diese Seite einbettet (D-1574): Umstand ⇒ Wert, nur als Rückfall hinter der Adresse.
+     *
+     * @var array<string, string>
+     */
+    private array $embedded = [];
+
     /** Der Name des Merkers in der Adresse. */
     private const OPENED_FOR = 'taxmod_open_for';
 
@@ -207,6 +214,7 @@ final class NodesScreen
      */
     private const OPEN_ROWS = 'taxmod_open_rows';
     private const SCOPE = 'taxmod_scope';
+    private const HOST = 'taxmod_host';
 
     /** Welche Seite der Datensätze gezeigt wird — eine Zahl oder `last` ([D-763](../../../docs/NewConcept/90-decision-log.md)). */
     private const RECORD_PAGE = 'taxmod_record_page';
@@ -1831,7 +1839,7 @@ final class NodesScreen
             // ⚠️ *Ladezeit S2/S3 (D-1417): ein Link dieser Seite lädt sie nicht neu — `assets/live.js` holt sie im Hintergrund und setzt das
             // Geänderte ein; ein Dreieck holt nur den Baum. Der Faltzustand der Adresse gilt für jeden Link, auch einen älteren (F1: die URL
             // bleibt sein Träger, nachgeführt per replaceState).*
-            . ' data-taxmod-live-links data-taxmod-fold-part="' . self::TREE_PANE . '" data-taxmod-carry="taxmod_collapsed taxmod_hidden ' . self::SCOPE . '"'
+            . ' data-taxmod-live-links data-taxmod-fold-part="' . self::TREE_PANE . '" data-taxmod-carry="taxmod_collapsed taxmod_hidden ' . self::SCOPE . ' ' . self::HOST . '"'
             // ⚠️ *Automatisch speichern steht an der Seite (D-854); das Skript liest es dort, wie schon den Baumklick.*
             . ' data-taxmod-autosave="' . (SettingsScreen::autosaves() ? 'on' : 'off') . '" style="'
             . '--taxmod-icon:' . SettingsScreen::defaultIconSize() . 'px;'
@@ -2543,6 +2551,46 @@ final class NodesScreen
         return '<span id="' . esc_attr($id . '-similar') . '" class="taxmod-similar" data-taxmod-follows="name">' . $html . '</span>';
     }
 
+    /**
+     * Der Name des «+»: im eingegrenzten Baum legt es eine Untergruppe an, im ganzen Baum ein Kind (Prüftor zu Live-Check 15).
+     *
+     * @return array{label: string, title: string}
+     */
+    private function addChildWords(): array
+    {
+        return $this->scopeFromRequest() !== null
+            ? ['label' => __('Add subgroup', 'taxmod'), 'title' => __('Add a subgroup under this group', 'taxmod')]
+            : ['label' => __('Add child', 'taxmod'), 'title' => __('Add a child under this node', 'taxmod')];
+    }
+
+    /** Umbenennen aus der Zeile (D-1574): der Name im Dialog, der Akt `rename` beim Bestätigen. */
+    private function renameDialog(Node $node): Dialog
+    {
+        return new Dialog(
+            'taxmod-rename-' . $node->id,
+            /* translators: %s: the name of the node. */
+            sprintf(__('Rename %s', 'taxmod'), $node->name),
+            '<label class="taxmod-dialog-field"><span>' . esc_html__('Name', 'taxmod') . '</span>'
+            . ListPage::field(\Taxmod\Core\Description\InputKind::Line, 'name', $node->name, ['class' => 'taxmod-toolbar-name']) . '</label>',
+            __('Rename', 'taxmod'),
+            __('Cancel', 'taxmod')
+        );
+    }
+
+    /**
+     * Verschieben aus der Zeile (D-1574): der gemeinsame Wahlbaum, «OK» schickt `move` ab. Im eingegrenzten Baum öffnet er im Ast.
+     *
+     * ⚠️ *Gesperrt ist nur der Knoten selbst — seine Nachfahren je Zeile zu sammeln wäre ein Gang je Zeile (`CD-7`); unter sich
+     * selbst verschieben lehnt der Editor ab, aus dem Ast heraus {@see refuseOutsideScope()}.*
+     */
+    private function movePick(Node $node): \Taxmod\Core\Description\PickOpener
+    {
+        $scope = $this->scopeFromRequest();
+
+        return new \Taxmod\Core\Description\PickOpener('target', '', $node->parentId(), null, [$node->id], $scope === null ? array_slice($node->ancestorIds(), 0, 2) : [$scope->id],
+            __('Move this node under another', 'taxmod'), \Taxmod\Core\Description\Icon::named('move', __('Move', 'taxmod')));
+    }
+
     private function newChildDialog(Node $parent, string $id): Dialog
     {
         $imKatalog = $this->catalogue()?->baseTypeOf($parent) !== null;
@@ -2671,7 +2719,11 @@ final class NodesScreen
             // ⚠️ **Ein «+», und es fragt erst** ([D-730](../../../docs/NewConcept/90-decision-log.md)) — *sein Wort: «im baum erstellt
             // automatisch kategorie knoten … nur ein + bei beiden … es kommt ein dialog hoch, lässt den benutzer den type des
             // knoten wählen und mit ok anlegen / abbruch auch möglich».* Derselbe Dialog wie im Kopf der Seite.
-            new Control('do', 'add_child', __('Add child', 'taxmod'), __('Add a child under this node', 'taxmod'), icon: 'plus-alt2', opens: $this->newChildDialog($row['node'], 'taxmod-add-' . $row['node']->id), address: $stelle),
+            // D-1574, Prüftor zu Live-Check 15: derselbe Knopf in beiden Bäumen (D-1511 Regel 3), nur sein Name folgt dem Zusammenhang.
+            new Control('do', 'add_child', $this->addChildWords()['label'], $this->addChildWords()['title'], icon: 'plus-alt2', opens: $this->newChildDialog($row['node'], 'taxmod-add-' . $row['node']->id), address: $stelle),
+            new Control('do', 'rename', __('Rename', 'taxmod'), __('Rename this node', 'taxmod'), ! $this->framework->isProtected($row['node']), icon: 'edit', opens: $this->renameDialog($row['node']), address: $stelle),
+            new Control('do', 'move', __('Move', 'taxmod'), __('Move this node under another', 'taxmod'), ! $this->framework->isProtected($row['node']), icon: 'move', address: $stelle,
+                picks: $this->movePick($row['node'])),
             // ⚠️ **Duplicate, asked for three times** — the owner, in the end plainly: *duplicating
             // `my_int` does not work, no button in the tree nor in the head.* The title says what does
             // **not** come along, because a copy that silently dropped forty children would be a
@@ -2826,7 +2878,7 @@ final class NodesScreen
 
         return add_query_arg(
             array_filter([
-                'page' => 'taxmod',
+                'page' => $this->pageSlug(),
                 // ⚠️ **The marker, and it is why unfolding the last branch is not the same as arriving.**
                 // *`implode(',', [])` is the empty string, which `array_filter` drops and
                 // {@see collapsedFromRequest()} would then read as «no parameter» — the fresh page,
@@ -3824,7 +3876,7 @@ final class NodesScreen
             . $this->form(
                 $selected->id,
                 [],
-                ControlMarkup::button(new Control('do', 'add_child', __('Add child', 'taxmod'), __('Add a child under this node', 'taxmod'), icon: 'plus-alt2', opens: $this->newChildDialog($selected, 'taxmod-add-head-' . $selected->id), address: Address::ofNode($selected->id)))
+                ControlMarkup::button(new Control('do', 'add_child', $this->addChildWords()['label'], $this->addChildWords()['title'], icon: 'plus-alt2', opens: $this->newChildDialog($selected, 'taxmod-add-head-' . $selected->id), address: Address::ofNode($selected->id)))
             )
             // ⚠️ **The save button submits the settings panel from outside it.** `form="…"` is plain
             // HTML — a button may name the form it belongs to — so nothing needs scripting.
@@ -8421,7 +8473,21 @@ final class NodesScreen
      */
     private function scopeFromRequest(): ?Node
     {
-        $id   = absint($this->circumstance(self::SCOPE) ?? '0');
+        $id = absint($this->circumstance(self::SCOPE) ?? '0');
+
+        // ⚠️ *Einmal je Id gelesen: jede Zeile fragt, ob eingegrenzt ist (`CD-7`).*
+        if (! array_key_exists($id, $this->scopes)) {
+            $this->scopes[$id] = $this->scopeNode($id);
+        }
+
+        return $this->scopes[$id];
+    }
+
+    /** @var array<int, Node|null> */
+    private array $scopes = [];
+
+    private function scopeNode(int $id): ?Node
+    {
         $node = $id === 0 ? null : $this->editor->find($id);
 
         if ($node === null || $node->id === $this->framework->trash()->id) {
@@ -8433,6 +8499,32 @@ final class NodesScreen
         return in_array($this->framework->root()->id, $ancestors, true) && ! in_array($this->framework->trash()->id, $ancestors, true)
             ? $node
             : null;
+    }
+
+    /**
+     * Die Seite auf einen Ast eingegrenzt, innerhalb der Seite eines Moduls (D-1574, Live-Check 15: «Seitentemplate des Lagers
+     * mit Stammdaten-Navigation»). Links und Rücksprünge führen auf `$host` statt auf die Seite des Modellers.
+     */
+    public function embeddedIn(int $scope, string $host): static
+    {
+        $this->embedded = [self::SCOPE => (string) $scope, self::HOST => sanitize_key($host)];
+
+        return $this;
+    }
+
+    /**
+     * Wohin Links und Rücksprünge führen: die einbettende Modulseite, solange die Eingrenzung gilt, sonst der Modeller.
+     *
+     * ⚠️ *Die Adresse wird nicht geglaubt (`CD-5`): nur mit gültigem Ast und nur eine Seite, die ein Modul als Gastgeber angemeldet
+     * hat ({@see Plugin::NODE_SCREEN_HOSTS_FILTER}, Prüftor zu Live-Check 15), sonst wäre `taxmod_host` ein Sprung auf eine beliebige
+     * Seite des Adminbereichs.*
+     */
+    private function pageSlug(): string
+    {
+        $host  = sanitize_key((string) $this->circumstance(self::HOST));
+        $hosts = (array) apply_filters(Plugin::NODE_SCREEN_HOSTS_FILTER, []);
+
+        return $host !== '' && in_array($host, $hosts, true) && $this->scopeFromRequest() !== null ? $host : 'taxmod';
     }
 
     /**
@@ -9252,7 +9344,7 @@ final class NodesScreen
         $raw = $_POST[$key] ?? $_GET[$key] ?? null;
 
         if ($raw === null || $raw === '') {
-            return null;
+            return $this->embedded[$key] ?? null;
         }
 
         return sanitize_text_field(wp_unslash((string) $raw));
@@ -9285,6 +9377,7 @@ final class NodesScreen
             self::OPEN_ROWS    => $this->circumstance(self::OPEN_ROWS),
             // ⚠️ *Sonst verlässt jeder Akt den eingegrenzten Ast (D-1574).*
             self::SCOPE        => $this->circumstance(self::SCOPE),
+            self::HOST         => $this->circumstance(self::HOST),
             // ⚠️ *Sonst springt jedes Speichern auf Seite 1 zurück, weg von dem Satz, den man gerade bearbeitet hat (D-763).*
             self::RECORD_PAGE  => $this->circumstance(self::RECORD_PAGE),
             // ⚠️ *Sonst hebt jedes Speichern den Filter auf, unter dem man gerade arbeitet (D-768).*
@@ -9366,7 +9459,7 @@ final class NodesScreen
     {
         return add_query_arg(
             array_filter([
-                'page'        => 'taxmod',
+                'page'        => $this->pageSlug(),
                 'taxmod_node' => $nodeId,
                 // ⚠️ **From the query string *or* the posted form**, and it has to be both. A page
                 // load carries them in the URL; an **act** is a POST to `admin-post.php`, which has no
@@ -9394,6 +9487,7 @@ final class NodesScreen
                 self::OPEN_ROWS    => $this->circumstance(self::OPEN_ROWS),
                 // ⚠️ *Sonst verlässt jeder Link den eingegrenzten Ast (D-1574).*
                 self::SCOPE        => $this->circumstance(self::SCOPE),
+                self::HOST         => $this->circumstance(self::HOST),
                 // ⚠️ *Die Seite der Datensätze gilt nur für den Knoten, auf dem geblättert wurde — ein Link
                 // auf einen anderen beginnt bei Seite 1, wie der Merker oben (D-763).*
                 self::RECORD_PAGE  => $nodeId !== null && $nodeId === absint(wp_unslash($_POST['id'] ?? $_GET['taxmod_node'] ?? 0))
