@@ -844,5 +844,7 @@ return [
         'This page shows one branch only; do this in the whole model tree.' => 'Diese Seite zeigt nur einen Ast; das bitte im ganzen Modellbaum tun.',
         'This node lies outside the branch this page shows.' => 'Dieser Knoten liegt außerhalb des Asts, den diese Seite zeigt.',
         'A node cannot be moved out of the branch this page shows.' => 'Ein Knoten kann nicht aus dem Ast, den diese Seite zeigt, hinaus verschoben werden.',
+        '+ Subgroup' => '+ Untergruppe',
+        'Add a subgroup under this group' => 'Eine Untergruppe unter dieser Gruppe anlegen',
     ],
 ];

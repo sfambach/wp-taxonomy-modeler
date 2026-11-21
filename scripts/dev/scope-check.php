@@ -4,7 +4,8 @@
  * The node page scoped to one branch (D-1574, Stefan 2026-11-21: «du musst das halt nur auf den/die materilast/äste
  * einschränken»), as a failing check: with `taxmod_scope` the tree starts at that node and shows it as its first row,
  * nothing beside it and no trash; links carry the scope; a scope that is no node, the trash or below it shows the whole tree;
- * no act leaves the branch: a move out of it, an act beside it and parking the branch itself are refused.
+ * no act leaves the branch: a move out of it, an act beside it and parking the branch itself are refused; embedded in a module's
+ * page (`embeddedIn`, filter `taxmod_node_screen`) links come back to that page, never to one outside Taxmod.
  *
  *     WP_ROOT=/path/to/wordpress php scripts/dev/scope-check.php
  */
@@ -81,6 +82,20 @@ $say(! $row($html, $daneben->id), 'was neben dem Ast liegt, steht nicht da');
 $say(! str_contains($html, 'class="taxmod-trash"'), 'kein Papierkorb im eingegrenzten Baum');
 $say(str_contains($html, 'taxmod_scope=' . $ast->id), 'die Links tragen die Eingrenzung');
 $say(preg_match('/data-taxmod-carry="[^"]*\btaxmod_scope\b/', $html) === 1, 'die Seite führt sie im Skript mit');
+
+$say(str_contains($html, '>' . esc_html__('+ Subgroup', 'taxmod') . '<'), 'die Zeile zeigt «+ Untergruppe» als Wort (Live-Check 15)');
+
+echo "\n== in der Seite eines Moduls (Live-Check 15) ==\n";
+unset($_GET['taxmod_scope']);
+$_GET['taxmod_collapsed'] = 'none';
+$eingebettet = $plugin->screen()->embeddedIn($ast->id, 'taxmod-__sc-host')->render();
+$say($row($eingebettet, $kind->id) && ! $row($eingebettet, $daneben->id), 'eingebettet gilt die Eingrenzung ohne Parameter in der Adresse');
+$say(str_contains($eingebettet, 'page=taxmod-__sc-host') && ! str_contains(str_replace('page=taxmod-__sc-host', '', $eingebettet), 'page=taxmod&amp;taxmod_collapsed'), 'Faltlinks führen auf die Modulseite');
+$say(! str_contains($plugin->screen()->embeddedIn($ast->id, 'options-general')->render(), 'page=options-general'), 'eine Seite ausserhalb von Taxmod ist kein Ziel');
+$_GET['taxmod_host'] = 'taxmod-__sc-host';
+$say(! str_contains($plugin->screen()->render(), 'page=taxmod-__sc-host'), 'ohne Eingrenzung führt kein Link auf die Modulseite');
+unset($_GET['taxmod_host']);
+$say(has_filter(\Taxmod\WordPress\Plugin::NODE_SCREEN_FILTER) !== false, 'der Filter für Modulseiten ist angemeldet');
 
 echo "\n== ohne oder mit falscher Eingrenzung der ganze Baum ==\n";
 $ganz = $draw(null);
