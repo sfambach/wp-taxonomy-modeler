@@ -139,6 +139,11 @@
 
 		if ( feld && feld.matches( 'input[type="hidden"]' ) ) {
 			feld.value = radio.value;
+
+			// D-1551: a value written by a script is a choice too.
+			if ( window.taxmodChosen ) {
+				window.taxmodChosen( feld );
+			}
 		}
 
 		oeffner.setAttribute( 'data-chosen', radio.value );
