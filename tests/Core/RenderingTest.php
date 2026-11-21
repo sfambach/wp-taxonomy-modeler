@@ -3150,6 +3150,30 @@ final class RenderingTest extends TestCase
         self::assertStringNotContainsString('wert', $gezeigt, 'an empty part shows no field names');
     }
 
+    /** Live-Check 10: a stored part of the parent element under a retargeted field draws no settings as inputs. */
+    #[Test]
+    public function a_stored_part_of_the_parent_element_draws_no_settings(): void
+    {
+        $platine    = $this->thing('Platine');
+        $wertTyp    = $this->editor->createNode('Einheitenwert', $this->branchRoot['compositions']->id, \Taxmod\Core\Model\NodeClass\UnitValue::class);
+        $wert       = $this->editor->addField($wertTyp->id, $this->type('Decimal')->id, 'wert');
+        $einstellung = $this->settingRelation($wertTyp->id, $this->type('Integer')->id, 'position');
+        $staerke    = $this->editor->createNode('Stärke', $wertTyp->id, \Taxmod\Core\Model\NodeClass\UnitValue::class);
+        $feld       = $this->editor->addField($platine->id, $staerke->id, 'staerke', RelationKind::Composition);
+        $teil = $this->records->add(new NodeRecord(0, $wertTyp->id, 1, '2026-11-21 19:00:00', RecordType::User));
+        $this->records->putValue(RelationRecord::direct($teil, $wert->id, TypedValue::ofDecimal('1.6')));
+        $satz = $this->records->add(new NodeRecord(0, $platine->id, 1, '2026-11-21 19:00:00', RecordType::User));
+        $this->records->putValue(RelationRecord::direct($satz, $feld->id, TypedValue::ofRecordReference($teil)));
+        $this->neuZeichnen();
+
+        $felder = $this->editor->fieldsOf($platine->id);
+        $werte  = [$feld->id => TypedValue::ofRecordReference($teil)];
+        $markup = \Taxmod\WordPress\Draw\Markup::of($this->rendering->nodeAsForm($platine, $felder, $werte, Purpose::Edit, 'v', '', \Taxmod\Core\Renderer\Level::Admin, true, '', $this->rendering->partsOfRecord($satz, $felder), recordId: $satz));
+
+        self::assertStringContainsString('[' . $wert->id . ']', $markup, 'the part keeps its real field');
+        self::assertStringNotContainsString('[' . $einstellung->id . ']', $markup, 'a setting is no input of the part');
+    }
+
     /** D-1366: a composed field (D-888) speaks its parts in their own words, as the chooser does. */
     #[Test]
     public function a_composed_field_names_its_parts_by_their_own_choice(): void
