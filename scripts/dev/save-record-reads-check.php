@@ -36,8 +36,12 @@ wp_set_current_user(1);
  *
  * `repeats`: wörtlich gleiche Lesungen zwischen zwei Schreibanweisungen. `statements`: die Anweisungen eines Speicherns von
  * fünf Textfeldern. Gemessen am 2026-11-19: ohne Lesegedächtnis 85 Wiederholungen und 155 Anweisungen, mit ihm 0 und 63 — 61 davon an die Tabellen des Modellers, und nur die zählt die Decke.
+ *
+ * ⚠️ **61 → 62 seit D-1514 (2026-11-21), sichtbar und mit Grund:** ein Speichern liest einmal je Anfrage, an welchen
+ * Kanten «Vertraulich» gewählt ist, damit kein vertrauliches Feld im Klartext landet. Ein Merken über die Anfrage hinaus
+ * (Option) wurde verworfen, weil ein zurückgerollter Akt es veralten lässt.
  */
-const SAVE_RECORD_CEILINGS = ['repeats' => 0, 'statements' => 61];
+const SAVE_RECORD_CEILINGS = ['repeats' => 0, 'statements' => 62];
 
 final class SaveRecordReadsStop extends RuntimeException
 {

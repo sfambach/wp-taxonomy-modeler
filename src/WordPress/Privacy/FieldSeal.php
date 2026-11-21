@@ -42,8 +42,6 @@ final class FieldSeal
     private const VAULT_CONTEXT = 'taxmod-data-key';
 
     /** The confidential edges, remembered between requests (a cache of the settings). */
-    public const RELATIONS_OPTION = 'taxmod_confidential_relations';
-
     /** Former keys, still read: an array key id → key text, for a change of key. */
     public const OLD_KEYS_CONSTANT = 'TAXMOD_DATA_KEYS_OLD';
 
@@ -115,14 +113,8 @@ final class FieldSeal
             return self::$confidential;
         }
 
-        $kept = get_option(self::RELATIONS_OPTION, false);
-
-        if (! is_array($kept)) {
-            $kept = FieldSealRows::confidentialRelationIds();
-            update_option(self::RELATIONS_OPTION, $kept, true);
-        }
-
-        return self::$confidential = array_fill_keys(array_map(intval(...), $kept), true);
+        // ⚠️ *Only per request, never in an option: an option written inside a transaction that is rolled back stays in WordPress' option cache and would name edges that are no longer confidential — or miss new ones.*
+        return self::$confidential = array_fill_keys(array_map(intval(...), FieldSealRows::confidentialRelationIds()), true);
     }
 
     public static function isConfidential(int $relationId): bool
@@ -130,14 +122,10 @@ final class FieldSeal
         return isset(self::confidentialRelations()[$relationId]);
     }
 
-    /** After a setting was written: the confidential edges are read again, here and in the next request. */
+    /** After a setting was written or an act rolled back: the confidential edges are read again. */
     public static function forget(): void
     {
         self::$confidential = null;
-
-        if (get_option(self::RELATIONS_OPTION, false) !== false) {
-            delete_option(self::RELATIONS_OPTION);
-        }
     }
 
     /** For a check that defines the key itself: the key is read again. */

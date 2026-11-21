@@ -60,6 +60,9 @@ final class Transaction
                 $wpdb->query('ROLLBACK');
             }
 
+            // D-1514: what was read inside the act may name settings the rollback took back.
+            \Taxmod\WordPress\Privacy\FieldSeal::forget();
+
             throw $e;
         }
 
