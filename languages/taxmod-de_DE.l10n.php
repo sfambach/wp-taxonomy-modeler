@@ -840,5 +840,9 @@ return [
         'Use' => 'Verwenden',
         'Create anyway' => 'Trotzdem neu anlegen',
         'Saved with a note: %s' => 'Gespeichert mit Hinweis: %s',
+        // D-1574: the node page scoped to one branch.
+        'This page shows one branch only; do this in the whole model tree.' => 'Diese Seite zeigt nur einen Ast; das bitte im ganzen Modellbaum tun.',
+        'This node lies outside the branch this page shows.' => 'Dieser Knoten liegt außerhalb des Asts, den diese Seite zeigt.',
+        'A node cannot be moved out of the branch this page shows.' => 'Ein Knoten kann nicht aus dem Ast, den diese Seite zeigt, hinaus verschoben werden.',
     ],
 ];
