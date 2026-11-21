@@ -1403,3 +1403,10 @@ Anlass: [INF-073](#inf-073--bestand-und-fertigung-vom-wareneingang-über-die-pla
 
 - **Anlass:** Bau von [D-1552](NewConcept/90-decision-log.md). Die Filterzeile zeigt die Felder in der Reihenfolge, in der sie angelegt wurden: Feld · Wert · Operator · Art. D-1552 sagt Art · Feld · Operator · Wert; ein Op zum Umsortieren der Felder eines Knotens gibt es nicht.
 - **Weg:** kommt mit dem Ordnen der Formulare im Feldkatalog ([D-1556](NewConcept/90-decision-log.md), Datenjob). Die Liste der Regelseite zeigt die Filter schon in der Reihenfolge von D-1552.
+
+## INF-139 · Massenänderung im Lager (2026-11-21)
+
+- **Anlass:** Stefan 21.11.: «der Benutzer hat keine Möglichkeit für Massenänderungen … Konzept für Massenänderungen … eher was für Supervisor» und «TRT-Widerstände, die kleiner als 1 Kilo … eingelagert … Lagermassenverwaltung fehlt … eigentlich müsste das ja eine Funktion der Software sein». Beispiel: alle THT-Widerstände Mindestbestand 10, Basiseinheit Stück, Standardlagerort «THT Widerstände»; THT-Widerstände < 1 kΩ an Platz X.
+- **Heute:** nur per Datenjob über die Queue (gemacht für die THT-Widerstände, 21.11.). In der Oberfläche gibt es Sammelfunktionen nur je Liste ([D-1403](NewConcept/90-decision-log.md)), keine Auswahl «Knoten + Filter» und kein «Werte setzen» für viele Sätze.
+- **Offen:** Auswahl wie bei den Regeln ([D-1552](NewConcept/90-decision-log.md): Knoten + Filter)? Welche Felder dürfen in Masse geändert werden (Lager-Werte, Umbuchen)? Rolle «Supervisor» — gibt es sie, und was darf sie? Vorschau und ein Akt, rückgängig ([D-1410](NewConcept/90-decision-log.md))?
+- **Nicht entschieden. Keine Annahme gebaut.**
