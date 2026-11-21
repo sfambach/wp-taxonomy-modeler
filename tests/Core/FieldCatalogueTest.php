@@ -71,4 +71,23 @@ final class FieldCatalogueTest extends TestCase
         self::assertSame(CompositeType::class, CompositeType::defaultChildClass());
         self::assertSame('composite type', Contracts::of(CompositeType::class)->key);
     }
+
+    #[Test]
+    public function creating_below_a_base_type_first_finds_the_similar_elements_of_that_type_only(): void
+    {
+        $nodes = [
+            $this->node(3, '1.2.3', 'Integer'),
+            $this->node(4, '1.2.3.4', 'Jahr'),
+            $this->node(5, '1.2.3.4.5', 'Baujahr'),
+            $this->node(8, '1.2.3.8', 'Polzahl'),
+            $this->node(7, '1.2.6.7', 'Jahr'),
+        ];
+        $similar = $this->catalogue()->similarElements('jahr', $this->node(3, '1.2.3', 'Integer'), $nodes);
+
+        self::assertSame([4, 5], array_map(static fn (Node $n): int => $n->id, $similar));
+        self::assertSame([], $this->catalogue()->similarElements('Pinzahl Steckverbinder lang', $this->node(4, '1.2.3.4'), $nodes));
+        self::assertSame([], $this->catalogue()->similarElements('Jahr', $this->node(13, '10.13'), $nodes));
+        self::assertSame(3, $this->catalogue()->baseTypeOf($this->node(5, '1.2.3.4.5')));
+        self::assertNull($this->catalogue()->baseTypeOf($this->node(13, '10.13')));
+    }
 }

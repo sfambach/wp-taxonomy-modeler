@@ -50,6 +50,9 @@ use Taxmod\Core\Renderer\RenderedField;
 use Taxmod\Core\Repository\Changelog;
 use Taxmod\Core\Repository\FrameworkNodes;
 use Taxmod\Core\Repository\TypeNodes;
+use Taxmod\WordPress\Persistence\CatalogueBase;
+use Taxmod\Core\Model\CatalogueRole;
+use Taxmod\Core\Service\FieldCatalogue;
 use Taxmod\Core\Service\ModelEditor;
 use Taxmod\Core\Service\RestoreResult;
 use Taxmod\Core\Service\DataEntry;
@@ -2387,15 +2390,70 @@ final class NodesScreen
         );
     }
 
+    private ?FieldCatalogue $catalogue = null;
+
+    /** The Feldkatalog's base types of this model, read once per request; null without type nodes ([D-1553](../../../docs/NewConcept/90-decision-log.md)). */
+    private function catalogue(): ?FieldCatalogue
+    {
+        return $this->types === null ? null : ($this->catalogue ??= CatalogueBase::catalogue($this->types));
+    }
+
+    /** D-1553: a relation never points at a base type directly — refused, with what to do instead (U2). */
+    private function baseTypeRefusal(int $target): ?string
+    {
+        $node = $target > 0 ? $this->editor->find($target) : null;
+
+        if ($node === null || $this->catalogue()?->roleOf($node) !== CatalogueRole::BaseType) {
+            return null;
+        }
+
+        /* translators: %s: the name of the base type, e.g. Integer. */
+        return sprintf(__('«%s» is a base type. A field points at a data element: choose one below it, or create one there first.', 'taxmod'), $node->name);
+    }
+
+    /**
+     * D-1555: creating a node below a base type makes a data element, so the similar ones below the same base type are shown
+     * first; only with «Create as a new data element» ticked is it made anyway (U3, U4). Same name rule as MCP similar-fields.
+     */
+    private function similarRefusal(string $name, int $parentId): ?string
+    {
+        $catalogue = $this->catalogue();
+        $parent    = $parentId > 0 ? $this->editor->find($parentId) : null;
+        $base      = $parent === null || $catalogue === null ? null : $catalogue->baseTypeOf($parent);
+        $baseNode  = $base === null ? null : $this->editor->find($base);
+
+        if ($name === '' || ! empty($_POST['new_element']) || $parent === null || $baseNode === null) {
+            return null;
+        }
+
+        $similar = $catalogue->similarElements($name, $parent, (new \Taxmod\WordPress\Persistence\WpdbNodeRepository())->subtreeOf($baseNode));
+
+        if ($similar === []) {
+            return null;
+        }
+
+        return sprintf(
+            /* translators: %s: the similar data elements, e.g. «Jahr» (#12), «Baujahr» (#40). */
+            __('Similar data elements exist: %s. Use one of them, or tick «Create as a new data element» to create it anyway.', 'taxmod'),
+            implode(', ', array_map(static fn (Node $n): string => '«' . $n->name . '» (#' . $n->id . ')', array_slice($similar, 0, 5)))
+        );
+    }
+
     private function newChildDialog(Node $parent, string $id): Dialog
     {
+        // D-1555 U4: below a base type a new data element is made deliberately — the tick says so.
+        $bewusst = $this->catalogue()?->baseTypeOf($parent) === null ? ''
+            : '<label class="taxmod-dialog-field">' . ListPage::field(InputKind::Tick, 'new_element', '1') . '<span>' . esc_html__('Create as a new data element', 'taxmod') . '</span></label>'
+            . '<p class="description">' . esc_html__('This makes a data element of the Feldkatalog. A similar existing one is shown first and is usually the better choice.', 'taxmod') . '</p>';
+
         return new Dialog(
             $id,
             /* translators: %s: the name of the parent node. */
             sprintf(__('New node under %s', 'taxmod'), $parent->name),
             '<label class="taxmod-dialog-field"><span>' . esc_html__('Name', 'taxmod') . '</span>'
             . '<input type="text" name="name" placeholder="' . esc_attr__('New node', 'taxmod') . '" class="taxmod-toolbar-name"></label>'
-            . '<label class="taxmod-dialog-field"><span>' . esc_html__('Class', 'taxmod') . '</span>' . $this->classChooser($parent) . '</label>',
+            . '<label class="taxmod-dialog-field"><span>' . esc_html__('Class', 'taxmod') . '</span>' . $this->classChooser($parent) . '</label>'
+            . $bewusst,
             __('Add', 'taxmod'),
             __('Cancel', 'taxmod')
         );
@@ -8433,7 +8491,8 @@ final class NodesScreen
             $acts = new \Taxmod\Core\Event\ListenerProvider();
 
             // ⚠️ *Ohne Namen heisst das Kind «New node» — der Dialog verlangt keinen (D-730); `add_child_here` ist darin aufgegangen.*
-            $acts->listen(ControlPressed::class, fn (ControlPressed $e): mixed => $e->answer($e->stayAt($this->createdChild($name === '' ? __('New node', 'taxmod') : $name, $id)->id)), 'add_child');
+            // D-1555: under a base type the new node is a data element — similar ones are shown first, «new» only when ticked (U3, U4).
+            $acts->listen(ControlPressed::class, fn (ControlPressed $e): mixed => $e->answer($this->similarRefusal($name, $id) ?? $e->stayAt($this->createdChild($name === '' ? __('New node', 'taxmod') : $name, $id)->id)), 'add_child');
             // ⚠️ **The new node becomes the selected one.** The `+` in a row is the one act
             // whose whole point is *and now I want to work on that* — it makes a node with a
             // placeholder name, so leaving the parent selected means the very next thing a
@@ -8471,7 +8530,8 @@ final class NodesScreen
             // WICHTIG: Leerer Name heisst «nimm den des Zielknotens» (TASK-026). Entschieden
             // wird es hier und nicht im Kern: welcher Name gemeint ist, ist eine Frage der
             // Maske, und addField() soll weiter genau das anlegen, was man ihm sagt.
-            $acts->listen(ControlPressed::class, fn (ControlPressed $e): mixed => $e->answer($this->editor->addField(
+            // D-1553: «a base type is not chosen directly» — the field points at a data element (U2).
+            $acts->listen(ControlPressed::class, fn (ControlPressed $e): mixed => $e->answer($this->baseTypeRefusal($pointsAt) ?? $this->editor->addField(
                     $id,
                     $pointsAt,
                     $name === '' ? ($this->editor->find($pointsAt)?->name ?? '') : $name,

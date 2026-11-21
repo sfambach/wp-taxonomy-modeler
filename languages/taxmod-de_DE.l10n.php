@@ -792,5 +792,9 @@ return [
         '· «Show the root»'                                                              => '· «Wurzel zeigen»',
         '— the code expects %d'                                                          => '— der Code erwartet %d',
         'Composite data type' => 'Zusammengesetzter Datentyp',
+        '«%s» is a base type. A field points at a data element: choose one below it, or create one there first.' => '«%s» ist ein Grundtyp. Ein Feld zeigt auf ein Datenelement: wähle eines darunter oder lege dort zuerst eines an.',
+        'Similar data elements exist: %s. Use one of them, or tick «Create as a new data element» to create it anyway.' => 'Es gibt ähnliche Datenelemente: %s. Verwende eines davon oder hake «Als neues Datenelement anlegen» an, um es trotzdem anzulegen.',
+        'Create as a new data element' => 'Als neues Datenelement anlegen',
+        'This makes a data element of the Feldkatalog. A similar existing one is shown first and is usually the better choice.' => 'Das legt ein Datenelement im Feldkatalog an. Ein ähnliches vorhandenes wird zuerst gezeigt und ist meist die bessere Wahl.',
     ],
 ];

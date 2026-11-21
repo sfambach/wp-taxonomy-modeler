@@ -20,6 +20,9 @@
 
 define('WP_USE_THEMES', false);
 
+final class FieldCatalogStop extends \RuntimeException
+{
+}
 
 require (getenv('WP_ROOT') ?: 'C:/Devel/Wordpress') . '/wp-load.php';
 require __DIR__ . '/lib/no-write.php';
@@ -127,6 +130,69 @@ $say(($zeilen[(int) $refs['f3']]['target_role'] ?? '') === 'base_type', 'Integer
 
 $nurGrund = $rows(['node' => (int) $refs['ding'], 'target_role' => 'base_type']);
 $say(array_keys($nurGrund) === [(int) $refs['f3']], 'the target_role filter keeps only the field on the base type', wp_json_encode(array_keys($nurGrund)));
+
+echo "\n== the node page: no field on a base type, similar elements first (D-1553, D-1555) ==\n";
+
+$aktion     = (string) (new ReflectionClass(\Taxmod\WordPress\Admin\NodesScreen::class))->getConstant('ACTION');
+$umgeleitet = '';
+
+add_filter('wp_redirect', static function (string $location) use (&$umgeleitet): string {
+    $umgeleitet = $location;
+
+    throw new FieldCatalogStop();
+});
+
+/** @return array{message: string, node: int} what the page said, and where it stands afterwards */
+$abschicken = static function (int $knoten, string $do, array $post = []) use ($plugin, $aktion, &$umgeleitet): array {
+    $post += ['action' => $aktion, 'id' => (string) $knoten, 'do' => $do, '_taxmod_nonce' => wp_create_nonce($aktion . '_' . $knoten)];
+    $_POST      = wp_slash($post);
+    $_REQUEST   = $_POST;
+    $umgeleitet = '';
+
+    ob_start();
+
+    try {
+        $plugin->screen()->handlePost();
+    } catch (FieldCatalogStop) {
+    } catch (\Throwable $fehler) {
+        ob_end_clean();
+
+        return ['message' => 'THROWN ' . get_class($fehler) . ': ' . $fehler->getMessage(), 'node' => 0];
+    }
+
+    ob_end_clean();
+    parse_str((string) parse_url($umgeleitet, PHP_URL_QUERY), $teile);
+
+    return ['message' => rawurldecode((string) ($teile['taxmod_message'] ?? '')), 'node' => (int) ($teile['taxmod_node'] ?? 0)];
+};
+
+$ding      = (int) $refs['ding'];
+$feldZahl  = static fn (): int => count($rows(['node' => $ding]));
+$vorFelder = $feldZahl();
+
+$grund = $abschicken($ding, 'add_field', ['field_target' => (string) $int->id, 'name' => '__fc Grundtyp direkt']);
+$say(str_contains($grund['message'], $int->name) && $feldZahl() === $vorFelder, 'a field on Integer itself is refused, naming it, and nothing is written', $grund['message']);
+
+$element = $abschicken($ding, 'add_field', ['field_target' => (string) $refs['jahr'], 'name' => '__fc Jahr zwei']);
+$say($feldZahl() === $vorFelder + 1, 'a field on a data element is made', $element['message']);
+
+$kinderVorher = count((new WpdbNodeRepository())->childrenOf($int));
+$aehnlich     = $abschicken($int->id, 'add_child', ['name' => '__fc Baujahr']);
+$say(str_contains($aehnlich['message'], '__fc Baujahr') && count((new WpdbNodeRepository())->childrenOf($int)) === $kinderVorher, 'a new node below Integer with a similar name shows the similar element and is not made', $aehnlich['message']);
+
+$bewusst = $abschicken($int->id, 'add_child', ['name' => '__fc Baujahr', 'new_element' => '1']);
+$say(count((new WpdbNodeRepository())->childrenOf($int)) === $kinderVorher + 1, 'ticked «Create as a new data element», it is made', $bewusst['message']);
+
+$frei = $abschicken((int) $refs['ding'], 'add_child', ['name' => '__fc Baujahr']);
+$say($frei['node'] > 0, 'outside the catalogue a similar name is no reason to ask', $frei['message']);
+
+echo "\n== the module door shows the catalogue (Logistik page «Feldkatalog», D-1555) ==\n";
+
+$eintraege = array_column((new \Taxmod\WordPress\ModelDoor())->catalogue(), null, 'id');
+$say(($eintraege[$int->id]['role'] ?? '') === 'base_type', 'Integer stands in it as base type');
+$say(($eintraege[(int) $refs['jahr']]['role'] ?? '') === 'data_element' && ($eintraege[(int) $refs['jahr']]['uses'] ?? 0) >= 2, 'a data element with how many fields point at it', wp_json_encode($eintraege[(int) $refs['jahr']] ?? null));
+$say(($eintraege[(int) $refs['mass']]['role'] ?? '') === 'composite', 'a composite under Model stands in it too');
+$say(! isset($eintraege[(int) $refs['pos']]) && ! isset($eintraege[$ding]), 'ordinary nodes do not');
 
 echo "\n== relations to a base type never grow ==\n";
 
