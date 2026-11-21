@@ -212,9 +212,9 @@ final class TypedFieldsTest extends TestCase
     }
 
     #[Test]
-    public function three_renderers_are_offered_for_a_number_and_the_plain_one_is_the_default(): void
+    public function four_renderers_are_offered_for_a_number_and_the_plain_one_is_the_default(): void
     {
-        // D-018, confirmed independently by the legacy `Spinner` / `Range` choices.
+        // D-018, confirmed independently by the legacy `Spinner` / `Range` choices; D-1541 adds the field choice of a rule filter.
         $registry = ShippedRenderers::registry();
 
         $names = array_map(
@@ -224,7 +224,7 @@ final class TypedFieldsTest extends TestCase
 
         sort($names);
 
-        self::assertSame([FieldRenderer::NAME, SliderRenderer::NAME, SpinnerRenderer::NAME], $names);
+        self::assertSame([FieldRenderer::NAME, \Taxmod\Core\Renderer\FieldChoiceRenderer::NAME, SliderRenderer::NAME, SpinnerRenderer::NAME], $names);
         self::assertSame(FieldRenderer::NAME, $registry->defaultFor(SimpleType::Int)->name());
     }
 
