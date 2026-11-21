@@ -215,6 +215,7 @@ final class NodesScreen
     private const OPEN_ROWS = 'taxmod_open_rows';
     private const SCOPE = 'taxmod_scope';
     private const HOST = 'taxmod_host';
+    private const SCOPED_TAB = 'taxmod_scoped_tab';
 
     /** Welche Seite der Datensätze gezeigt wird — eine Zahl oder `last` ([D-763](../../../docs/NewConcept/90-decision-log.md)). */
     private const RECORD_PAGE = 'taxmod_record_page';
@@ -2552,6 +2553,38 @@ final class NodesScreen
     }
 
     /**
+     * Die Detailseite im eingegrenzten Baum (D-1574, Prüftor C): Kopf und Labels wie immer, darunter Reiter — zuerst die eines
+     * Moduls ({@see Plugin::SCOPED_TABS_FILTER}, im Lager «Materialien»), dann «Eigenschaften», die Feldliste des Knotens.
+     *
+     * @param list<array{node: Node, depth: int, hasChildren: bool, collapsed: bool, isFirst: bool, isLast: bool}> $rows
+     */
+    private function scopedDetail(Node $selected, array $rows, Node $root, Node $scope): string
+    {
+        $offered = (array) apply_filters(Plugin::SCOPED_TABS_FILTER, [], $selected->id, $scope->id, $this->backTo($selected->id));
+        $tabs    = [];
+
+        foreach ($offered as $tab) {
+            if (is_array($tab) && is_string($tab['key'] ?? null) && $tab['key'] !== 'properties' && is_string($tab['label'] ?? null) && is_string($tab['html'] ?? null)) {
+                $tabs[sanitize_key($tab['key'])] = $tab + ['count' => null];
+            }
+        }
+
+        $tabs['properties'] = ['key' => 'properties', 'label' => __('Properties', 'taxmod'), 'count' => null,
+            'html' => $this->block(__('Fields', 'taxmod'), fn (): string => $this->attributes($selected, $rows))];
+        $asked  = sanitize_key((string) $this->circumstance(self::SCOPED_TAB));
+        $active = isset($tabs[$asked]) ? $asked : (string) array_key_first($tabs);
+
+        return \Taxmod\WordPress\Draw\Markup::of($this->rendering->nodeAsPage($selected, [
+                PageSlot::Acts->value    => new Section('', $this->block(__('Head', 'taxmod'), fn (): string => $this->head($selected, $root))),
+                PageSlot::Display->value => new Section('', $this->block(__('Labels', 'taxmod'), fn (): string => $this->labelsPanel($selected))),
+            ]))
+            . '<div class="taxmod-page-block taxmod-scoped-tabs">'
+            . ListPage::tabs(array_map(static fn (array $tab): array => [(string) $tab['key'], (string) $tab['label'], is_int($tab['count']) ? $tab['count'] : null], array_values($tabs)), $active,
+                fn (string $key): string => $this->backTo($selected->id, [self::SCOPED_TAB => $key]))
+            . '<div class="taxmod-scoped-tab" data-taxmod-tab="' . esc_attr($active) . '">' . $tabs[$active]['html'] . '</div></div>';
+    }
+
+    /**
      * Der Name des «+»: im eingegrenzten Baum legt es eine Untergruppe an, im ganzen Baum ein Kind (Prüftor zu Live-Check 15).
      *
      * @return array{label: string, title: string}
@@ -2910,6 +2943,10 @@ final class NodesScreen
                     __('Click a name in the tree and it appears here.', 'taxmod')
                 )
                 . '</h2>';
+        }
+
+        if (($scope = $this->scopeFromRequest()) !== null) {
+            return $this->scopedDetail($selected, $rows, $root, $scope);
         }
 
         // ⚠️ **The frame is the renderer's; this only says what goes in which slot** (R20a, and
@@ -9378,6 +9415,7 @@ final class NodesScreen
             // ⚠️ *Sonst verlässt jeder Akt den eingegrenzten Ast (D-1574).*
             self::SCOPE        => $this->circumstance(self::SCOPE),
             self::HOST         => $this->circumstance(self::HOST),
+            self::SCOPED_TAB   => $this->circumstance(self::SCOPED_TAB),
             // ⚠️ *Sonst springt jedes Speichern auf Seite 1 zurück, weg von dem Satz, den man gerade bearbeitet hat (D-763).*
             self::RECORD_PAGE  => $this->circumstance(self::RECORD_PAGE),
             // ⚠️ *Sonst hebt jedes Speichern den Filter auf, unter dem man gerade arbeitet (D-768).*
@@ -9488,6 +9526,7 @@ final class NodesScreen
                 // ⚠️ *Sonst verlässt jeder Link den eingegrenzten Ast (D-1574).*
                 self::SCOPE        => $this->circumstance(self::SCOPE),
                 self::HOST         => $this->circumstance(self::HOST),
+                self::SCOPED_TAB   => $this->circumstance(self::SCOPED_TAB),
                 // ⚠️ *Die Seite der Datensätze gilt nur für den Knoten, auf dem geblättert wurde — ein Link
                 // auf einen anderen beginnt bei Seite 1, wie der Merker oben (D-763).*
                 self::RECORD_PAGE  => $nodeId !== null && $nodeId === absint(wp_unslash($_POST['id'] ?? $_GET['taxmod_node'] ?? 0))

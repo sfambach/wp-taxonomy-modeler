@@ -61,6 +61,12 @@ final class Plugin
     /** `apply_filters(NODE_SCREEN_HOSTS_FILTER, [])`: the admin pages a module draws the node page on; only these are taken as `taxmod_host` (D-1574). */
     public const NODE_SCREEN_HOSTS_FILTER = 'taxmod_node_screen_hosts';
 
+    /**
+     * `apply_filters(SCOPED_TABS_FILTER, [], $nodeId, $scopeRoot, $backUrl)`: a module's tabs on the scoped node page, each
+     * `['key' => …, 'label' => …, 'html' => …, 'count' => ?int]`, before the modeller's own «Properties» (D-1574). `html` is escaped by the module.
+     */
+    public const SCOPED_TABS_FILTER = 'taxmod_scoped_tabs';
+
     /** `apply_filters(CLAIMED_FIELDS_FILTER, [], $recordId, $nodeId)`: relation id → ['label' => button text, 'url' => the module's dialog] — fields a module changes only through its own dialog; the record editor shows them read-only with that button — none when 'url' is empty — and its save leaves them alone (D-1334). */
     public const CLAIMED_FIELDS_FILTER = 'taxmod_claimed_fields';
 
