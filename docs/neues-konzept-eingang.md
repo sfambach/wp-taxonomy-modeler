@@ -1443,3 +1443,11 @@ Anlass: [INF-073](#inf-073--bestand-und-fertigung-vom-wareneingang-über-die-pla
 - **Beschluss dazu:** [D-1553](NewConcept/90-decision-log.md): «a data element … holds every setting of a value — type, units, bounds, renderer, check rules, help … Replaces … the help per field of D-1524.»
 - **Offen:** Bei einem Feld auf ein Datenelement *ist* der Zielknoten das Datenelement, der Rückfall liefert also dessen Hilfe. Das folgt aus D-1553. Nicht daraus folgt, was Felder bekommen, die Sätze wählen (Ziel ist ein Ast wie die Material-Wurzel, kein Datenelement): gar keine Hilfe, oder eine eigene?
 - **Nicht entschieden. Keine Annahme gebaut.**
+
+## INF-145 · Filterart wird beim Auswerten nicht gelesen (2026-11-21)
+
+- **Anlass:** Prüftor 21.11. (D-1563 Schritt 3). Die Druckregeln lesen je Filter nur Feld, Operator und Wert (`wp_tax_label` `PrintRules`), die Werte kommen immer aus dem Satz selbst (`LabelService::dialogCatalog`, `valuesOf([$record])`).
+- **Beschluss dazu:** [D-1552](NewConcept/90-decision-log.md): «each term naming whose fields it offers («Felder von», 0..1: Bestand → stock lot, Einkauf → purchase, Prozess → process; empty = the rule's node)».
+- **Heute:** «Bestand», «Einkauf» und «Prozess» lesen in den Druckregeln die Werte des Satzes selbst, nicht die des Postens, Einkaufs oder Prozesses. Die Druckregeln haben deshalb nur Filter der Art «Feld» (D-1563 Schritt 3). Ob die Testregeln im Lager die Art lesen, ist nicht gemessen.
+- **Offen:** Wo eine Druckfrage den Posten, Einkauf oder Prozess hernimmt (beim Material-Etikett gibt es keinen), und ob ein Filter, dessen Art nicht auflösbar ist, dann nie hält (wie ein nicht gebauter Operator, [D-1541](NewConcept/90-decision-log.md)).
+- **Nicht entschieden. Keine Annahme gebaut.**
