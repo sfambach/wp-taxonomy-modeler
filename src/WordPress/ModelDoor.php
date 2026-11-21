@@ -539,6 +539,125 @@ final class ModelDoor
     }
 
     /**
+     * D-1540: which candidates carry the same key values of their category as the record — the fields the category computes
+     * its name from, a quantity compared in its base unit. One call for all records (CD-7): a read for the nodes of the
+     * records, one field read per category, one for the values, one for the parts and one for the conversions they name.
+     *
+     * @param array<int, list<int>> $candidates record → candidates
+     * @return array<int, list<int>> record → the candidates that match; a record without match is absent
+     */
+    public function sameKeyValuesOf(array $candidates): array
+    {
+        $records = [];
+
+        foreach ($candidates as $record => $others) {
+            $records[(int) $record] = true;
+
+            foreach ($others as $other) {
+                $records[(int) $other] = true;
+            }
+        }
+
+        if ($records === []) {
+            return [];
+        }
+
+        $nodes     = $this->nodesOf(array_keys($records));
+        $byNode    = [];
+        $keyFields = [];
+
+        foreach ($nodes as $record => $node) {
+            $keyFields[$record] = $byNode[$node] ??= $this->keyFieldsOf($node);
+        }
+
+        $repository = new WpdbRecordRepository();
+        $rows       = $repository->valuesOfMany(array_keys($records));
+        $parts      = [];
+
+        foreach ($rows as $record => $values) {
+            $wanted = array_flip($keyFields[$record] ?? []);
+
+            foreach ($values as $value) {
+                if (isset($wanted[$value->relationId]) && $value->value->reference !== null && $value->value->referenceSpace === \Taxmod\Core\Model\ReferenceSpace::Record) {
+                    $parts[$value->value->reference] = true;
+                }
+            }
+        }
+
+        $partRows = $parts === [] ? [] : $repository->valuesOfMany(array_keys($parts));
+
+        return (new \Taxmod\Core\Service\KeyValues($keyFields, $rows, $partRows, $this->conversionsIn($partRows)))->matching($candidates);
+    }
+
+    /**
+     * The fields a category computes its name from (`composed_of` of its name field), without the name field itself.
+     *
+     * @return list<int>
+     */
+    private function keyFieldsOf(int $node): array
+    {
+        foreach ($this->fieldList($node) as $field) {
+            $parts = array_map('intval', (array) ($field['composed_of'] ?? []));
+
+            if ($parts !== []) {
+                return array_values(array_diff($parts, [(int) $field['relation_id']]));
+            }
+        }
+
+        return [];
+    }
+
+    /**
+     * The conversions (factor, offset) of the nodes these part rows point at — a prefix, a unit with a factor.
+     *
+     * @param array<int, list<\Taxmod\Core\Model\RelationRecord>> $partRows
+     * @return array<int, array{factor: string, offset: string}>
+     */
+    private function conversionsIn(array $partRows): array
+    {
+        $ids = [];
+
+        foreach ($partRows as $rows) {
+            foreach ($rows as $row) {
+                if ($row->value->reference !== null && $row->value->referenceSpace === \Taxmod\Core\Model\ReferenceSpace::Node) {
+                    $ids[$row->value->reference] = true;
+                }
+            }
+        }
+
+        $nodes = $ids === [] ? [] : (new Persistence\WpdbNodeRepository())->byIds(array_keys($ids));
+
+        if ($nodes === []) {
+            return [];
+        }
+
+        $resolver = new \Taxmod\Core\Service\SettingsResolver(
+            new Persistence\WpdbSettingsRepository(),
+            new Persistence\WpdbNodeRepository(),
+            \Taxmod\Core\Renderer\ShippedRenderers::registry(),
+            \Taxmod\Core\Converter\ShippedConverters::registry(),
+            \Taxmod\Core\Addon\ShippedAddons::registry(),
+            new Persistence\WpdbRelationRepository()
+        );
+        $resolver->preload(array_values($nodes));
+        $out = [];
+
+        foreach ($nodes as $node) {
+            $settings = $resolver->forNode($node);
+            $factor   = isset($settings['factor']) && $settings['factor']->fromOwnerId !== 0 ? $settings['factor']->value->rawValue() : null;
+
+            if ($factor !== null && $factor !== '') {
+                $out[(int) $node->id] = [
+                    'factor' => (string) $factor,
+                    'offset' => isset($settings['offset']) ? (string) $settings['offset']->value->rawValue() : '0',
+                ];
+            }
+        }
+
+        return $out;
+    }
+
+    /**
      * D-1479: which records of these nodes are variants, and of which parent — for a list that sums a parent's stock and
      * draws its variants beneath it. A read for the nodes, one for their fields, one per «Variante von» field (CD-7).
      *

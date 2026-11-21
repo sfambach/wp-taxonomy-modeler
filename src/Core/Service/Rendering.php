@@ -936,6 +936,9 @@ final class Rendering implements Presets, \Taxmod\Core\Port\FieldAddons
     /** @var array<int, true> Kanten, an denen ein Modulformular ausdrücklich eine Wahl verlangt (D-1298). */
     private array $wahlVerlangt = [];
 
+    /** @var array<int, list<int>> relation id → the roots its choice offers, from a structure setting (D-1546) */
+    private array $wurzelnAt = [];
+
     /**
      * Der Abschnitt einer Einstellung: wer sie erklärt — ein Schlüssel, das Wort macht der Rand (`AR-2`). Sein Wort: «rules als kategorie
      * und dann darunter jump field».
@@ -1302,6 +1305,20 @@ final class Rendering implements Presets, \Taxmod\Core\Port\FieldAddons
     {
         $kopie               = clone $this;
         $kopie->wahlVerlangt = array_fill_keys($relationIds, true);
+
+        return $kopie;
+    }
+
+    /**
+     * A choice offers only what lies under the given roots (D-1546): the field keeps its target, a setting may name several roots.
+     * A root outside the field's target offers nothing of its own; ancestors of the roots stay as unpickable context rows.
+     *
+     * @param array<int, list<int>> $roots relation id → roots
+     */
+    public function withRootsAt(array $roots): static
+    {
+        $kopie            = clone $this;
+        $kopie->wurzelnAt = array_filter(array_map(static fn (array $ids): array => array_values(array_unique(array_filter(array_map('intval', $ids), static fn (int $id): bool => $id > 0))), $roots));
 
         return $kopie;
     }
@@ -2352,7 +2369,7 @@ final class Rendering implements Presets, \Taxmod\Core\Port\FieldAddons
                     // ⚠️ *Auch ein Auswahlfeld bietet nur die erlaubten an (D-783): in «Abmessung» stand an der Einheit `choice`, und es bot
                     // die Gruppen «With prefix / Without prefix» statt «m» an — sein Befund: «das auswahlfeld wird nicht richtig gerendert» (D-1140).*
                     ? (($renderer instanceof ChooserRenderer || ($renderer instanceof ChoiceRenderer && isset($allowedChoices[$relation->id]))
-                        ? $this->chooserMarkup($this->gemerkterKnoten($relation->toNodeId), $renderer, $context->settings, $value, $context->fieldName, $formId, $locale, $level, $allowedChoices[$relation->id] ?? null, $relation->multiplicity->requiresOne())
+                        ? $this->chooserMarkup($this->gemerkterKnoten($relation->toNodeId), $renderer, $context->settings, $value, $context->fieldName, $formId, $locale, $level, $allowedChoices[$relation->id] ?? null, $relation->multiplicity->requiresOne(), $this->wurzelnAt[$relation->id] ?? [])
                         : null) ?? $renderer->render($relation, $context))
                     : $this->chosenAndItsFields($relation, $type, $renderer, $context, $tiefer['result'])),
                 // Carried for the **layout**: R75 puts read-only values first, as context rather
@@ -6432,7 +6449,8 @@ final class Rendering implements Presets, \Taxmod\Core\Port\FieldAddons
     /**
      * @param array<string, ResolvedSetting> $settings Die aufgelösten Angaben der Stelle — darunter `dialog` und `display_size` des Wählers.
      */
-    private function chooserMarkup(?Node $target, Renderer $renderer, array $settings, TypedValue $value, string $fieldName, string $formId, string $locale, Level $level, ?array $erlaubt = null, bool $required = false): ?RenderResult
+    /** @param list<int> $wurzeln the roots the choice offers (D-1546); empty is the whole target */
+    private function chooserMarkup(?Node $target, Renderer $renderer, array $settings, TypedValue $value, string $fieldName, string $formId, string $locale, Level $level, ?array $erlaubt = null, bool $required = false, array $wurzeln = []): ?RenderResult
     {
         if ($target === null || ! ($renderer instanceof ChooserRenderer || ($renderer instanceof ChoiceRenderer && $erlaubt !== null))) {
             return null;
@@ -6493,7 +6511,7 @@ final class Rendering implements Presets, \Taxmod\Core\Port\FieldAddons
         // dropdown liste anzeigen ist nur eine ebene, sollte list label zur anzeige verwenden».* Haben die Kinder des
         // Ziels selbst keine Kinder, zeichnet der Wähler ein Auswahlfeld, beschriftet mit der Rolle `select` — *ausser
         // jemand hat den Dialog eingeschaltet ([D-727](../../../docs/NewConcept/90-decision-log.md)): dann bleibt der Baum.*
-        if (($settings[ChooserRenderer::DIALOG] ?? null)?->value->asBool() !== true) {
+        if ($wurzeln === [] && ($settings[ChooserRenderer::DIALOG] ?? null)?->value->asBool() !== true) {
             $kinder = $this->gemerkteSichtbareKinder([$target->id])[$target->id] ?? [];
             $enkel  = $kinder === [] ? [] : array_filter($this->gemerkteSichtbareKinder(array_map(static fn (Node $k): int => $k->id, $kinder)));
 
@@ -6540,7 +6558,8 @@ final class Rendering implements Presets, \Taxmod\Core\Port\FieldAddons
             '',
             '',
             $formId,
-            $settings
+            $settings,
+            $wurzeln
         );
     }
 
@@ -8774,6 +8793,8 @@ final class Rendering implements Presets, \Taxmod\Core\Port\FieldAddons
         string $formId = '',
         /** @var array<string, ResolvedSetting> Die Angaben des Wählers — `dialog`, `display_size`; die Knotenseite gibt {@see ChooserRenderer::asDialog()}. */
         array $settings = [],
+        /** @var list<int> Only these roots and what lies under them are offered (D-1546); their ancestors stay as context, unpickable. */
+        array $within = [],
     ): RenderResult {
         $laeufer = $this->walker();
 
@@ -8785,6 +8806,11 @@ final class Rendering implements Presets, \Taxmod\Core\Port\FieldAddons
         // anderer und keiner teilbar (gemessen: 25 Einheitenbäume, 25 Vorlagen). Das Skript öffnet den Ast der Wahl nach dem Einsetzen.*
         $geteilt = $this->geteilteKoerper !== null && $formId !== '';
         $walked  = $this->closedApartFrom($this->gemerkteZeilenUnter($laeufer, $root, $skip), $expanded, $geteilt ? null : $preselected);
+
+        if ($within !== []) {
+            [$walked, $kontext] = self::rowsWithin($walked, $within);
+            $unpickable         = [...$unpickable, ...$kontext];
+        }
 
         return $this->chooserFor(
             $walked,
@@ -8822,6 +8848,39 @@ final class Rendering implements Presets, \Taxmod\Core\Port\FieldAddons
      * @param  list<array{node: Node, depth: int, hasChildren: bool, collapsed: bool, isFirst: bool, isLast: bool, hidden: bool}> $walked
      * @return list<array{node: Node, depth: int, hasChildren: bool, collapsed: bool, isFirst: bool, isLast: bool, hidden: bool}>
      */
+    /**
+     * The rows of the roots and below them, plus the rows on the way down to a root as unpickable context (D-1546).
+     *
+     * @param list<array{node: Node}> $walked
+     * @param list<int>               $roots
+     * @return array{0: list<array{node: Node}>, 1: list<int>} the rows kept, and the context ids
+     */
+    public static function rowsWithin(array $walked, array $roots): array
+    {
+        $wurzel = array_fill_keys($roots, true);
+        $weg    = [];
+
+        foreach ($walked as $row) {
+            if (isset($wurzel[$row['node']->id])) {
+                foreach ($row['node']->ancestorIds() as $id) {
+                    $weg[$id] = true;
+                }
+            }
+        }
+
+        $kept = [];
+
+        foreach ($walked as $row) {
+            $node = $row['node'];
+
+            if (isset($wurzel[$node->id]) || isset($weg[$node->id]) || array_intersect_key(array_flip($node->ancestorIds()), $wurzel) !== []) {
+                $kept[] = $row;
+            }
+        }
+
+        return [$kept, array_map('intval', array_keys(array_diff_key($weg, $wurzel)))];
+    }
+
     private function closedApartFrom(array $walked, ?Node $expanded, ?int $preselected = null): array
     {
         // WICHTIG: Ohne genannten Ast ist ALLES zu, nicht alles offen. Auf sein Wort: "der

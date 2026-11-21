@@ -371,8 +371,11 @@ final class NodesScreen
      * ⚠️ *Sein Wort: «warum springt er zum bearbeiten in den tax wir haben doch die renderer dafür». Dieselbe Zeichnung und derselbe
      * Akt wie in der Vorschau; nur der Rückweg ist `$returnTo`, damit man nach dem Speichern dort bleibt, wo man war.*
      */
-    /** @param list<string|list<string>> $toolbar the module's own button groups, after «Save» (D-1308) */
-    public function recordEditor(int $recordId, string $returnTo, array $toolbar = []): string
+    /**
+     * @param list<string|list<string>> $toolbar the module's own button groups, after «Save» (D-1308)
+     * @param array<int, int|list<int>> $roots   relation id → the roots its choice offers, read from a structure setting (D-1546)
+     */
+    public function recordEditor(int $recordId, string $returnTo, array $toolbar = [], array $roots = []): string
     {
         $satz   = $this->data->find($recordId) ?? throw new \InvalidArgumentException("No record {$recordId}.");
         $knoten = $this->editor->find($satz->nodeId) ?? throw new \InvalidArgumentException("No node {$satz->nodeId}.");
@@ -414,7 +417,7 @@ final class NodesScreen
                 [Control::saving('do', 'save_record', __('Save', 'taxmod'), __('Write these values', 'taxmod'))->at(Address::ofRecord($knoten->id, $recordId)), $this->moveRecordControl($satz, $knoten)]
             ), ...$toolbar]) . '</div>'
             . $this->claimedRows($recordId, $felder, $claimed)
-            . \Taxmod\WordPress\Draw\Markup::of($this->rendering->withoutSharedRecordBodies()->withoutSharedPicker()->withPartActs(__('Add row', 'taxmod'), __('Remove this row', 'taxmod'), __('Add several', 'taxmod'), __('Insert a row below this one', 'taxmod'), __('Remove from this list — the record itself stays', 'taxmod'))
+            . \Taxmod\WordPress\Draw\Markup::of($this->rendering->withRootsAt(self::rootLists($roots))->withoutSharedRecordBodies()->withoutSharedPicker()->withPartActs(__('Add row', 'taxmod'), __('Remove this row', 'taxmod'), __('Add several', 'taxmod'), __('Insert a row below this one', 'taxmod'), __('Remove from this list — the record itself stays', 'taxmod'))
                 ->withRecordLinks(fn (int $andererSatz, int $knoten = 0): string => $this->recordAddress($andererSatz, $knoten))
                 // ⚠️ *Ohne die Adresse blieb ein Sprung (D-769) im Formular eines Moduls eine leere Zeile — gemessen an Satz 46700, «Kompatibilität».*
                 ->withJumps($this->jumpAddress(...), __('Open the matching records', 'taxmod'))
@@ -540,13 +543,34 @@ final class NodesScreen
     }
 
     /**
+     * Roots as a module hands them in — one id or a list per relation — as lists of positive ids (D-1546).
+     *
+     * @param array<int, mixed> $roots
+     * @return array<int, list<int>>
+     */
+    private static function rootLists(array $roots): array
+    {
+        $out = [];
+
+        foreach ($roots as $relation => $ids) {
+            $ids = array_values(array_unique(array_filter(array_map('absint', is_array($ids) ? $ids : [$ids]))));
+
+            if ((int) $relation > 0 && $ids !== []) {
+                $out[(int) $relation] = $ids;
+            }
+        }
+
+        return $out;
+    }
+
+    /**
      * The modeller's own controls for some fields of a node, for a module's form (D-1250): the same renderer, type and
      * converter as in the record editor, so a quantity is the unit-value field it is everywhere else. Values come from
      * `$recordId`, or `$values` (as a person would type them, «10 St») where there is no record yet; a missing value stays empty.
      *
      * @param list<int>          $relations
      * @param array<int, string> $values    characters by relation id, for a record not yet written
-     * @param array<int, int>    $roots     relation id → a node below the field's target, the only branch offered (D-1298)
+     * @param array<int, int|list<int>> $roots relation id → a node below the field's target, the only branch offered (D-1298), or several (D-1546)
      * @return array<int, string> relation id → control markup, escaped; posted as `prefix[relation id]`
      */
     public function fieldControls(int $nodeId, array $relations, string $prefix, string $formId = '', int $recordId = 0, array $values = [], array $roots = []): array
@@ -555,13 +579,16 @@ final class NodesScreen
         $felder  = array_values(array_filter($this->editor->fieldsOf($nodeId), static fn (Relation $r): bool => isset($gefragt[$r->id])));
 
         // D-1298: only in memory and only for this form — the field keeps its target; a root outside it is not narrowed to.
+        // D-1546: one root narrows the target as before; several stay a filter on the choice (withRootsAt below).
+        $roots  = self::rootLists($roots);
         $felder = array_map(
-            static fn (Relation $r): Relation => ($roots[$r->id] ?? 0) > 0 && $roots[$r->id] !== $r->toNodeId
-                && in_array($roots[$r->id], (new \Taxmod\WordPress\Persistence\WpdbNodeRepository())->subtreeIds($r->toNodeId), true)
-                ? $r->retargetedTo($roots[$r->id], $r->kind)
+            static fn (Relation $r): Relation => count($roots[$r->id] ?? []) === 1 && $roots[$r->id][0] !== $r->toNodeId
+                && in_array($roots[$r->id][0], (new \Taxmod\WordPress\Persistence\WpdbNodeRepository())->subtreeIds($r->toNodeId), true)
+                ? $r->retargetedTo($roots[$r->id][0], $r->kind)
                 : $r,
             $felder
         );
+        $several = array_filter($roots, static fn (array $ids): bool => count($ids) > 1);
 
         if ($felder === []) {
             return [];
@@ -585,7 +612,7 @@ final class NodesScreen
         // themselves, like the record editor (D-1135); with a stub only, the manufacturer dialog showed nothing but «—».
         // D-1298: a module's form asks for these fields to fill them in, so a node reference is a choice here even where the chain chose
         // `reference` for showing it.
-        $rendering = $this->rendering->withoutSharedRecordBodies()->withoutSharedPicker()->withRecordCreation(...$this->recordCreation())
+        $rendering = $this->rendering->withRootsAt($several)->withoutSharedRecordBodies()->withoutSharedPicker()->withRecordCreation(...$this->recordCreation())
             ->withChoiceAt(array_map(static fn (Relation $r): int => $r->id, $felder));
 
         // D-1538: a part field (a unit value) shows the part the record holds, addressed by its id, as the record editor does.
