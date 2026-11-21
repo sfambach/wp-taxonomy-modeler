@@ -139,6 +139,11 @@
 
 		if ( feld && feld.matches( 'input[type="hidden"]' ) ) {
 			feld.value = radio.value;
+
+			// D-1551: a value written by a script is a choice too.
+			if ( window.taxmodChosen ) {
+				window.taxmodChosen( feld );
+			}
 		}
 
 		oeffner.setAttribute( 'data-chosen', radio.value );
@@ -3895,7 +3900,7 @@
  *
  * ```mermaid
  * flowchart LR
- *   K["change on …[knoten]"] --> F["fetch taxmod_node_fields"] --> S["refill select[data-taxmod-fields-of=knoten]"]
+ *   K["taxmod:chosen …[knoten]"] --> F["fetch taxmod_node_fields"] --> S["refill select[data-taxmod-fields-of=knoten]"]
  * ```
  */
 ( function () {
@@ -3982,15 +3987,17 @@
 		} );
 	}
 
-	document.addEventListener( 'change', function ( event ) {
-		var field    = event.target;
-		var relation = field && field.name ? relationOf( field.name ) : '';
+	// D-1551: the node's choice is the event — in its dialog only once «OK» keeps it.
+	document.addEventListener( 'taxmod:chosen', function ( event ) {
+		var detail   = event.detail || {};
+		var relation = relationOf( detail.field );
+		var form     = detail.form && detail.form.id ? detail.form.id : '';
 
 		if ( ! relation || ! document.querySelector( 'select[data-taxmod-fields-of="' + relation + '"]' ) ) {
 			return;
 		}
 
-		refill( relation, formOf( field ), chosenNode( relation, formOf( field ) ) );
+		refill( relation, form, chosenNode( relation, form ) );
 	} );
 
 	// A filter row added after the node was chosen starts from the template, empty (and so disabled): it fills itself when it arrives.

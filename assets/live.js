@@ -830,4 +830,238 @@
 			refresh();
 		}
 	} );
+
+	/* ------------------------------------------------------------------------------------------------------------------
+	 * Auswahl = Ereignis (D-1551). His word 2026-11-21 08:42: «Ich wähle was aus, ein Event wird gesetzt und ja, Sachen
+	 * reagieren darauf.» Every choice — a select, a checkbox, a radio, a tree chooser, a record pick — says `taxmod:chosen`
+	 * at its form with {field, value, form}. A choice inside a dialog with «OK» counts when the dialog closes, and only if the
+	 * value differs from when it opened: «Abbrechen» puts it back, so nothing was chosen. A value a script writes (a hidden
+	 * field behind a shared tree) is said with `window.taxmodChosen( control )`.
+	 *
+	 * What depends on a field says so with `data-taxmod-follows="<field> …"` and an id; a token is the field's whole name or
+	 * its last `[…]` part. It is fetched anew from `data-taxmod-source` (else the page itself) with the values it follows as
+	 * `taxmod_chosen[<name>]`, and put in place like the projection of D-1408 — no save, no full reload.
+	 *
+	 * ```mermaid
+	 * flowchart LR
+	 *   C[change / OK / taxmodChosen] --> E[taxmod:chosen at the form] --> F[followers of the field]
+	 *   F --> G[GET source + taxmod_chosen] --> M[morph #id] --> R[taxmod:replaced]
+	 * ```
+	 * ---------------------------------------------------------------------------------------------------------------- */
+
+	var CHOICE = 'select, input[type="checkbox"], input[type="radio"], input[type="hidden"]';
+
+	function valueOf( form, name ) {
+		var controls = form
+			? Array.prototype.filter.call( form.elements, function ( one ) {
+				return one.name === name;
+			} )
+			: Array.prototype.slice.call( document.getElementsByName( name ) );
+		var values = [];
+
+		controls.forEach( function ( one ) {
+			if ( one.disabled || ( ( one.type === 'checkbox' || one.type === 'radio' ) && ! one.checked ) ) {
+				return;
+			}
+
+			if ( one.tagName === 'SELECT' ) {
+				Array.prototype.forEach.call( one.selectedOptions, function ( option ) {
+					values.push( option.value );
+				} );
+
+				return;
+			}
+
+			values.push( one.value );
+		} );
+
+		var many = /\[\]$/.test( name ) || controls.some( function ( one ) {
+			return one.multiple;
+		} ) || controls.filter( function ( one ) {
+			return one.type === 'checkbox';
+		} ).length > 1;
+
+		return many ? values : ( values[ 0 ] || '' );
+	}
+
+	function follows( token, name ) {
+		return token !== '' && ( token === name || name.slice( -( token.length + 2 ) ) === '[' + token + ']' );
+	}
+
+	var following = {};
+
+	function fetchFollower( follower, form ) {
+		var url  = new URL( follower.getAttribute( 'data-taxmod-source' ) || window.location.href, window.location.href );
+		var sent = {};
+
+		( follower.getAttribute( 'data-taxmod-follows' ) || '' ).split( ' ' ).forEach( function ( token ) {
+			var named = {};
+
+			Array.prototype.forEach.call( form ? form.elements : [], function ( one ) {
+				if ( one.name && follows( token, one.name ) ) {
+					named[ one.name ] = true;
+				}
+			} );
+
+			Object.keys( named ).forEach( function ( name ) {
+				sent[ name ] = valueOf( form, name );
+			} );
+		} );
+
+		// *One parameter as JSON: a field's name carries brackets of its own, which PHP would read as nesting.*
+		url.searchParams.set( 'taxmod_chosen', JSON.stringify( sent ) );
+
+		if ( following[ follower.id ] ) {
+			following[ follower.id ].abort();
+		}
+
+		var running = following[ follower.id ] = new AbortController();
+
+		follower.setAttribute( 'aria-busy', 'true' );
+
+		return window.fetch( url.toString(), { credentials: 'same-origin', signal: running.signal, headers: { 'X-Taxmod-Live': follower.id } } )
+			.then( function ( answer ) {
+				if ( ! answer.ok ) {
+					throw new Error( String( answer.status ) );
+				}
+
+				return answer.text();
+			} )
+			.then( function ( html ) {
+				var fresh = new DOMParser().parseFromString( html, 'text/html' ).getElementById( follower.id );
+				var mine  = document.getElementById( follower.id );
+
+				delete following[ follower.id ];
+
+				if ( ! fresh || ! mine ) {
+					throw new Error( 'taxmod:chosen — the answer has no #' + follower.id );
+				}
+
+				mine = morph( mine, fresh );
+				mine.removeAttribute( 'aria-busy' );
+				mine.dispatchEvent( new CustomEvent( 'taxmod:replaced', { bubbles: true, detail: { url: url.toString() } } ) );
+			} )
+			.catch( function ( error ) {
+				if ( error && error.name === 'AbortError' ) {
+					return;
+				}
+
+				delete following[ follower.id ];
+				follower.removeAttribute( 'aria-busy' );
+				// *Said, not silent: the follower keeps what it showed, and the form still saves what was chosen.*
+				window.console.error( error );
+			} );
+	}
+
+	function chosen( control ) {
+		if ( ! control || ! control.name ) {
+			return;
+		}
+
+		var form  = control.form || null;
+		var value = valueOf( form, control.name );
+
+		( form || control ).dispatchEvent( new CustomEvent( 'taxmod:chosen', { bubbles: true, detail: { field: control.name, value: value, form: form } } ) );
+	}
+
+	window.taxmodChosen = chosen;
+
+	document.addEventListener( 'taxmod:chosen', function ( event ) {
+		var detail = event.detail || {};
+
+		if ( ! window.fetch || ! window.DOMParser ) {
+			return;
+		}
+
+		document.querySelectorAll( '[data-taxmod-follows][id]' ).forEach( function ( follower ) {
+			var form = follower.closest( 'form' ) || ( follower.getAttribute( 'form' ) ? document.getElementById( follower.getAttribute( 'form' ) ) : null );
+			var hit  = ( follower.getAttribute( 'data-taxmod-follows' ) || '' ).split( ' ' ).some( function ( token ) {
+				return follows( token, detail.field || '' );
+			} );
+
+			if ( hit && ( ! detail.form || ! form || form === detail.form ) ) {
+				fetchFollower( follower, detail.form || form );
+			}
+		} );
+	} );
+
+	var DIALOG = '.taxmod-chooser';
+	var opened = new WeakMap();
+
+	function pendingIn( control ) {
+		var chooser = control.closest( DIALOG );
+		var theSwitch = chooser ? chooser.querySelector( '.taxmod-dialog-switch' ) : null;
+
+		return theSwitch && theSwitch.checked && control.closest( '.taxmod-dialog-panel' ) && chooser.querySelector( '.taxmod-dialog-foot' ) ? theSwitch : null;
+	}
+
+	function namesIn( chooser ) {
+		var names = {};
+
+		chooser.querySelectorAll( '.taxmod-dialog-panel [name]' ).forEach( function ( one ) {
+			// *The shared tree's radios only carry a choice to the field that opened it, which says it itself.*
+			if ( one.matches( CHOICE ) && ! one.classList.contains( 'taxmod-dialog-switch' ) && ! one.closest( '.taxmod-shared-pick' ) ) {
+				names[ one.name ] = one;
+			}
+		} );
+
+		return names;
+	}
+
+	function chosenFromChange( event ) {
+		var control = event.target;
+
+		if ( ! control || ! control.matches ) {
+			return;
+		}
+
+		// *The dialog's own switch: opening remembers the values inside, closing says what differs now.*
+		if ( control.classList.contains( 'taxmod-dialog-switch' ) ) {
+			var chooser = control.closest( DIALOG );
+
+			if ( ! chooser ) {
+				return;
+			}
+
+			var names = namesIn( chooser );
+
+			if ( control.checked ) {
+				var before = {};
+
+				Object.keys( names ).forEach( function ( name ) {
+					before[ name ] = JSON.stringify( valueOf( names[ name ].form, name ) );
+				} );
+				opened.set( control, before );
+
+				return;
+			}
+
+			var was = opened.get( control ) || {};
+
+			opened.delete( control );
+			Object.keys( names ).forEach( function ( name ) {
+				if ( was[ name ] !== JSON.stringify( valueOf( names[ name ].form, name ) ) ) {
+					chosen( names[ name ] );
+				}
+			} );
+
+			return;
+		}
+
+		if ( ! control.name || ! control.matches( CHOICE ) || pendingIn( control ) ) {
+			return;
+		}
+
+		chosen( control );
+	}
+
+	// *Capturing: the dialog's switch is remembered before admin.js moves the focus or a value into the panel.*
+	document.addEventListener( 'change', chosenFromChange, true );
+
+	// *A pick from the quick search sets its radio without a «change» (D-1311).*
+	document.addEventListener( 'taxmod-record-picked', function ( event ) {
+		if ( event.target && ! pendingIn( event.target ) ) {
+			chosen( event.target );
+		}
+	} );
 } )();
