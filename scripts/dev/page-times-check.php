@@ -154,6 +154,10 @@ if ($preview !== null) {
         $say(is_array($answer) && $answer['fields'] !== [] && array_slice(array_keys($answer['fields'][0]), 0, 5) === ['relation_id', 'name', 'ms', 'queries', 'kb'], 'je Feld Nummer, Name, ms, Abfragen, KB');
         $counted = is_array($answer) ? array_filter($answer['fields'], static fn (array $one): bool => isset($one['markup'])) : [];
         $say(array_filter($counted, static fn (array $one): bool => $one['kb'] < 100 || array_keys($one['markup']) !== ['tags', 'classes'] || array_filter(array_merge($one['markup']['tags'], $one['markup']['classes']), static fn (mixed $n): bool => ! is_int($n)) !== []) === [], 'ein großes Feld (ab 100 KB) zählt sein Markup aus: Elemente und Klassen, nur Zahlen (Nachtrag 3)');
+        $asked = is_array($answer) ? array_filter($answer['fields'], static fn (array $one): bool => isset($one['statements'])) : [];
+        $say(array_filter($asked, static fn (array $one): bool => $one['queries'] < 50 || preg_match('/\'|\d/', implode('', array_keys($one['statements']))) === 1) === [], 'ein Feld mit vielen Abfragen (ab 50) nennt deren Formen: kein Text, keine Zahl darin (Nachtrag 3)');
+        $shape = (new ReflectionMethod(\Taxmod\WordPress\Admin\NodesScreen::class, 'statementShape'))->invoke(null, "SELECT a FROM t WHERE id IN (12, 13,14) AND name = 'O\\'Neil 7' AND x = 4.5");
+        $say($shape === 'SELECT a FROM t WHERE id IN (?…) AND name = ? AND x = ?', 'die Form einer Anweisung trägt weder Text noch Zahl — ' . $shape);
         $say(is_array($answer) && in_array('admin side, whole', array_column($answer['steps'], 'step'), true), 'und beide Seiten als Ganzes');
         $say(is_array($answer) && ! str_contains((string) wp_json_encode($answer), (string) $row['word']), 'kein Wert des Satzes steht in der Antwort');
 

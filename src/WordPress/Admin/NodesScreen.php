@@ -3292,6 +3292,23 @@ final class NodesScreen
     /** From this size on a field's markup is counted out — below it there is nothing to explain. */
     private const MARKUP_COUNTED_FROM_KB = 100;
 
+    /** From this many statements on a field names the shapes of what it asked. */
+    private const STATEMENTS_COUNTED_FROM = 50;
+
+    /**
+     * A statement without anything a record could have put into it: every text and every number becomes `?`, a list of them
+     * one `(?…)`, a long one shortened in its middle (D-1482, Nachtrag 3). What is left is the wording the code wrote — enough to tell which read
+     * runs once per candidate (`CD-7`).
+     */
+    private static function statementShape(string $sql): string
+    {
+        $shape = (string) preg_replace(["/'(?:[^'\\\\]|\\\\.|'')*'/s", '/"(?:[^"\\\\]|\\\\.)*"/s', '/\\b\\d+(?:\\.\\d+)?\\b/', '/\\(\\s*\\?(?:\\s*,\\s*\\?)+\\s*\\)/', '/\\s+/'], ['?', '?', '?', '(?…)', ' '], $sql);
+
+        $shape = trim($shape);
+
+        return strlen($shape) <= 260 ? $shape : substr($shape, 0, 110) . ' … ' . substr($shape, -150);
+    }
+
     /**
      * What a large piece of markup consists of: its most frequent elements and class names, counted (D-1482, Nachtrag 3).
      *
@@ -3326,7 +3343,7 @@ final class NodesScreen
      *   F --> W["both sides whole, as the page draws them"]
      * ```
      *
-     * @return array{steps: list<array{step: string, ms: int, queries: int, kb: int}>, fields: list<array{relation_id: int, name: string, ms: int, queries: int, kb: int, markup?: array{tags: array<string, int>, classes: array<string, int>}}>}
+     * @return array{steps: list<array{step: string, ms: int, queries: int, kb: int}>, fields: list<array{relation_id: int, name: string, ms: int, queries: int, kb: int, markup?: array{tags: array<string, int>, classes: array<string, int>}, statements?: array<string, int>}>}
      * @see docs/pakete/ladezeit/konzept.md
      */
     public function previewTimes(Node $selected, int $recordId): array
@@ -3399,17 +3416,34 @@ final class NodesScreen
                 )
         );
         $fields = [];
+        $shapes = [];
+        $seen   = static function (string $sql) use (&$shapes): string {
+            $shape          = self::statementShape($sql);
+            $shapes[$shape] = ($shapes[$shape] ?? 0) + 1;
+
+            return $sql;
+        };
+
+        add_filter('query', $seen);
 
         foreach ($changeable as $relation) {
-            $row = [];
-            $drawn = $timed('', fn (): string => $draw([$relation], Purpose::Edit, Level::Admin, true, $formId), $row);
+            $row    = [];
+            $shapes = [];
+            $drawn  = $timed('', fn (): string => $draw([$relation], Purpose::Edit, Level::Admin, true, $formId), $row);
 
             if ($row['kb'] >= self::MARKUP_COUNTED_FROM_KB) {
                 $row['markup'] = self::markupCounts($drawn);
             }
 
+            if ($row['queries'] >= self::STATEMENTS_COUNTED_FROM) {
+                arsort($shapes);
+                $row['statements'] = array_slice($shapes, 0, 8, true);
+            }
+
             $fields[] = ['relation_id' => $relation->id, 'name' => $relation->name] + $row;
         }
+
+        remove_filter('query', $seen);
 
         $timed('display side, whole', fn (): string => $draw($visibility['shown'], Purpose::Display, Level::FrontEnd, false, ''));
         $timed('admin side, whole', fn (): string => $draw($changeable, Purpose::Edit, Level::Admin, true, $formId));
