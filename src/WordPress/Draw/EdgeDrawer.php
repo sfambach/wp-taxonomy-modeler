@@ -660,8 +660,10 @@ final class EdgeDrawer implements Drawer
         return $markup === '' ? '' : '<div class="taxmod-node">' . $markup . '</div>';
     }
 
-    /** @param array{name: string, field: ?Describes, hint: string} $zeile */
-    /** @param array<string, string> $words D-1571: `remove` names the ✕ of an optional field */
+    /**
+     * @param array{name: string, field: ?Describes, hint: string, relation?: int, addable?: bool} $zeile
+     * @param array<string, string> $words D-1571: `remove` names the ✕ of an optional field
+     */
     private function formLine(array $zeile, array $words = []): string
     {
         if ($zeile['field'] === null) {
@@ -674,7 +676,7 @@ final class EdgeDrawer implements Drawer
         return '<div class="taxmod-form-row"' . ($optional ? ' data-taxmod-optional="' . (int) $zeile['relation'] . '"' . ($zeile['addable'] ? ' hidden' : '') : '') . '>'
             . '<span class="taxmod-form-label">' . self::e($zeile['name']) . '</span>'
             . '<span class="taxmod-form-field">' . $this->draw($zeile['field'])
-            . ($optional ? ' <button type="button" class="button ' . ControlMarkup::ICON_ONLY . ' taxmod-field-remove" style="color:#b32d2e">'
+            . ($optional ? ' <button type="button" class="button ' . ControlMarkup::ICON_ONLY . ' taxmod-field-remove">'
                 . IconMarkup::dashicon('trash', $words['remove'] ?? '') . '</button>' : '')
             . '</span>' . HintMarkup::icon($zeile['hint']) . '</div>';
     }

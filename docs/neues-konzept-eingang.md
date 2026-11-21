@@ -1460,6 +1460,13 @@ Anlass: [INF-073](#inf-073--bestand-und-fertigung-vom-wareneingang-über-die-pla
 - **Offen:** Soll eine Regel nach dem Arbeitsplatz unterscheiden, an dem gedruckt wird? Das wäre eine Art, die nicht den gedruckten Satz liest, sondern den Ort, an dem gedruckt wird.
 - **Nicht entschieden. Nicht bauen.**
 
+## INF-148 · Feldwahl bei «aus Feld»: freie Wahl unter den Feldern eines Knotens (2026-11-21)
+
+- **Anlass:** Live-Check 11 (Prüftor 21.11.). «Etikett aus Feld» und «Anzahl aus Feld» an der Druckregel zeigen per Feldwahl (renderer field-choice) den Feldnamen. Die Auswahl bietet im Bearbeiten aber nur das gespeicherte Feld an, weil kein Feld der Regel den Knoten nennt, dessen Felder gemeint sind (die Platzart).
+- **Beschluss dazu:** [D-1570](NewConcept/90-decision-log.md): «a rule may name a field to read its label and its count from … named as data». [D-1541](NewConcept/90-decision-log.md): die Feldwahl bietet die Felder des Knotens an, den ein anderes Feld desselben Satzes wählt.
+- **Offen:** Soll eine Feldwahl die Felder eines fest eingestellten Knotens anbieten («Felder von»), statt die eines Knotens, den der Satz wählt?
+- **Nicht entschieden. Nicht bauen.**
+
 ## INF-146 · Anzeigesprache der Admin-Formulare nach Benutzer (2026-11-21)
 
 - **Anlass:** Live-Check 4 (Prüftor 21.11.). Der Hilfetext «Text» (Knoten 1175) stand nach Akt 603821 deutsch unter de_DE, im Formular aber weiter englisch. Ursache: Die Admin-Formulare zeichnen in der Standardsprache (`taxmod_neutral_locale`, live `en_US`), nicht in der Sprache des Benutzers.
