@@ -846,6 +846,7 @@ return [
         'A node cannot be moved out of the branch this page shows.' => 'Ein Knoten kann nicht aus dem Ast, den diese Seite zeigt, hinaus verschoben werden.',
         'Add subgroup' => 'Untergruppe anlegen',
         'Add a subgroup under this group' => 'Eine Untergruppe unter dieser Gruppe anlegen',
+        'Properties' => 'Eigenschaften',
         'Rename' => 'Umbenennen',
         'Rename this node' => 'Diesen Knoten umbenennen',
         /* translators: %s: the name of the node. */

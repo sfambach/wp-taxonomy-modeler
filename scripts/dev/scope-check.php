@@ -124,6 +124,24 @@ $say($row($draw('999999999'), $daneben->id), 'eine Id ohne Knoten grenzt nicht e
 $say($row($draw((string) $fw->trash()->id), $daneben->id), 'der Papierkorb grenzt nicht ein');
 $say($row($draw('abc'), $daneben->id), 'keine Zahl grenzt nicht ein');
 
+echo "\n== Reiter im eingegrenzten Detail (D-1574, Prüftor C) ==\n";
+$reiter = static fn (array $tabs, int $node, int $scope): array => $node > 0 && $scope > 0
+    ? [...$tabs, ['key' => '__sc', 'label' => '__sc Materialien', 'html' => '<p id="__sc-tab">' . $node . '/' . $scope . '</p>', 'count' => 3]] : $tabs;
+add_filter(\Taxmod\WordPress\Plugin::SCOPED_TABS_FILTER, $reiter, 10, 3);
+$_GET = ['taxmod_scope' => (string) $ast->id, 'taxmod_node' => (string) $kind->id, 'taxmod_collapsed' => 'none'];
+$erst = $plugin->screen()->render();
+$say(str_contains($erst, 'nav-tab nav-tab-active" href="') && str_contains($erst, '__sc Materialien') && str_contains($erst, '<p id="__sc-tab">' . $kind->id . '/' . $ast->id . '</p>'),
+    'der Reiter des Moduls steht zuerst und bekommt Knoten und Ast');
+$say(strpos($erst, '__sc Materialien') < strpos($erst, '>' . esc_html__('Properties', 'taxmod') . '<'), '«Eigenschaften» folgt als Reiter des Modellers');
+$say(! str_contains($erst, 'taxmod-records-block'), 'die Satzliste des Modellers steht im Ast nicht da — die Materialien sind der Reiter des Moduls');
+$_GET['taxmod_scoped_tab'] = 'properties';
+$eigen = $plugin->screen()->render();
+$say(! str_contains($eigen, '<p id="__sc-tab">') && str_contains($eigen, 'taxmod_scoped_tab=properties'), '«Eigenschaften» zeigt die Felder statt des Modulreiters, und die Links behalten den Reiter');
+$_GET['taxmod_scoped_tab'] = 'nonsense';
+$say(str_contains($plugin->screen()->render(), '<p id="__sc-tab">'), 'ein unbekannter Reiter fällt auf den ersten zurück');
+remove_filter(\Taxmod\WordPress\Plugin::SCOPED_TABS_FILTER, $reiter, 10);
+$_GET = [];
+
 echo "\n== kein Akt verlässt den Ast (Prüftor 21.11.) ==\n";
 final class ScopeStop extends RuntimeException
 {
