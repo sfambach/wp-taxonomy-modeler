@@ -568,10 +568,11 @@ $objekte = static fn (int $nodeId): array => $wpdb->get_results("SELECT o.id, o.
 $markup  = seite($zahl->id);
 $angebot = $angebotDerSeite($markup);
 check('die Zeile `renderer` zeichnet einen Wähler, und er hängt am Seitenformular', (bool) preg_match('/<select name="taxmod_setting\[renderer\]" form="taxmod-page-' . $zahl->id . '"/', $markup));
-check('er bietet einem Zahltyp genau field, spinner, slider an', count($angebot) === 3 && array_values(array_diff($angebot, ['field', 'spinner', 'slider'])) === [], implode(',', $angebot));
+// D-1541: the field choice of a rule filter is offered at a number too (Modeller 0.2.195).
+check('er bietet einem Zahltyp genau field, field-choice, spinner, slider an', count($angebot) === 4 && array_values(array_diff($angebot, ['field', 'field-choice', 'spinner', 'slider'])) === [], implode(',', $angebot));
 $offeredForInt = array_map(static fn ($r): string => $r->name(), $rendering->choicesForNode($nodes->byId($seeded['int']->id)));
 sort($offeredForInt);
-check('der Kern sagt dasselbe für `Integer`', $offeredForInt === ['field', 'slider', 'spinner'], implode(', ', $offeredForInt));
+check('der Kern sagt dasselbe für `Integer`', $offeredForInt === ['field', 'field-choice', 'slider', 'spinner'], implode(', ', $offeredForInt));
 $offeredForThing = array_map(static fn ($r): string => $r->name(), $rendering->choicesForNode($nodes->byId($modellKnoten->id)));
 sort($offeredForThing);
 // ⚠️ *`complex` seit D-758 — sein Wort: «ein echter Knoten-Renderer, der auch in der Auswahl wie form und table auftaucht».*
