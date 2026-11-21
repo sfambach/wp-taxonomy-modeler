@@ -302,6 +302,9 @@ final class WpdbRecordRepository implements RecordRepository
             $zeilen = [];
         };
 
+        // D-1514: key and confidential edges before the stream — inside it no other statement can run.
+        FieldSeal::ready();
+
         Query::each('Rohwerte eines Knotens lesen', $wpdb->prepare(
             'SELECT w.node_record_id, w.relation_id, w.position, w.id, w.value_int, w.value_decimal, w.value_text, w.value_date, w.value_ref, w.value_precision
              FROM ' . Schema::table('node_records') . ' s

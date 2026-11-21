@@ -298,6 +298,19 @@ final class FieldSeal
         self::$confidential = null;
     }
 
+    /**
+     * Reads the key and the confidential edges now, before a stream of rows is opened (`Query::each`).
+     *
+     * ⚠️ *Inside an unbuffered stream the connection takes no other statement: reading the key option there fails, the key
+     * would be remembered as missing for the whole request and every value would read as {@see self::LOCKED} (live
+     * 21.11.2026, lists in the admin while the edit form read plain).*
+     */
+    public static function ready(): void
+    {
+        self::cipher();
+        self::confidentialRelations();
+    }
+
     /** For a check that defines the key itself: the key is read again. */
     public static function forgetKey(): void
     {
