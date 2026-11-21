@@ -6,7 +6,7 @@
  *
  * ```mermaid
  * flowchart LR
- *   S["setup: node, two integer fields, range min 3"] --> F["fields: rows, counts, own settings, filters"]
+ *   S["setup: node, three integer fields, range min 3"] --> F["fields: rows, counts, own settings, filters"]
  *   S --> A["similar-fields: the same field first"]
  *   S --> W["write-data: a row of a list below min"]
  *   W --> X["taxmod_invalid, complaint with its place, nothing written"]
@@ -76,7 +76,10 @@ $refs = $apply([
     ['op' => 'create_node', 'ref' => 'n', 'name' => '__fl Bauteil', 'parent' => $fw->rootOf(Branch::Model)->id],
     ['op' => 'add_field', 'ref' => 'a', 'node' => '@n', 'target' => $int->id, 'name' => '__fl Druckauflösung'],
     ['op' => 'add_field', 'ref' => 'b', 'node' => '@n', 'target' => $int->id, 'name' => '__fl Gewichte', 'multiplicity' => '0..*'],
+    ['op' => 'add_field', 'ref' => 'c', 'node' => '@n', 'target' => $int->id, 'name' => '__fl Leer'],
     ['op' => 'create_record', 'ref' => 's', 'node' => '@n', 'values' => ['@a' => '7']],
+    // *Stored before the validator stands — what stored-refused-check is to find.*
+    ['op' => 'create_record', 'ref' => 'alt', 'node' => '@n', 'values' => ['@b' => ['values' => ['2']]]],
 ]);
 
 foreach (['a', 'b'] as $feld) {
@@ -89,7 +92,7 @@ foreach (['a', 'b'] as $feld) {
 echo "== taxmod/fields ==\n";
 
 $liste = $fields->execute(['node' => (int) $refs['n']]);
-$say(is_array($liste) && $liste['total'] === 2, 'the node filter finds the node\'s two fields', is_wp_error($liste) ? $liste->get_error_message() : wp_json_encode($liste));
+$say(is_array($liste) && $liste['total'] === 3, 'the node filter finds the node\'s three fields', is_wp_error($liste) ? $liste->get_error_message() : wp_json_encode($liste));
 
 $zeilen = is_array($liste) ? array_map(static fn (array $z): array => array_combine($liste['columns'], $z), $liste['rows']) : [];
 $a      = array_column($zeilen, null, 'id')[(int) $refs['a']] ?? [];
@@ -105,7 +108,7 @@ $nachName = $fields->execute(['name' => 'fl DRUCKAUFLOESUNG']);
 $say(is_array($nachName) && array_column(array_map(static fn (array $z): array => array_combine($nachName['columns'], $z), $nachName['rows']), 'id') === [(int) $refs['a']], 'the name filter folds case and umlauts');
 
 $mitWerten = $fields->execute(['node' => (int) $refs['n'], 'with_values' => true]);
-$say(is_array($mitWerten) && $mitWerten['total'] === 1, 'with_values leaves out the empty field');
+$say(is_array($mitWerten) && $mitWerten['total'] === 2, 'with_values leaves out the empty field');
 
 echo "\n== taxmod/similar-fields ==\n";
 
@@ -133,6 +136,18 @@ $einfach = wp_get_ability('taxmod/write-data')->execute(['changes' => [
     ['op' => 'set_values', 'record' => (int) $refs['s'], 'values' => [(string) $refs['a'] => '2']],
 ]]);
 $say(is_wp_error($einfach) && $einfach->get_error_code() === 'taxmod_invalid', 'a plain value below min is refused the same way');
+
+echo "\n== stored values a validator would now refuse ==\n";
+
+$records  = new WpdbRecordRepository();
+$verweigert = $plugin->screen()->storedValuesRefused(
+    (new \Taxmod\WordPress\Persistence\WpdbRelationRepository())->everyFieldRelation(),
+    static fn (array $ids): array => $records->valuesOnFields($ids)
+);
+$alt = array_values(array_filter($verweigert, static fn (array $z): bool => $z['record'] === (int) $refs['alt']));
+
+$say(count($alt) === 1 && $alt[0]['field'] === (int) $refs['b'] && $alt[0]['value'] === '2', 'the list row stored before the validator is named', wp_json_encode($alt));
+$say(array_filter($verweigert, static fn (array $z): bool => $z['record'] === (int) $refs['s']) === [], 'a fitting value is not');
 
 echo $failed === 0 ? "\nAll good.\n" : "\n$failed FAILED\n";
 

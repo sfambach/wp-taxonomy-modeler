@@ -377,6 +377,39 @@ final class NodesScreen
     }
 
     /**
+     * The stored values of these fields that their validators would refuse if written again — the measure of what D-1549 now refuses
+     * on rows of a list and fields of a part, which went past every validator before. Reads, never writes.
+     *
+     * @param  list<Relation> $relations
+     * @param  \Closure(list<int>): array<int, list<\Taxmod\Core\Model\RelationRecord>> $valuesOn the stored values of the named fields, by record
+     * @return list<array{field: int, record: int, value: string, complaint: string}>
+     */
+    public function storedValuesRefused(array $relations, \Closure $valuesOn): array
+    {
+        $pruefer = [\Taxmod\Core\Addon\RangeValidator::NAME, \Taxmod\Core\Addon\ShapeValidator::NAME, \Taxmod\Core\Addon\SyntaxValidator::NAME];
+        $namen   = $this->rendering->addonNamesAt($relations);
+        $geprueft = [];
+
+        foreach ($relations as $r) {
+            if (array_intersect($namen[$r->id] ?? [], $pruefer) !== []) {
+                $geprueft[$r->id] = $r;
+            }
+        }
+
+        $aus = [];
+
+        foreach ($valuesOn(array_keys($geprueft)) as $recordId => $werte) {
+            foreach ($werte as $wert) {
+                foreach ($this->rendering->complaintsFor($geprueft[$wert->relationId], $wert->value) as $complaint) {
+                    $aus[] = ['field' => $wert->relationId, 'record' => (int) $recordId, 'value' => (string) $wert->value->rawValue(), 'complaint' => $this->complaintText($complaint)];
+                }
+            }
+        }
+
+        return $aus;
+    }
+
+    /**
      * {@see choosesRecords()} for many fields in one batch (`CD-7`).
      *
      * @param  list<Relation>               $relations
