@@ -1398,6 +1398,8 @@ Anlass: [INF-073](#inf-073--bestand-und-fertigung-vom-wareneingang-über-die-pla
 
 - **Anlass:** Bau von [D-1558](NewConcept/90-decision-log.md) (PRs #149, Lager #64, Etiketten #25). «Vorwahlen übernehmen» und «Gruppen übernehmen» sind weg; live gibt es 0 Druckregeln, darum wählt der Druckdialog bis zur Übernahme weiter nach der alten Vorwahl (Bauform, Gruppe, Platzart). Zwei Mechanismen nebeneinander sind ein Übergang, kein Zustand (Prüftor 21.11.).
 - **Weg:** Lager 0.64.193 mit einer Lese-Ability, die die offenen Vorschläge als `apply`-Ops liefert; der Datenjob geht über die Queue (dry_run, undo_act); danach fällt der Rückfall im Etikettenmodul weg.
+- **Stand 21.11.:** Datenjob Akt 602302: 21 Druckregeln (87580–87616) und das eigene Feld «Position» der Druckregeln (149000110592, Ziel 1171 wie die «Position» der Testregeln, Prüftor 21.11.). Offene Testgruppen gab es keine. Die Etiketten-Struktur nennt dieses Feld statt der System-Einstellung «position» 149000101725, die Regel-Ops abgelehnt hatte. 17 der 21 Regeln griffen nicht (Bauform-Filter ohne Ast, Platz-Filter ohne Satz). Sie gelten als Übergang über die Regelfelder «Bauform»/«Platzart», das Ziel steht in [D-1563](NewConcept/90-decision-log.md). Der Rückfall sitzt im **Lager**, nicht im Etikettenmodul (gelesen: Etikett nach Bauform/Gruppe, Etikett der Platzart). Er fällt nach Schritt (3) von D-1563 weg, zusammen mit den Seiten, die ihn einstellten («Etiketten je Bauform», «Standard-Etikett» an der Gruppe).
+- **Bleibt:** Die alten Werte stehen weiter im Modell (Gruppen-/Bauform-Eigenschaft, Etikett und Anzahl an der Platzart). Nur `taxmod-stock/rule-proposals` liest sie noch. Ob sie gelöscht werden, ist ein eigener Datenjob.
 
 ## INF-138 · Spaltenfolge der Regel-Filter (2026-11-21)
 
@@ -1420,6 +1422,7 @@ Anlass: [INF-073](#inf-073--bestand-und-fertigung-vom-wareneingang-über-die-pla
 
 - **Anlass:** Stefan 21.11. «varianten erstellen war nicht möglich» — live fehlte das Feld «Variante von» (Plan-Schritt 8 von [D-1208](NewConcept/90-decision-log.md) nie gelaufen). Der Datenjob setzt «Je Variante» nur an den drei Feldern, die D-1208 ausdrücklich nennt: Bilder, mit/ohne Pins, Pinbelegung.
 - **Offen:** D-1208 nennt «etwa Farbe oder Pins» nur als Beispiel. Soll «Farbe» (und weitere, z. B. Ausrichtung) je Variante eigen sein? Ohne Antwort bleibt Farbe am Vater.
+- **Vermerk Feldkatalog (Prüftor 21.11., aus [INF-137](#inf-137--vorwahl-rückfall-druck-weg-nach-übernahme-2026-11-21)):** Beide Positionsfelder der Regeln («Position» der Testregeln 149000110574 und der Druckregeln 149000110592) zeigen auf den Grundtyp 1171. Beim Umzug auf Datenelemente ([D-1553](NewConcept/90-decision-log.md)) ziehen beide auf ein Datenelement «Position».
 - **Live nicht gefunden:** das Feld «mit/ohne Pins», das D-1208 als vorhanden nennt («Das Feld für mit/ohne Pins gibt es schon»), gibt es live nicht (gesucht 21.11. an Displays und Steckverbindern). Es wird nicht neu angelegt; offen, ob und wo es entstehen soll.
 
 ## INF-142 · Druck-Vorwahlen mit «für»: wohin bei der Übernahme? (2026-11-21) — erledigt
