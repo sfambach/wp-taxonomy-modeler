@@ -6,34 +6,29 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use Taxmod\Core\Model\CatalogueRole;
 use Taxmod\Core\Model\Node;
-use Taxmod\Core\Model\Relation;
+use Taxmod\Core\Model\NodeClass\CompositeType;
+use Taxmod\Core\Model\NodeClass\Contracts;
 use Taxmod\Core\Service\FieldCatalogue;
 
 /**
  * Which role a node plays in the Feldkatalog — [D-1553](../../docs/NewConcept/90-decision-log.md): «a data element is a node
  * under its type … Composite data types (dimension, unit value, address …) are catalogue entries whose parts point at data
- * elements».
+ * elements»; and what creating one first shows ([D-1555](../../docs/NewConcept/90-decision-log.md)).
  *
  * @see /mnt/project-files/taxmod-felder/konzept.md §0
  */
 final class FieldCatalogueTest extends TestCase
 {
     // 1 Primitives › 2 Data Types › 3 Integer › 4 Jahr › 5 Baujahr; 2 › 6 Einheitenwert › 7 Länge
-    // 10 Model › 11 Abmessung (parts) › 12 Platinenmaß; 10 › 13 Bauteile (fields, held by reference)
-    private function node(int $id, string $path): Node
+    // 10 Model › 11 Abmessung (composite) › 12 Platinenmaß; 10 › 13 Bauteile; 3 › 8 Polzahl
+    private function node(int $id, string $path, string $name = ''): Node
     {
-        return Node::fromStorage($id, 1, 'n' . $id, $path);
+        return Node::fromStorage($id, 1, $name === '' ? 'n' . $id : $name, $path);
     }
 
     private function catalogue(): FieldCatalogue
     {
-        return new FieldCatalogue([3, 6], [
-            Relation::fromStorage(100, 1, 11, 7, 'composition', 'Länge', 0),
-            Relation::fromStorage(101, 1, 13, 11, 'composition', 'Abmessung', 0),
-            Relation::fromStorage(102, 1, 13, 4, 'composition', 'Jahr', 1),
-            Relation::fromStorage(103, 1, 10, 13, 'aggregation', 'Bauteil', 0),
-            Relation::fromStorage(104, 1, 6, 3, 'composition', 'Betrag', 0),
-        ]);
+        return new FieldCatalogue([3, 6], [11]);
     }
 
     #[Test]
@@ -54,7 +49,7 @@ final class FieldCatalogueTest extends TestCase
     }
 
     #[Test]
-    public function a_node_with_own_fields_held_as_a_part_is_a_composite_and_its_child_narrows_it(): void
+    public function a_node_of_the_composite_class_is_a_composite_and_its_child_narrows_it(): void
     {
         self::assertSame(CatalogueRole::Composite, $this->catalogue()->roleOf($this->node(11, '10.11')));
         self::assertSame(CatalogueRole::DataElement, $this->catalogue()->roleOf($this->node(12, '10.11.12')));
@@ -62,22 +57,18 @@ final class FieldCatalogueTest extends TestCase
     }
 
     #[Test]
-    public function a_referenced_node_and_the_branch_roots_stay_outside(): void
+    public function other_nodes_and_the_branch_roots_stay_outside(): void
     {
         self::assertSame(CatalogueRole::Outside, $this->catalogue()->roleOf($this->node(13, '10.13')));
         self::assertSame(CatalogueRole::Outside, $this->catalogue()->roleOf($this->node(2, '1.2')));
-        self::assertSame(CatalogueRole::Outside, $this->catalogue()->roleOf($this->node(10, '10')));
+        self::assertSame([10 => CatalogueRole::Outside], $this->catalogue()->rolesOf([$this->node(10, '10')]));
     }
 
     #[Test]
-    public function a_setting_edge_makes_nothing_a_composite(): void
+    public function the_composite_class_is_in_the_inventory_and_its_children_stay_composite(): void
     {
-        $catalogue = new FieldCatalogue([], [
-            Relation::fromStorage(1, 1, 20, 21, 'setting', 'x', 0),
-            Relation::fromStorage(2, 1, 21, 22, 'aggregation', 'y', 0),
-        ]);
-
-        self::assertSame(CatalogueRole::Outside, $catalogue->roleOf($this->node(21, '21')));
-        self::assertSame([20 => CatalogueRole::Outside, 21 => CatalogueRole::Outside], $catalogue->rolesOf([$this->node(20, '20'), $this->node(21, '21')]));
+        self::assertTrue(Contracts::isKnown(CompositeType::class));
+        self::assertSame(CompositeType::class, CompositeType::defaultChildClass());
+        self::assertSame('composite type', Contracts::of(CompositeType::class)->key);
     }
 }

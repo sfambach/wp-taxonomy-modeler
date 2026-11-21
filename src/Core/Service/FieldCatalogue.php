@@ -4,8 +4,6 @@ namespace Taxmod\Core\Service;
 
 use Taxmod\Core\Model\CatalogueRole;
 use Taxmod\Core\Model\Node;
-use Taxmod\Core\Model\Relation;
-use Taxmod\Core\Model\RelationKind;
 
 /**
  * Which role a node plays in the Feldkatalog, read from the tree in one pass ([D-1553](../../../docs/NewConcept/90-decision-log.md)).
@@ -16,15 +14,14 @@ use Taxmod\Core\Model\RelationKind;
  *   B -- yes --> BT["BaseType"]
  *   B -- no --> A{"below a base type<br>or a composite?"}
  *   A -- yes --> DE["DataElement"]
- *   A -- no --> C{"owns fields and is held<br>by composition?"}
+ *   A -- no --> C{"class «composite data type»?"}
  *   C -- yes --> CO["Composite"]
  *   C -- no --> O["Outside"]
  * ```
  *
- * ⚠️ *Composite is derived and not a class of its own: a node whose own fields exist and which some relation holds as a
- * part (composition, D-498) — the edge decides, not the place (D-938). konzept.md §0 U5 spoke of a new class; a class
- * would be a second record of the same fact and `set_class` would drop the settings of the old class (D-733).
- * `INFERRED` (Feldkatalog build), named in the PR.*
+ * ⚠️ *A composite is a node of the class {@see \Taxmod\Core\Model\NodeClass\CompositeType}, set on purpose — not every node held
+ * by composition (Konzept-Thread 21.11.2026 to PR #147: «Lager-Positionen … zählen nicht, bloß weil sie per Komposition gehalten
+ * werden»).*
  *
  * @see /mnt/project-files/taxmod-felder/konzept.md §0, §10, §11
  */
@@ -37,37 +34,13 @@ final class FieldCatalogue
     private readonly array $composites;
 
     /**
-     * @param list<int>      $baseTypeIds the seeded type nodes and the seeded unit value
-     * @param list<Relation> $relations   every live field relation (settings left out by the caller or here)
+     * @param list<int> $baseTypeIds  the seeded type nodes and the seeded unit value
+     * @param list<int> $compositeIds the nodes of the class «composite data type»
      */
-    public function __construct(array $baseTypeIds, array $relations)
+    public function __construct(array $baseTypeIds, array $compositeIds)
     {
-        $this->baseTypes = array_fill_keys($baseTypeIds, true);
-
-        $owners = [];
-        $parts  = [];
-
-        foreach ($relations as $relation) {
-            if ($relation->kind === RelationKind::Setting) {
-                continue;
-            }
-
-            $owners[$relation->fromNodeId] = true;
-
-            if ($relation->kind === RelationKind::Composition) {
-                $parts[$relation->toNodeId] = true;
-            }
-        }
-
-        $composites = [];
-
-        foreach (array_keys($parts) as $id) {
-            if (isset($owners[$id]) && ! isset($this->baseTypes[$id])) {
-                $composites[$id] = true;
-            }
-        }
-
-        $this->composites = $composites;
+        $this->baseTypes  = array_fill_keys($baseTypeIds, true);
+        $this->composites = array_fill_keys($compositeIds, true);
     }
 
     public function roleOf(Node $node): CatalogueRole

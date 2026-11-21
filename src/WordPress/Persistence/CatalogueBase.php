@@ -2,7 +2,8 @@
 
 namespace Taxmod\WordPress\Persistence;
 
-use Taxmod\Core\Model\Relation;
+use Taxmod\Core\Model\Node;
+use Taxmod\Core\Model\NodeClass\CompositeType;
 use Taxmod\Core\Model\SimpleType;
 use Taxmod\Core\Repository\TypeNodes;
 use Taxmod\Core\Service\FieldCatalogue;
@@ -40,9 +41,11 @@ final class CatalogueBase
         return $ids;
     }
 
-    /** @param list<Relation> $relations every live field relation */
-    public static function catalogue(TypeNodes $types, array $relations): FieldCatalogue
+    /** Base types and the nodes of the class «composite data type», each read once. */
+    public static function catalogue(TypeNodes $types): FieldCatalogue
     {
-        return new FieldCatalogue(self::baseTypeIds($types), $relations);
+        $composites = array_map(static fn (Node $n): int => $n->id, (new WpdbNodeRepository())->ofClass(CompositeType::class));
+
+        return new FieldCatalogue(self::baseTypeIds($types), $composites);
     }
 }

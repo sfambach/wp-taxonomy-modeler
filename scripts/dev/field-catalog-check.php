@@ -20,6 +20,7 @@
 
 define('WP_USE_THEMES', false);
 
+
 require (getenv('WP_ROOT') ?: 'C:/Devel/Wordpress') . '/wp-load.php';
 require __DIR__ . '/lib/no-write.php';
 require dirname(__DIR__, 2) . '/vendor/autoload.php';
@@ -106,17 +107,21 @@ $aufGrundtyp = is_array($vorher) ? (int) $vorher['total'] : -1;
 
 $refs = $apply([
     ['op' => 'create_node', 'ref' => 'jahr', 'name' => '__fc Baujahr', 'parent' => $int->id],
-    ['op' => 'create_node', 'ref' => 'mass', 'name' => '__fc Maß', 'parent' => $fw->rootOf(Branch::Model)->id],
+    ['op' => 'create_node', 'ref' => 'mass', 'name' => '__fc Maß', 'parent' => $fw->rootOf(Branch::Model)->id, 'class' => 'CompositeType'],
+    ['op' => 'create_node', 'ref' => 'pos', 'name' => '__fc Position', 'parent' => $fw->rootOf(Branch::Model)->id],
     ['op' => 'add_field', 'ref' => 'teil', 'node' => '@mass', 'target' => '@jahr', 'name' => '__fc Länge'],
     ['op' => 'create_node', 'ref' => 'ding', 'name' => '__fc Ding', 'parent' => $fw->rootOf(Branch::Model)->id],
     ['op' => 'add_field', 'ref' => 'f1', 'node' => '@ding', 'target' => '@mass', 'name' => '__fc Abmessung', 'kind' => 'composition'],
     ['op' => 'add_field', 'ref' => 'f2', 'node' => '@ding', 'target' => '@jahr', 'name' => '__fc Jahr'],
     ['op' => 'add_field', 'ref' => 'f3', 'node' => '@ding', 'target' => $int->id, 'name' => '__fc Zahl'],
+    ['op' => 'add_field', 'ref' => 'pteil', 'node' => '@pos', 'target' => '@jahr', 'name' => '__fc Menge'],
+    ['op' => 'add_field', 'ref' => 'f4', 'node' => '@ding', 'target' => '@pos', 'name' => '__fc Positionen', 'kind' => 'composition'],
 ]);
 
 $zeilen = $rows(['node' => (int) $refs['ding']]);
 
-$say(($zeilen[(int) $refs['f1']]['target_role'] ?? '') === 'composite', 'a node with a part, held by composition, is a composite', wp_json_encode($zeilen[(int) $refs['f1']] ?? null));
+$say(($zeilen[(int) $refs['f1']]['target_role'] ?? '') === 'composite', 'a node of the class «composite data type» is a composite', wp_json_encode($zeilen[(int) $refs['f1']] ?? null));
+$say(($zeilen[(int) $refs['f4']]['target_role'] ?? '') === 'outside', 'a node merely held by composition (positions) is not one', wp_json_encode($zeilen[(int) $refs['f4']] ?? null));
 $say(($zeilen[(int) $refs['f2']]['target_role'] ?? '') === 'data_element', 'a node below Integer is a data element', wp_json_encode($zeilen[(int) $refs['f2']] ?? null));
 $say(($zeilen[(int) $refs['f3']]['target_role'] ?? '') === 'base_type', 'Integer itself is a base type', wp_json_encode($zeilen[(int) $refs['f3']] ?? null));
 

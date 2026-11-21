@@ -791,5 +791,6 @@ return [
         '· Write counts'                                                                 => '· Schreibzähler',
         '· «Show the root»'                                                              => '· «Wurzel zeigen»',
         '— the code expects %d'                                                          => '— der Code erwartet %d',
+        'Composite data type' => 'Zusammengesetzter Datentyp',
     ],
 ];

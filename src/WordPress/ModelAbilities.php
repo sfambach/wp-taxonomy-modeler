@@ -595,20 +595,16 @@ final class ModelAbilities
             }
         }
 
-        $every     = (new Persistence\WpdbRelationRepository())->everyFieldRelation();
         $relations = array_values(array_filter(
-            $every,
+            (new Persistence\WpdbRelationRepository())->everyFieldRelation(),
             static fn (\Taxmod\Core\Model\Relation $r): bool => isset($owners[$r->fromNodeId], $nodes[$r->fromNodeId]) && ($kind === null ? $r->kind !== RelationKind::Setting : $r->kind->value === $kind)
         ));
         $types     = $this->screen()->typesOfFields($relations);
         $counts    = (new WpdbRecordRepository())->valueCountsByField();
         $settings  = (new Persistence\WpdbSettingsRepository())->plainValuesByCarrier();
         $uses      = array_count_values(array_map(static fn (\Taxmod\Core\Model\Relation $r): int => $r->toNodeId, $relations));
-        // D-1553: what each target is to the Feldkatalog — from all live fields, not only the filtered ones.
-        $catalogue = Persistence\CatalogueBase::catalogue(new Persistence\SeededTypeNodes(new Persistence\WpdbNodeRepository(), $framework), array_values(array_filter(
-            $every,
-            static fn (\Taxmod\Core\Model\Relation $r): bool => isset($nodes[$r->fromNodeId])
-        )));
+        // D-1553: what each target is to the Feldkatalog.
+        $catalogue = Persistence\CatalogueBase::catalogue(new Persistence\SeededTypeNodes(new Persistence\WpdbNodeRepository(), $framework));
         $rows      = [];
         $byId      = [];
 

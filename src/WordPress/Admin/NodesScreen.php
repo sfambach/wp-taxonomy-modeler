@@ -2328,6 +2328,7 @@ final class NodesScreen
             'constant'   => __('Constant', 'taxmod'),
             'unit'       => __('Unit', 'taxmod'),
             'unit value' => __('Unit value', 'taxmod'),
+            'composite type' => __('Composite data type', 'taxmod'),
             'integer', 'int'     => __('Integer', 'taxmod'),
             'double', 'decimal'  => __('Decimal', 'taxmod'),
             'text'               => __('Text', 'taxmod'),

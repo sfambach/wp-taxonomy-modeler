@@ -107,7 +107,8 @@ foreach ($zeilen as $zeile) {
 }
 
 check('jeder der ' . count($zeilen) . ' Knoten trägt eine Klasse aus dem Inventar', $fremd === [], implode(' · ', array_slice($fremd, 0, 5)));
-check('das Inventar hat ' . count(Contracts::all()) . ' Klassen: fünf und die ' . count(SpecialisedTypes::CLASSES) . ' Typen', count(Contracts::all()) === 5 + count(SpecialisedTypes::CLASSES));
+// D-1553: die sechste ist der zusammengesetzte Datentyp des Feldkatalogs (Konzeptänderung, PR-9).
+check('das Inventar hat ' . count(Contracts::all()) . ' Klassen: sechs und die ' . count(SpecialisedTypes::CLASSES) . ' Typen', count(Contracts::all()) === 6 + count(SpecialisedTypes::CLASSES));
 
 echo "\n3 · Die ausgelieferten Knoten tragen die Klasse aus K3\n";
 
