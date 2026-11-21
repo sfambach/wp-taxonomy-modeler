@@ -3289,6 +3289,29 @@ final class NodesScreen
         return $html;
     }
 
+    /** From this size on a field's markup is counted out — below it there is nothing to explain. */
+    private const MARKUP_COUNTED_FROM_KB = 100;
+
+    /**
+     * What a large piece of markup consists of: its most frequent elements and class names, counted (D-1482, Nachtrag 3).
+     *
+     * Class names are written by the code, never by a record, so the answer still carries no value.
+     *
+     * @return array{tags: array<string, int>, classes: array<string, int>}
+     */
+    private static function markupCounts(string $html): array
+    {
+        $top = static function (string $pattern, int $most) use ($html): array {
+            preg_match_all($pattern, $html, $found);
+            $counted = array_count_values($found[1]);
+            arsort($counted);
+
+            return array_slice($counted, 0, $most, true);
+        };
+
+        return ['tags' => $top('/<([a-z][a-z0-9]*)\\b/', 10), 'classes' => $top('/\\bclass="([a-z0-9_ -]+)"/', 30)];
+    }
+
     /**
      * What the editable preview of one record takes, step by step and field by field (D-1482, Nachtrag 2) — numbers and field names only.
      *
@@ -3303,7 +3326,7 @@ final class NodesScreen
      *   F --> W["both sides whole, as the page draws them"]
      * ```
      *
-     * @return array{steps: list<array{step: string, ms: int, queries: int, kb: int}>, fields: list<array{relation_id: int, name: string, ms: int, queries: int, kb: int}>}
+     * @return array{steps: list<array{step: string, ms: int, queries: int, kb: int}>, fields: list<array{relation_id: int, name: string, ms: int, queries: int, kb: int, markup?: array{tags: array<string, int>, classes: array<string, int>}}>}
      * @see docs/pakete/ladezeit/konzept.md
      */
     public function previewTimes(Node $selected, int $recordId): array
@@ -3379,7 +3402,12 @@ final class NodesScreen
 
         foreach ($changeable as $relation) {
             $row = [];
-            $timed('', fn (): string => $draw([$relation], Purpose::Edit, Level::Admin, true, $formId), $row);
+            $drawn = $timed('', fn (): string => $draw([$relation], Purpose::Edit, Level::Admin, true, $formId), $row);
+
+            if ($row['kb'] >= self::MARKUP_COUNTED_FROM_KB) {
+                $row['markup'] = self::markupCounts($drawn);
+            }
+
             $fields[] = ['relation_id' => $relation->id, 'name' => $relation->name] + $row;
         }
 

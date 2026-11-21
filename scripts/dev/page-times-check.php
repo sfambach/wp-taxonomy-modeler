@@ -151,7 +151,9 @@ if ($preview !== null) {
         $answer = $preview->execute(['node' => (int) $row['node'], 'record' => (int) $row['record']]);
 
         $say(is_array($answer) && array_keys($answer) === ['node', 'record', 'total_ms', 'total_queries', 'mb', 'steps', 'fields'], 'sie antwortet mit Summe, Schritten und Feldern');
-        $say(is_array($answer) && $answer['fields'] !== [] && array_keys($answer['fields'][0]) === ['relation_id', 'name', 'ms', 'queries', 'kb'], 'je Feld Nummer, Name, ms, Abfragen, KB');
+        $say(is_array($answer) && $answer['fields'] !== [] && array_slice(array_keys($answer['fields'][0]), 0, 5) === ['relation_id', 'name', 'ms', 'queries', 'kb'], 'je Feld Nummer, Name, ms, Abfragen, KB');
+        $counted = is_array($answer) ? array_filter($answer['fields'], static fn (array $one): bool => isset($one['markup'])) : [];
+        $say(array_filter($counted, static fn (array $one): bool => $one['kb'] < 100 || array_keys($one['markup']) !== ['tags', 'classes'] || array_filter(array_merge($one['markup']['tags'], $one['markup']['classes']), static fn (mixed $n): bool => ! is_int($n)) !== []) === [], 'ein großes Feld (ab 100 KB) zählt sein Markup aus: Elemente und Klassen, nur Zahlen (Nachtrag 3)');
         $say(is_array($answer) && in_array('admin side, whole', array_column($answer['steps'], 'step'), true), 'und beide Seiten als Ganzes');
         $say(is_array($answer) && ! str_contains((string) wp_json_encode($answer), (string) $row['word']), 'kein Wert des Satzes steht in der Antwort');
 
