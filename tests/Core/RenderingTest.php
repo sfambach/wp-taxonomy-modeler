@@ -3245,6 +3245,34 @@ final class RenderingTest extends TestCase
         self::assertSame('Kabel' . SummaryRenderer::SEPARATOR . 'KF2510' . SummaryRenderer::SEPARATOR . '2 polig' . SummaryRenderer::SEPARATOR . '0,1 m', $texte[$satz] ?? null);
     }
 
+    /** Live-Check 21: a caller bringing its own fields gets their words alone; the holder (D-903) stays with the record's name. */
+    #[Test]
+    public function the_words_of_chosen_fields_do_not_carry_the_holder(): void
+    {
+        $text     = $this->type('Text');
+        $platine  = $this->thing('Platine');
+        $revision = $this->thing('Revision');
+        $titel    = $this->editor->addField($platine->id, $text->id, 'titel');
+        $hat      = $this->editor->addField($platine->id, $revision->id, 'revision', RelationKind::Aggregation);
+        $version  = $this->editor->addField($revision->id, $text->id, 'version');
+        $staerke  = $this->editor->addField($revision->id, $text->id, 'staerke');
+        $this->editor->setUnique($platine->id, $hat->id, true);
+
+        $rev = $this->records->add(new NodeRecord(0, $revision->id, 1, '2026-11-21 23:30:00', RecordType::User));
+        $this->records->putValue(RelationRecord::direct($rev, $version->id, TypedValue::ofText('0.1')));
+        $this->records->putValue(RelationRecord::direct($rev, $staerke->id, TypedValue::ofText('1,6 mm')));
+        $board = $this->records->add(new NodeRecord(0, $platine->id, 1, '2026-11-21 23:30:00', RecordType::User));
+        $this->records->putValue(RelationRecord::direct($board, $titel->id, TypedValue::ofText('MCEBlaster')));
+        $this->records->putValue(RelationRecord::direct($board, $hat->id, TypedValue::ofRecordReference($rev)));
+        $this->neuZeichnen();
+
+        $feld = $this->rendering->summaryTextsOf([['relation' => $staerke, 'records' => [$rev], 'fields' => [$staerke->id]]])[$staerke->id] ?? [];
+        $name = $this->rendering->summaryTextsOf([['relation' => $version, 'records' => [$rev], 'ownWords' => true]])[$version->id] ?? [];
+
+        self::assertSame('1,6 mm', $feld[$rev] ?? null, 'the field alone');
+        self::assertStringStartsWith('MCEBlaster', $name[$rev] ?? '', 'the record keeps its holder');
+    }
+
     /** D-1390: a node naming two grid fields (rows, total) reads the total as «rows×(total/rows)»; without rows «1×total». */
     #[Test]
     public function a_grid_pair_names_the_total_as_rows_times_per_row(): void

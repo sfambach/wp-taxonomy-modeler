@@ -6080,7 +6080,9 @@ final class Rendering implements Presets, \Taxmod\Core\Port\FieldAddons
                 return $gesagtes[$stelle];
             }
 
-            $gesagt = $wort($satzId, $feldIds);
+            // ⚠️ *Wer Felder mitbringt, will ihre Werte, nicht den Satz: ohne den Halter von D-903. Gemessen im Live-Check 21 (Prüftor
+            // 21.11.): JLCPCB las für die Stärke von 48255 «MCEBlaster (THT) Rev 0.1 · 1,6 mm».*
+            $gesagt = $mitgebracht && $feldIds !== [] ? $eigenesWort($satzId, $feldIds) : $wort($satzId, $feldIds);
 
             if ($mitgebracht || $gesagt !== '#' . $satzId) {
                 return $gesagtes[$stelle] = $gesagt;
