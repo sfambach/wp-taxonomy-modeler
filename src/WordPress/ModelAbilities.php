@@ -84,7 +84,7 @@ final class ModelAbilities
         'merge_constant' => '{from, into} — a doubled constant: every value (records and settings) that chose from chooses into, a value that would then stand twice in the same field falls, from goes to the trash; one change number, so undo_act takes it back. Refused if from has children, is a field target, or a field holding it cannot choose into (retarget_field first) (D-1458)',
         'merge_field' => '{node, field, into, under?, first?} — moves the values of the field onto another field with the same target and parks it; refused if a record would end up outside «into» or already holds values there; with under only records below that node, and the field stays; with first the values go to the front of the other field\'s list, its own values move back and a value already there stands only once (D-1205)',
         'create_record' => '{node, record_type?, values?, locale?} — values as for set_values, written in the same act',
-        'set_values' => '{record, values: {relation_id or @ref: text or @ref, or {values: [text, ...]} for a field taking several, or {part key: {inner relation_id: text}} for parts — key \"0\" fills the part the record already holds there, any other non-numeric key adds a new part}, own_value?, record_type?, locale?}',
+        'set_values' => '{record, values: {relation_id or @ref: text or @ref, or {values: [text, ...]} for a field taking several, or {part key: {inner relation_id: text}} for parts — key \"0\" fills the part the record already holds there, any other non-numeric key adds a new part; a list of record ids is refused there, an existing part joins with move_part}, own_value?, record_type?, locale?}',
         'undo_act' => '{act} — takes back change number act (the "act" of an earlier answer) as a new change: what it created is removed, what it changed or deleted gets its state from before, labels their text. Refused, naming the change, if another change wrote the same data since — take that back first; nothing is undone in part. Through write-data only a change that wrote records alone (D-1410)',
         'remove_record' => '{record} — removes the record with its own parts, nested ones included; refused while a record outside it references one of its parts, naming who',
         'reorder_values' => '{record, field, order: [record or node ids]} — stores the references the field holds in this order (e.g. pin rows by pin number); order must name exactly what the field holds, each once (D-1404)',
@@ -1486,6 +1486,17 @@ final class ModelAbilities
 
                 if ($fremd !== []) {
                     throw new \InvalidArgumentException('Record ' . $recordId . ' has no field ' . implode(', ', $fremd) . ' — its node ' . $record->nodeId . ' does not carry it.');
+                }
+
+                // ⚠️ *A field of parts takes {part key: {inner field: value}}. A list of record ids there was skipped part by part and the op
+                // reported success with nothing written (Prüftor 21.11., act 608123 at rule 87580): refused by name instead (CD-10).*
+                foreach ($screen->fieldsWithTypes($record->nodeId) as ['relation' => $feld, 'type' => $typ]) {
+                    $teile = $values[$feld->id] ?? null;
+
+                    if ($typ === null && $feld->kind === RelationKind::Composition && is_array($teile) && ! isset($teile['values'])
+                        && array_filter($teile, static fn (mixed $teil): bool => ! is_array($teil)) !== []) {
+                        throw new \InvalidArgumentException(sprintf('«%s» holds parts: write each as {part key: {inner field: value}} — "0" the part held there, any other key a new part; to hang an existing part onto this record use move_part.', $feld->name));
+                    }
                 }
 
                 $values   = $this->intoHeldParts($recordId, $record->nodeId, $values);
