@@ -379,7 +379,11 @@ final class EdgeDrawer implements Drawer
             . '</span>';
 
         if ($p->dialog !== null) {
-            return '<span class="taxmod-record-pick' . ($p->taken ? ' taxmod-record-taken' : '') . '">' . $this->draw($p->dialog) . $offen . $ende;
+            // *A node dialog brings no empty radio of its own; the bin needs one to choose «nothing» (aroundNodeDialog).*
+            $leer = $p->name === '' ? '' : '<input type="radio" class="taxmod-pick-empty" hidden name="' . self::e($p->name) . '" value=""'
+                . ($p->form === '' ? '' : ' form="' . self::e($p->form) . '"') . '>';
+
+            return '<span class="taxmod-record-pick' . ($p->taken ? ' taxmod-record-taken' : '') . '">' . $leer . $this->draw($p->dialog) . $offen . $ende;
         }
 
         $nichts = ! $p->taken;

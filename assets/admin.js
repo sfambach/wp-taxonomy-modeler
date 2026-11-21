@@ -477,7 +477,8 @@
 			return;
 		}
 
-		var an       = wahl.querySelector( '.taxmod-record-tree input[type="radio"]:checked' );
+		// *Auch der Knotenbaum eines Felds, das leer bleiben darf, steht in dieser Hülle (aroundNodeDialog).*
+		var an       = wahl.querySelector( '.taxmod-record-tree input[type="radio"]:checked, .taxmod-chooser-tree input[type="radio"]:checked' );
 		var gesetzt  = !! an && an.value !== '';
 		var feld     = wahl.querySelector( '.taxmod-record-quick' );
 		var muell    = wahl.querySelector( '.taxmod-record-clear' );

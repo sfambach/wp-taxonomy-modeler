@@ -605,7 +605,19 @@ final class DataEntry
      */
     private function isChosenFrom(Node $target): bool
     {
-        return $this->nodes->childrenOf($target) !== [];
+        if ($this->nodes->childrenOf($target) === []) {
+            return false;
+        }
+
+        // ⚠️ *D-541: «hat es eigene Felder, braucht er einen Teil». Seit «Einheitenwert» Kinder hat (D-1559), bekam ein Pflichtfeld
+        // dorthin sonst keinen Teil mehr — gelesen wird nur, wo Kinder da sind.*
+        foreach ($this->relations->fieldRelationsOf([$target->id]) as $feld) {
+            if (! $feld->isSetting()) {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     /**

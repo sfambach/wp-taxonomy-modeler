@@ -211,6 +211,26 @@ final class TypedFieldsTest extends TestCase
         self::assertStringContainsString('taxmod-nothing', $nichts);
     }
 
+    /**
+     * ⚠️ *Eine Knotenwahl 0..1 im Dialog (Bauform) hatte keinen Mülleimer, die Satzwahl daneben schon
+     * — Stefan 21.11. 16:47: «bauform kann nicht mehr gelöscht werden» (D-851, D-1511 Regel 3).*
+     */
+    #[Test]
+    public function an_optional_node_choice_in_a_dialog_can_be_cleared(): void
+    {
+        $dialog = new \Taxmod\Core\Description\DialogBox('wahl-bauform', 'SMD', 'SMD', '<span class="row">SMD</span>', '');
+
+        $gewaehlt = \Taxmod\WordPress\Draw\Markup::of(\Taxmod\Core\Description\RecordPicker::aroundNodeDialog($dialog, true, 'Leeren', 'bauform', 'f1'));
+        $leer     = \Taxmod\WordPress\Draw\Markup::of(\Taxmod\Core\Description\RecordPicker::aroundNodeDialog($dialog, false, 'Leeren', 'bauform', 'f1'));
+
+        self::assertStringContainsString('taxmod-record-clear', $gewaehlt);
+        self::assertMatchesRegularExpression('/<input type="radio" class="taxmod-pick-empty" hidden name="bauform" value="" form="f1">/', $gewaehlt);
+        self::assertDoesNotMatchRegularExpression('/taxmod-record-clear"[^>]*hidden/', $gewaehlt);
+
+        // *Ohne Wahl ist der Mülleimer da, aber versteckt — taxmodWahlZeigen zeigt ihn, sobald gewählt wird.*
+        self::assertMatchesRegularExpression('/taxmod-record-clear" hidden/', $leer);
+    }
+
     #[Test]
     public function four_renderers_are_offered_for_a_number_and_the_plain_one_is_the_default(): void
     {
