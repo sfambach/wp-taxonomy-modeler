@@ -1436,3 +1436,10 @@ Anlass: [INF-073](#inf-073--bestand-und-fertigung-vom-wareneingang-über-die-pla
 - **Heute:** `erlaubte_praefixe` hängt an der Einheit (Meter), nicht am Datenelement. Das neue Element «Länge» kann deshalb die Einheiten (Meter) und den Vorgabe-Präfix (milli) tragen, aber nicht «nur mm/cm/m». Der Vergleich über den Präfix-Exponenten ([D-1555](NewConcept/90-decision-log.md)) muss bleiben.
 - **Offen:** erlaubte Präfixe am Datenelement, oder mm/cm/m als feste Einheiten? Bis dahin: «Länge» mit Vorgabe milli, die Präfixwahl bleibt.
 - **Nicht entschieden. Keine Annahme gebaut.**
+
+## INF-144 · Feldhilfe: Rückfall auf den Hilfetext des Zielknotens (2026-11-21)
+
+- **Anlass:** Live-Check (Prüftor 21.11.). Bei Druckregel 87590 zeigen «Wofür», «Knoten» und «Materialgruppe» alle den Hilfetext der Material-Wurzel. Ursache: Hat ein Feld keine eigene Hilfe, fällt es auf die Hilfe seines Zielknotens zurück ([D-1524](NewConcept/90-decision-log.md)).
+- **Beschluss dazu:** [D-1553](NewConcept/90-decision-log.md): «a data element … holds every setting of a value — type, units, bounds, renderer, check rules, help … Replaces … the help per field of D-1524.»
+- **Offen:** Bei einem Feld auf ein Datenelement *ist* der Zielknoten das Datenelement, der Rückfall liefert also dessen Hilfe. Das folgt aus D-1553. Nicht daraus folgt, was Felder bekommen, die Sätze wählen (Ziel ist ein Ast wie die Material-Wurzel, kein Datenelement): gar keine Hilfe, oder eine eigene?
+- **Nicht entschieden. Keine Annahme gebaut.**

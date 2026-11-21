@@ -29,16 +29,16 @@ final class FieldChoiceKindTest extends TestCase
     private const PROCESS   = 79;    // Vorgänge
     private const MATERIAL  = 70;    // the rule's node
 
-    private function rendering(InMemoryRecords $records): Rendering
+    private function rendering(InMemoryRecords $records, ?InMemoryRelations $relations = null): Rendering
     {
-        $relations = new InMemoryRelations();
+        $relations ??= new InMemoryRelations();
         $nodes     = new InMemoryNodes($relations);
         $root      = Node::create(1, 'Root', null, null, 0);
         $trash     = Node::create(2, 'Trash', $root->path, 1, 0);
         $nodes->add($root);
         $nodes->add($trash);
 
-        return new Rendering($nodes, new FixedFramework($root, $trash), ShippedRenderers::registry(), new RememberedTypeNodes(), records: $records);
+        return new Rendering($nodes, new FixedFramework($root, $trash), ShippedRenderers::registry(), new RememberedTypeNodes(), relations: $relations, records: $records);
     }
 
     /** @return array<string, ResolvedSetting> */
@@ -74,5 +74,19 @@ final class FieldChoiceKindTest extends TestCase
         self::assertSame(self::MATERIAL, $rendering->offeringNode($this->settings(), $row(11)), 'Feld: a kind naming no node offers the rule\'s node');
         self::assertSame(self::MATERIAL, $rendering->offeringNode($this->settings(), $row(0)), 'no kind chosen: the rule\'s node, as before D-1552');
         self::assertSame(self::MATERIAL, $rendering->offeringNode([FieldChoiceRenderer::NODE_FIELD => $this->settings()[FieldChoiceRenderer::NODE_FIELD]], $row(12)), 'without art_feld nothing changes');
+    }
+
+    #[Test]
+    public function the_kept_field_is_named_even_where_no_node_offers_it(): void
+    {
+        $relations = new InMemoryRelations();
+        $bauform   = $relations->add(\Taxmod\Core\Model\Relation::attribute(0, self::MATERIAL, 3, \Taxmod\Core\Model\RelationKind::Aggregation, 'Bauform', 1));
+        $rendering = $this->rendering(new InMemoryRecords(), $relations);
+
+        // Live check 21.11. B2: a print rule without a node showed its field as «#149000104307».
+        self::assertSame([(string) $bauform->id => 'Bauform'], $rendering->withKeptField([], $bauform->id), 'no node: the kept field by its name');
+        self::assertSame(['5' => 'Toleranz', (string) $bauform->id => 'Bauform'], $rendering->withKeptField(['5' => 'Toleranz'], $bauform->id), 'added to what is offered');
+        self::assertSame(['5' => 'Toleranz'], $rendering->withKeptField(['5' => 'Toleranz'], 0), 'nothing kept, nothing added');
+        self::assertSame([], $rendering->withKeptField([], 999999), 'a field that is gone is not invented — it stays «#id»');
     }
 }
