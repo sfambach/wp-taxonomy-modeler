@@ -198,6 +198,8 @@ if ($apply === null || $preview === null || $model === 0 || $text === 0) {
         $say(false, 'Gerüst: ' . $geruest->get_error_message());
     } else {
         $ask   = static function () use ($preview, $geruest): int {
+            // Each count starts cold, so a cache filled by the first does not hide the second's reads.
+            wp_cache_flush();
             $answer = $preview->execute(['node' => (int) $geruest['refs']['halter'], 'record' => (int) $geruest['refs']['satz']]);
 
             return is_array($answer) ? (int) $answer['total_queries'] : -1;
@@ -206,7 +208,8 @@ if ($apply === null || $preview === null || $model === 0 || $text === 0) {
         $mehr   = $apply->execute(['changes' => $kinder((int) $geruest['refs']['teil'], 'b', 1, 12)]);
         $viele  = is_wp_error($mehr) ? -2 : $ask();
 
-        $say($wenige > 0 && $viele === $wenige, "drei Knoten unter dem Ziel oder fünfzehn: gleich viele Abfragen — {$wenige}, dann {$viele}");
+        // The first count also pays for what the request keeps afterwards (repositories, resolver), so more nodes may cost fewer, never more.
+        $say($wenige > 0 && $viele > 0 && $viele <= $wenige, "drei Knoten unter dem Ziel oder fünfzehn: nicht mehr Abfragen — {$wenige}, dann {$viele}");
     }
 }
 
