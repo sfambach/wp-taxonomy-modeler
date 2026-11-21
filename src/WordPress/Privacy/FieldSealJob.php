@@ -2,9 +2,7 @@
 
 namespace Taxmod\WordPress\Privacy;
 
-use Taxmod\Core\Privacy\FieldCipher;
-use Taxmod\WordPress\Persistence\Query;
-use Taxmod\WordPress\Persistence\Schema;
+use Taxmod\WordPress\Persistence\FieldSealRows;
 
 /**
  * Seals what a field held before it became confidential (D-1514): its live rows, its history rows and its values in the
@@ -48,13 +46,25 @@ final class FieldSealJob
             return 0;
         }
 
-        return self::sealRows('relation_records', $kanten, $limit)
-            + self::sealRows('relation_records_history', $kanten, $limit)
-            + self::sealJournal($kanten, $limit);
+        $done = 0;
+
+        foreach (['relation_records', 'relation_records_history'] as $tabelle) {
+            foreach (FieldSealRows::plainRows($tabelle, $kanten, $limit) as $zeile) {
+                FieldSealRows::replaceText($tabelle, $zeile['id'], $zeile['version'], (string) FieldSeal::sealText($zeile['relation_id'], $zeile['text']));
+                $done++;
+            }
+        }
+
+        foreach (self::plainJournalRows($kanten, $limit) as $zeile) {
+            FieldSealRows::replaceJournalStates($zeile['id'], FieldSeal::sealState($zeile['before_state']), FieldSeal::sealState($zeile['after_state']));
+            $done++;
+        }
+
+        return $done;
     }
 
     /**
-     * What is still plain on the confidential edges — the number the check and the settings read.
+     * What is still plain on the confidential edges — the number the check reads.
      *
      * @return array{live: int, history: int, journal: int}
      */
@@ -66,132 +76,23 @@ final class FieldSealJob
             return ['live' => 0, 'history' => 0, 'journal' => 0];
         }
 
-        global $wpdb;
-
-        [$wo, $params] = self::plainRowsWhere($kanten);
-
         return [
-            'live'    => (int) Query::value('Klartext an vertraulichen Kanten zählen', $wpdb->prepare('SELECT COUNT(*) FROM ' . Schema::table('relation_records') . $wo, ...$params)),
-            'history' => (int) Query::value('Klartext im Schatten vertraulicher Kanten zählen', $wpdb->prepare('SELECT COUNT(*) FROM ' . Schema::table('relation_records_history') . $wo, ...$params)),
+            'live'    => FieldSealRows::plainCount('relation_records', $kanten),
+            'history' => FieldSealRows::plainCount('relation_records_history', $kanten),
             'journal' => count(self::plainJournalRows($kanten, PHP_INT_MAX)),
         ];
     }
 
-    /** One live value sealed with this key id, to test an entered key against; null while nothing is sealed with it. */
-    public static function sealedSample(string $keyId): ?string
-    {
-        global $wpdb;
-
-        $value = Query::value('Einen versiegelten Wert lesen', $wpdb->prepare(
-            'SELECT value_text FROM ' . Schema::table('relation_records') . ' WHERE value_text LIKE %s LIMIT 1',
-            $wpdb->esc_like(FieldCipher::PREFIX . $keyId . ':') . '%'
-        ));
-
-        return is_string($value) && $value !== '' ? $value : null;
-    }
-
-    /** @param list<int> $kanten */
-    private static function sealRows(string $tabelle, array $kanten, int $limit): int
-    {
-        global $wpdb;
-
-        [$wo, $params] = self::plainRowsWhere($kanten);
-        $schluessel    = $tabelle === 'relation_records' ? 'id' : 'id, version';
-        $zeilen        = Query::rows('Klartext an vertraulichen Kanten lesen', $wpdb->prepare(
-            'SELECT ' . $schluessel . ', relation_id, value_text FROM ' . Schema::table($tabelle) . $wo . ' LIMIT %d',
-            ...[...$params, $limit]
-        ));
-
-        foreach ($zeilen ?: [] as $zeile) {
-            $wo = ['id' => (int) $zeile['id']];
-
-            if (isset($zeile['version'])) {
-                $wo['version'] = (int) $zeile['version'];
-            }
-
-            $wpdb->update(
-                Schema::table($tabelle),
-                ['value_text' => FieldSeal::sealText((int) $zeile['relation_id'], (string) $zeile['value_text'])],
-                $wo,
-                ['%s'],
-                array_fill(0, count($wo), '%d')
-            );
-        }
-
-        return count($zeilen ?: []);
-    }
-
     /**
      * @param list<int> $kanten
-     * @return array{0: string, 1: list<int|string>}
-     */
-    private static function plainRowsWhere(array $kanten): array
-    {
-        global $wpdb;
-
-        return [
-            ' WHERE relation_id IN (' . implode(',', array_fill(0, count($kanten), '%d')) . ") AND value_text IS NOT NULL AND value_text <> '' AND value_text NOT LIKE %s",
-            [...$kanten, $wpdb->esc_like(FieldCipher::PREFIX) . '%'],
-        ];
-    }
-
-    /** @param list<int> $kanten */
-    private static function sealJournal(array $kanten, int $limit): int
-    {
-        global $wpdb;
-
-        $zeilen = self::plainJournalRows($kanten, $limit);
-
-        foreach ($zeilen as $zeile) {
-            $wpdb->update(
-                Schema::table('changelog'),
-                ['before_state' => FieldSeal::sealState($zeile['before_state']), 'after_state' => FieldSeal::sealState($zeile['after_state'])],
-                ['id' => (int) $zeile['id']],
-                ['%s', '%s'],
-                ['%d']
-            );
-        }
-
-        return count($zeilen);
-    }
-
-    /**
-     * The chronicle rows that freeze a plain, non-empty value of a confidential edge (`relation=<id> locale=…`). The SQL
-     * narrows by the edge, PHP decides by the parsed state.
-     *
-     * @param list<int> $kanten
-     * @return list<array{id: int|string, before_state: ?string, after_state: ?string}>
+     * @return list<array{id: int, before_state: ?string, after_state: ?string}>
      */
     private static function plainJournalRows(array $kanten, int $limit): array
     {
-        global $wpdb;
-
-        $muster = [];
-        $params = [];
-
-        foreach ($kanten as $kante) {
-            foreach (['relation', 'path'] as $schluessel) {
-                $muster[] = '(before_state LIKE %s OR after_state LIKE %s)';
-                $like     = '%' . $wpdb->esc_like(' ' . $schluessel . '=' . $kante . ' ') . '%';
-                array_push($params, $like, $like);
-            }
-        }
-
-        $aus = [];
-
-        Query::each('Chronik vertraulicher Kanten lesen', $wpdb->prepare(
-            'SELECT id, before_state, after_state FROM ' . Schema::table('changelog') . ' WHERE ' . implode(' OR ', $muster) . ' ORDER BY id ASC',
-            ...$params
-        ), static function (array $zeile) use (&$aus, $limit): void {
-            if (count($aus) >= $limit) {
-                return;
-            }
-
-            if (FieldSeal::stateIsPlain($zeile['before_state']) || FieldSeal::stateIsPlain($zeile['after_state'])) {
-                $aus[] = $zeile;
-            }
-        });
-
-        return $aus;
+        return FieldSealRows::journalRowsOn(
+            $kanten,
+            static fn (?string $before, ?string $after): bool => FieldSeal::stateIsPlain($before) || FieldSeal::stateIsPlain($after),
+            $limit
+        );
     }
 }

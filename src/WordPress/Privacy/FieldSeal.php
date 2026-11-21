@@ -2,14 +2,11 @@
 
 namespace Taxmod\WordPress\Privacy;
 
-use Taxmod\Core\Addon\AddonRegistry;
-use Taxmod\Core\Addon\ConfidentialAddon;
 use Taxmod\Core\Exception\FieldDoesNotOpen;
 use Taxmod\Core\Model\FrozenState;
 use Taxmod\Core\Privacy\FieldCipher;
 use Taxmod\WordPress\Import\StoredSecret;
-use Taxmod\WordPress\Persistence\Query;
-use Taxmod\WordPress\Persistence\Schema;
+use Taxmod\WordPress\Persistence\FieldSealRows;
 
 /**
  * Where a confidential field is sealed and opened (D-1514): the record repository on every value row, the chronicle on
@@ -112,17 +109,7 @@ final class FieldSeal
             return self::$confidential;
         }
 
-        global $wpdb;
-
-        $ids = Query::column('Vertrauliche Kanten lesen', $wpdb->prepare(
-            'SELECT DISTINCT v.relation_id FROM ' . Schema::table('settings_value') . ' v
-             JOIN ' . Schema::table('settings_object') . ' o ON o.id = v.wert_settings_object_id
-             WHERE v.attribut = %s AND v.relation_id IS NOT NULL AND v.aktiv = 1 AND o.klasse = %s',
-            AddonRegistry::ATTRIBUTE,
-            ConfidentialAddon::class
-        ));
-
-        return self::$confidential = array_fill_keys(array_map(intval(...), $ids ?: []), true);
+        return self::$confidential = array_fill_keys(FieldSealRows::confidentialRelationIds(), true);
     }
 
     public static function isConfidential(int $relationId): bool

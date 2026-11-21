@@ -7,6 +7,7 @@ use Taxmod\Core\Exception\FieldDoesNotOpen;
 use Taxmod\Core\Privacy\FieldCipher;
 use Taxmod\WordPress\Admin\ListPage;
 use Taxmod\WordPress\Admin\SettingsScreen;
+use Taxmod\WordPress\Persistence\FieldSealRows;
 
 /**
  * The Configuration tab «Datenschlüssel» (D-1514): the key of the confidential fields is entered here and stored with the
@@ -62,7 +63,7 @@ final class DataKeyTab
             return $html . '<p><strong>' . esc_html__('A key is stored. Keep your copy in the password manager — without it the confidential data cannot be read again, not even from a backup.', 'taxmod') . '</strong></p>';
         }
 
-        $proposal = FieldSealJob::sealedSample(FieldSeal::keyId()) === null
+        $proposal = FieldSealRows::sealedSample(FieldSeal::keyId()) === null
             ? '<tr><th scope="row">' . esc_html__('New key', 'taxmod') . '</th><td><code>' . esc_html(FieldCipher::newKeyText()) . '</code><p class="description">'
                 . esc_html__('A fresh key, shown only here. Copy it into your password manager, then paste it into the field below.', 'taxmod') . '</p></td></tr>'
             : '';
@@ -104,7 +105,7 @@ final class DataKeyTab
 
         try {
             $cipher = new FieldCipher([FieldSeal::keyId() => FieldCipher::keyFromText($text)]);
-            $sample = FieldSealJob::sealedSample(FieldSeal::keyId());
+            $sample = FieldSealRows::sealedSample(FieldSeal::keyId());
 
             if ($sample !== null) {
                 $cipher->open($sample);

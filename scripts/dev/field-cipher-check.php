@@ -50,7 +50,7 @@ const ALLOWED = [
     'src/WordPress/Persistence/Backup.php'               => 'copies rows as they are (sealed stays sealed); looks for «media:»',
     'src/WordPress/Persistence/MetricSums.php'           => 'a key figure\'s filter value; a confidential field never matches it',
     'src/Core/Service/BackupRewrite.php'                 => 'names the column in its docblock',
-    'src/WordPress/Privacy/FieldSealJob.php'             => 'seals what a field held before it became confidential',
+    'src/WordPress/Persistence/FieldSealRows.php'        => 'the queries of the job that seals what a field held before it became confidential',
 ];
 
 $base   = dirname(__DIR__, 2);
