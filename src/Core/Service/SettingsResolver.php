@@ -8,6 +8,7 @@ use Taxmod\Core\Model\NodeClass\AttributeDeclaration;
 use Taxmod\Core\Model\NodeClass\AttributeType;
 use Taxmod\Core\Model\NodeClass\Contract;
 use Taxmod\Core\Model\NodeClass\Contracts;
+use Taxmod\Core\Model\NodeClass\UnitValue;
 use Taxmod\Core\Model\Relation;
 use Taxmod\Core\Model\ResolvedSetting;
 use Taxmod\Core\Model\Setting\ListEntry;
@@ -265,6 +266,132 @@ final class SettingsResolver
         usort($aus, static fn (ListEntry $a, ListEntry $b): int => [$a->position, $a->rowId] <=> [$b->position, $b->rowId]);
 
         return $aus;
+    }
+
+    /**
+     * The units a data element allows: its own list (with the use site's rows), else the list of the nearest unit-value
+     * ancestor that has one.
+     *
+     * ⚠️ **His word** ([D-1559](../../../docs/NewConcept/90-decision-log.md)): *«a child only narrows its parent»*. Without the walk a
+     * child without a list of its own would allow every unit and so widen its parent. It is the one exception to
+     * [D-712](../../../docs/NewConcept/90-decision-log.md) (no inheritance between nodes), and it holds only between data elements of the
+     * class Einheitenwert. The walk ends at the first ancestor of another class.
+     *
+     * ```mermaid
+     * flowchart LR
+     *   K["Kind «Maximalspannung» · keine Liste"] -->|"leer?"| V["Vater «Spannung» · Volt"]
+     *   V -->|"leer?"| W["… bis zur ersten Klasse, die kein Einheitenwert ist"]
+     * ```
+     *
+     * @return list<ListEntry>
+     */
+    public function allowedUnitsOf(Node $element, ?Relation $edge = null): array
+    {
+        $own = $this->listOf($element, UnitValue::ERLAUBTE_EINHEITEN, $edge);
+
+        if ($own !== [] || $element->klasse !== UnitValue::class) {
+            return $own;
+        }
+
+        foreach ($this->unitValueAncestors($element) as $ancestor) {
+            $theirs = $this->listOf($ancestor, UnitValue::ERLAUBTE_EINHEITEN);
+
+            if ($theirs !== []) {
+                return $theirs;
+            }
+        }
+
+        return [];
+    }
+
+    /**
+     * The prefix preselected for a data element: its own (or the use site's), else the nearest unit-value ancestor's — the same
+     * walk as {@see self::allowedUnitsOf()}, so a child of «Länge» keeps «milli».
+     */
+    public function defaultPrefixOf(Node $element, ?Relation $edge = null): ?int
+    {
+        $own = $this->referenceAt($element, UnitValue::VORGABE_PRAEFIX, $edge);
+
+        if ($own !== null || $element->klasse !== UnitValue::class) {
+            return $own;
+        }
+
+        foreach ($this->unitValueAncestors($element) as $ancestor) {
+            $theirs = $this->referenceAt($ancestor, UnitValue::VORGABE_PRAEFIX);
+
+            if ($theirs !== null) {
+                return $theirs;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * The units a child allows of its own that its parent does not — empty when it only narrows (D-1559). The guard reports
+     * every other answer.
+     *
+     * @return list<int>
+     */
+    public function unitsBeyondParent(Node $element): array
+    {
+        if ($element->klasse !== UnitValue::class) {
+            return [];
+        }
+
+        $own    = $this->activeReferences($this->listOf($element, UnitValue::ERLAUBTE_EINHEITEN));
+        $parent = $this->unitValueAncestors($element)[0] ?? null;
+
+        if ($own === [] || $parent === null) {
+            return [];
+        }
+
+        $allowed = $this->activeReferences($this->allowedUnitsOf($parent));
+
+        return $allowed === [] ? [] : array_values(array_diff($own, $allowed));
+    }
+
+    /**
+     * The unbroken line of unit-value ancestors, nearest first, read in one query (`CD-7`).
+     *
+     * @return list<Node>
+     */
+    private function unitValueAncestors(Node $element): array
+    {
+        $ids     = array_reverse($element->ancestorIds());
+        $fehlend = array_values(array_filter($ids, fn (int $id): bool => ! isset($this->known[$id])));
+
+        foreach ($fehlend === [] ? [] : $this->nodes->byIds($fehlend) as $node) {
+            $this->known[$node->id] = $node;
+        }
+
+        $aus = [];
+
+        foreach ($ids as $id) {
+            $node = $this->known[$id] ?? null;
+
+            if ($node === null || $node->klasse !== UnitValue::class) {
+                break;
+            }
+
+            $aus[] = $node;
+        }
+
+        $this->preload($aus);
+
+        return $aus;
+    }
+
+    /**
+     * @param  list<ListEntry> $entries
+     * @return list<int>
+     */
+    private function activeReferences(array $entries): array
+    {
+        return array_values(array_map(
+            static fn (ListEntry $e): int => (int) $e->reference,
+            array_filter($entries, static fn (ListEntry $e): bool => $e->aktiv && $e->reference !== null)
+        ));
     }
 
     /**
