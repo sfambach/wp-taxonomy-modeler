@@ -47,6 +47,10 @@ final class ListPage
     public const PER_PAGE_META   = 'taxmod_list_per_page';
     public const PER_PAGE_OPTION = 'taxmod_list_per_page';
 
+    /** User meta: list id => the size last chosen on that list (D-1545 F1); the admin-ajax action that keeps it. */
+    public const PER_PAGE_CHOSEN_META = 'taxmod_list_per_page_chosen';
+    public const PER_PAGE_ACTION      = 'taxmod_list_per_page';
+
     /** The query value of the page a list shows. */
     public const PAGE_QUERY = 'paged';
 
@@ -386,12 +390,50 @@ final class ListPage
         return $html . '<br class="clear"></div>';
     }
 
-    /** How many entries one page of every list shows: the choice on the page, else the user's setting, else the site's. */
-    public static function perPage(): int
+    /**
+     * How many entries one page of the list `$listId` shows (D-1545): the choice on the page — asked now or kept from before —,
+     * else the user's setting, else the site's.
+     */
+    public static function perPage(string $listId): int
     {
-        $user = (int) get_user_meta(get_current_user_id(), self::PER_PAGE_META, true);
+        $user   = (int) get_user_meta(get_current_user_id(), self::PER_PAGE_META, true);
+        $chosen = self::asked(self::PER_PAGE_QUERY) ?? (self::chosenSizes()[$listId] ?? null);
 
-        return PageSize::resolve(self::asked(self::PER_PAGE_QUERY), $user === 0 ? null : $user, self::sitePerPage());
+        return PageSize::resolve($chosen, $user === 0 ? null : $user, self::sitePerPage());
+    }
+
+    /** @return array<string, int> list id => size chosen on that list by the current user */
+    private static function chosenSizes(): array
+    {
+        $kept = get_user_meta(get_current_user_id(), self::PER_PAGE_CHOSEN_META, true);
+
+        return is_array($kept) ? array_map('intval', array_filter($kept, 'is_numeric')) : [];
+    }
+
+    /** admin-ajax: keeps the size chosen on a list for the current user (D-1545 F1). Capability → nonce → validate → act. */
+    public static function saveChosenSize(): void
+    {
+        if (! current_user_can('read')) {
+            wp_send_json_error(['message' => __('Not allowed.', 'taxmod')], 403);
+        }
+
+        check_ajax_referer(self::PER_PAGE_ACTION);
+
+        $list = sanitize_key((string) wp_unslash($_POST['list'] ?? ''));
+        $size = absint($_POST['size'] ?? 0);
+
+        if ($list === '' || ! PageSize::offered($size)) {
+            wp_send_json_error(['message' => __('No list or size named.', 'taxmod')], 400);
+        }
+
+        update_user_meta(get_current_user_id(), self::PER_PAGE_CHOSEN_META, [$list => $size] + self::chosenSizes());
+        wp_send_json_success();
+    }
+
+    /** Forgets the size chosen on every list (Benutzereinstellungen, with the column choice). */
+    public static function resetChosenSizes(): void
+    {
+        delete_user_meta(get_current_user_id(), self::PER_PAGE_CHOSEN_META);
     }
 
     /** The site's setting for entries per list page (Einstellungen). */
@@ -411,20 +453,21 @@ final class ListPage
      * for {@see self::bulkBar()} or {@see self::listBar()}: how many entries a page shows and the page links.
      *
      * @template T
-     * @param list<T>                                 $rows every kept row, in the shown order
-     * @param callable(array<string, string>): string $url  the list's address with these query values changed
+     * @param string                                  $listId names the list, so the size chosen on it is kept for it alone
+     * @param list<T>                                 $rows   every kept row, in the shown order
+     * @param callable(array<string, string>): string $url    the list's address with these query values changed
      * @return array{rows: list<T>, total: int, complete: bool, pages: string}
      */
-    public static function paged(array $rows, callable $url): array
+    public static function paged(string $listId, array $rows, callable $url): array
     {
-        $perPage = self::perPage();
+        $perPage = self::perPage($listId);
         $total   = count($rows);
 
         return [
             'rows'     => ListView::page($rows, self::pageAsked(), $perPage),
             'total'    => $total,
             'complete' => ListView::onePage($total, $perPage),
-            'pages'    => self::pages($total, self::pageAsked(), $perPage, $url),
+            'pages'    => self::pages($listId, $total, self::pageAsked(), $perPage, $url),
         ];
     }
 
@@ -434,7 +477,7 @@ final class ListPage
      *
      * @param callable(array<string, string>): string $url the list's address with these query values changed
      */
-    public static function pages(int $total, int $page, int $perPage, callable $url): string
+    public static function pages(string $listId, int $total, int $page, int $perPage, callable $url): string
     {
         $pages   = (int) ceil(max(1, $total) / max(1, $perPage));
         $page    = ListView::clampPage($page, $total, $perPage);
@@ -443,10 +486,12 @@ final class ListPage
         $chosen  = (string) (self::asked(self::PER_PAGE_QUERY) ?? '');
 
         foreach (PageSize::SIZES as $size) {
-            $options .= '<option value="' . esc_attr($url([self::PER_PAGE_QUERY => (string) $size, self::PAGE_QUERY => ''])) . '"' . selected($size, $perPage, false) . '>' . esc_html((string) $size) . '</option>';
+            $options .= '<option value="' . esc_attr($url([self::PER_PAGE_QUERY => (string) $size, self::PAGE_QUERY => ''])) . '" data-taxmod-size="' . esc_attr((string) $size) . '"' . selected($size, $perPage, false) . '>' . esc_html((string) $size) . '</option>';
         }
 
-        $html = '<label class="taxmod-list-per-page">' . esc_html__('Per page', 'taxmod') . ' <select class="taxmod-list-per-page-choice">' . $options . '</select></label>';
+        $keep = add_query_arg(['action' => self::PER_PAGE_ACTION, '_ajax_nonce' => wp_create_nonce(self::PER_PAGE_ACTION)], admin_url('admin-ajax.php'));
+        $html = '<label class="taxmod-list-per-page">' . esc_html__('Per page', 'taxmod') . ' <select class="taxmod-list-per-page-choice" data-taxmod-list="' . esc_attr(sanitize_key($listId))
+            . '" data-taxmod-keep="' . esc_url($keep) . '">' . $options . '</select></label>';
 
         if ($pages > 1) {
             $link  = static fn (int $to, string $text, string $label): string => $to < 1 || $to > $pages || $to === $page
@@ -482,11 +527,18 @@ final class ListPage
             'label'   => __('Entries per list page', 'taxmod'),
             'control' => \Taxmod\WordPress\Draw\SelectMarkup::of(self::PER_PAGE_META, $options, PageSize::offered($own) ? (string) $own : null, true,
                 nothingWord: sprintf(/* translators: %d: entries per page of the site's setting */ __('As in the settings (%d)', 'taxmod'), self::sitePerPage()))
-                . '<p class="description">' . esc_html__('The choice on a list wins over this.', 'taxmod') . '</p>',
+                . '<p class="description">' . esc_html__('A size chosen on a list is kept for that list and wins over this; changing this setting forgets those choices.', 'taxmod') . '</p>',
             // The settings page has checked capability and nonce for its own form (CD-5).
-            'save'    => static function (): void {
+            'save'    => static function () use ($own): void {
                 $size = absint($_POST[self::PER_PAGE_META] ?? 0);
-                update_user_meta(get_current_user_id(), self::PER_PAGE_META, PageSize::offered($size) ? $size : '');
+                $size = PageSize::offered($size) ? $size : 0;
+
+                // A new own setting means every list again: what was chosen on single lists would otherwise still win.
+                if ($size !== (PageSize::offered($own) ? $own : 0)) {
+                    self::resetChosenSizes();
+                }
+
+                update_user_meta(get_current_user_id(), self::PER_PAGE_META, $size === 0 ? '' : $size);
             },
         ];
 

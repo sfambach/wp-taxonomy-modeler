@@ -136,8 +136,8 @@ final class InboxScreen
             $verdicts[$index] = $intake->decide(self::leadSource($rows), $proposal, $existing instanceof ExistingOrder ? $existing : null);
         }
 
-        // Only one page of boxes is drawn; drawing a box is what costs (Stefan 2026-11-21: «seiten weise»).
-        $paged = ListPage::paged(InboxBundles::of($described), static fn (array $change): string => add_query_arg(array_filter($change + ['page' => self::PAGE], static fn (string $value): bool => $value !== ''), admin_url('admin.php')));
+        // D-1545: only one page of boxes is drawn; drawing a box is what costs.
+        $paged = ListPage::paged('inbox', InboxBundles::of($described), static fn (array $change): string => add_query_arg(array_filter($change + ['page' => self::PAGE], static fn (string $value): bool => $value !== ''), admin_url('admin.php')));
         $html .= ListPage::bulkBar(self::BULK_FORM, self::DISCARD_SELECTED, [self::TAKE_SELECTED => __('Take', 'taxmod'), self::DISCARD_SELECTED => __('Discard', 'taxmod')], $count,
             pages: $paged['pages']);
 

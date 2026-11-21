@@ -14,7 +14,7 @@ namespace Taxmod\Core\Listing;
  * His word 2026-11-21 06:51: «eine einstellung auf der seite bestimmt wieviele items pro seite … in den einstellungen und
  * benutzer einstellungen können ein wert vorgegeben werden benutzer einstellunge schlägt einstellung».
  *
- * @see /mnt/project-files/taxmod-paginierung/vorschlag.md
+ * @see docs/NewConcept/90-decision-log.md D-1545
  */
 final class PageSize
 {

@@ -867,8 +867,27 @@
 	} );
 
 	document.addEventListener( 'change', function ( event ) {
-		if ( event.target instanceof HTMLSelectElement && event.target.classList.contains( 'taxmod-list-per-page-choice' ) && event.target.value ) {
-			showPage( event.target.value );
+		var choice = event.target;
+
+		if ( ! ( choice instanceof HTMLSelectElement ) || ! choice.classList.contains( 'taxmod-list-per-page-choice' ) || ! choice.value ) {
+			return;
 		}
+
+		// D-1545 F1: the choice is kept for this list before the page shows it; a failed keep still shows it.
+		var size = choice.options[ choice.selectedIndex ].getAttribute( 'data-taxmod-size' ) || '';
+		var keep = choice.getAttribute( 'data-taxmod-keep' );
+		var url  = choice.value;
+
+		if ( ! keep || ! window.fetch ) {
+			showPage( url );
+
+			return;
+		}
+
+		window.fetch( keep, { method: 'POST', credentials: 'same-origin', body: new URLSearchParams( { list: choice.getAttribute( 'data-taxmod-list' ) || '', size: size } ) } )
+			.catch( function () {} )
+			.then( function () {
+				showPage( url );
+			} );
 	} );
 }() );
