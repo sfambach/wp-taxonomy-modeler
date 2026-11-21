@@ -33,8 +33,8 @@ if ($root === '' || ! is_readable($root . '/wp-load.php')) {
 define('WP_USE_THEMES', false);
 require $root . '/wp-load.php';
 
-wp_set_current_user(1);
 require __DIR__ . '/lib/no-write.php';
+wp_set_current_user(1);
 require dirname(__DIR__, 2) . '/vendor/autoload.php';
 
 use Taxmod\WordPress\ModelDoor;
