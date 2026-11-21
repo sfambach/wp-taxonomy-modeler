@@ -8633,6 +8633,13 @@ final class Rendering implements Presets, \Taxmod\Core\Port\FieldAddons
             return null;
         }
 
+        // ⚠️ *Ein leerer Teil zeigt beim Anzeigen nichts — Live-Check 9 (21.11.): leere Zahl-mit-Einheit-Felder standen als «wert prefix
+        // einheit» da. Leer heisst: kein Teil, kein aufgelöster Knoten, und keines der inneren Felder trägt im Satz einen Wert (D-667).*
+        if ($purpose === Purpose::Display && $teile === [] && $aufgeloest === 0 && ! $relation->isSetting()
+            && array_filter($innen, static fn (Relation $e): bool => isset($values[$e->id]) && ! $values[$e->id]->isNothing()) === []) {
+            return null;
+        }
+
         $ziel = $this->gemerkterKnoten($relation->toNodeId);
 
         if ($ziel === null) {

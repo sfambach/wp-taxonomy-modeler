@@ -3144,6 +3144,10 @@ final class RenderingTest extends TestCase
         $markup = \Taxmod\WordPress\Draw\Markup::of($this->rendering->fieldsFor([$feld], [], Purpose::Edit, 'v')[0]->result);
 
         self::assertStringContainsString('[' . $wert->id . ']', $markup, 'the inherited «wert» is an input of the part');
+
+        // *Live-Check 9: an empty part showed «wert prefix einheit» when displayed. Empty stays empty.*
+        $gezeigt = \Taxmod\WordPress\Draw\Markup::of($this->rendering->fieldsFor([$feld], [], Purpose::Display, '')[0]->result);
+        self::assertStringNotContainsString('wert', $gezeigt, 'an empty part shows no field names');
     }
 
     /** D-1366: a composed field (D-888) speaks its parts in their own words, as the chooser does. */
