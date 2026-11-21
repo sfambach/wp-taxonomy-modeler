@@ -797,5 +797,6 @@ return [
         'Similar data elements exist. Use one of them?' => 'Es gibt ähnliche Datenelemente. Eines davon verwenden?',
         'Use' => 'Verwenden',
         'Create anyway' => 'Trotzdem neu anlegen',
+        'Saved with a note: %s' => 'Gespeichert mit Hinweis: %s',
     ],
 ];

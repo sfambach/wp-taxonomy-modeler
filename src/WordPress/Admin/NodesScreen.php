@@ -5860,6 +5860,7 @@ final class NodesScreen
 
         $beschwerden = [];
         $gesammelt   = [];
+        $gemeldet    = [];
 
         foreach ($typedIn as $relationId => $characters) {
             $type = $types[$relationId] ?? null;
@@ -5869,9 +5870,18 @@ final class NodesScreen
             }
 
             foreach ($this->rendering->complaintsFor($attributes[$relationId], $values[$relationId] ?? $type->valueFrom($characters)) as $complaint) {
-                $beschwerden[] = $attributes[$relationId]->name . ': ' . $this->complaintText($complaint);
                 // *Jede Beschwerde behält ihre Stelle, jetzt mit dem Satz (Plan Schritt 5, D-632).*
-                $gesammelt[]   = $complaint->address !== null && $recordId > 0 ? $complaint->at($complaint->address->withRecord($recordId)) : $complaint;
+                $mitStelle = $complaint->address !== null && $recordId > 0 ? $complaint->at($complaint->address->withRecord($recordId)) : $complaint;
+
+                // D-1554: a range error is saved and reported, only a form error refuses.
+                if (self::onlyReported($complaint)) {
+                    $gemeldet[] = $mitStelle;
+
+                    continue;
+                }
+
+                $beschwerden[] = $attributes[$relationId]->name . ': ' . $this->complaintText($complaint);
+                $gesammelt[]   = $mitStelle;
             }
         }
 
@@ -5897,8 +5907,16 @@ final class NodesScreen
             $wert = $this->rendering->valuesFrom([$relation], [$relation->id => $characters])[$relation->id] ?? $type->valueFrom($characters);
 
             foreach ($this->rendering->complaintsFor($relation, $wert) as $complaint) {
+                $mitStelle = $complaint->address !== null && $recordId > 0 ? $complaint->at($complaint->address->withRecord($recordId)) : $complaint;
+
+                if (self::onlyReported($complaint)) {
+                    $gemeldet[] = $mitStelle;
+
+                    continue;
+                }
+
                 $beschwerden[] = $relation->name . ': ' . $this->complaintText($complaint);
-                $gesammelt[]   = $complaint->address !== null && $recordId > 0 ? $complaint->at($complaint->address->withRecord($recordId)) : $complaint;
+                $gesammelt[]   = $mitStelle;
             }
         }
 
@@ -6038,6 +6056,40 @@ final class NodesScreen
         if ($recordId !== 0) {
             $this->writePathFields($recordId, $nodeId);
         }
+
+        // D-1554: what was saved although a validator named it — said in the answer of every write path.
+        $this->reported = [...$this->reported, ...$gemeldet];
+    }
+
+    /** @var list<\Taxmod\Core\Addon\Complaint> */
+    private array $reported = [];
+
+    /**
+     * D-1554: «a form error is refused, a range error is saved and reported» — the range validator only reports; shape, syntax and
+     * every other check refuse as before.
+     */
+    private static function onlyReported(\Taxmod\Core\Addon\Complaint $complaint): bool
+    {
+        return $complaint->validator === \Taxmod\Core\Addon\RangeValidator::NAME;
+    }
+
+    /**
+     * The complaints saved anyway since the last call, each with its place — and forgotten, so the next write starts empty.
+     *
+     * @return list<\Taxmod\Core\Addon\Complaint>
+     */
+    public function takeReported(): array
+    {
+        $out            = $this->reported;
+        $this->reported = [];
+
+        return $out;
+    }
+
+    /** The words of a reported complaint, as the record editor says it. */
+    public function reportedText(\Taxmod\Core\Addon\Complaint $complaint): string
+    {
+        return $this->complaintText($complaint);
     }
 
     /**
@@ -8730,6 +8782,15 @@ final class NodesScreen
             $message = __('Unknown action.', 'taxmod');
         } finally {
             $this->changelog->endAct();
+        }
+
+        // D-1554: saved, and still said — a value outside its range stands at its field and in the message.
+        $gemeldet = $this->takeReported();
+
+        if ($gemeldet !== []) {
+            /* translators: %s: what the validators said, e.g. «below the minimum 3». */
+            $message = trim(($message === 'ok' ? '' : $message) . ' ' . sprintf(__('Saved with a note: %s', 'taxmod'), implode('; ', array_map($this->complaintText(...), $gemeldet))));
+            ($pressed ?? null)?->complain(...$gemeldet);
         }
 
         // Everything now happens **at** a node, so the person stays there rather than being

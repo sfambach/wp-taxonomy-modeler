@@ -119,23 +119,29 @@ $say(is_array($gleich) && ($gleich['matches'][0]['matching_settings'] ?? []) ===
 $anderer = $similar->execute(['name' => '__fl Druckauflösung', 'type' => 'text']);
 $say(is_array($anderer) && ! in_array((int) $refs['a'], array_column($anderer['matches'], 'relation'), true), 'another type is not similar');
 
-echo "\n== write-data reports what a validator refuses ==\n";
+// D-1554 (concept change, PR-9): «a form error is refused, a range error is saved and reported» — before, a range error refused.
+echo "\n== write-data saves a range error and reports it ==\n";
 
 $vorher = count((new WpdbRecordRepository())->valuesOf((int) $refs['s']));
 $antwort = wp_get_ability('taxmod/write-data')->execute(['changes' => [
     ['op' => 'set_values', 'record' => (int) $refs['s'], 'values' => [(string) $refs['b'] => ['values' => ['5', '1']]]],
 ]]);
 
-$say(is_wp_error($antwort) && $antwort->get_error_code() === 'taxmod_invalid', 'a row of a list below min refuses the list', is_wp_error($antwort) ? $antwort->get_error_code() . ' ' . $antwort->get_error_message() : 'written');
+$say(is_array($antwort), 'a row of a list below min does not refuse the list', is_wp_error($antwort) ? $antwort->get_error_code() . ' ' . $antwort->get_error_message() : '');
 
-$beschwerden = is_wp_error($antwort) ? ($antwort->get_error_data()['complaints'] ?? []) : [];
-$say(count($beschwerden) === 1 && ($beschwerden[0]['key'] ?? '') === 'below_min' && ($beschwerden[0]['field'] ?? 0) === (int) $refs['b'] && ($beschwerden[0]['record'] ?? 0) === (int) $refs['s'], 'the complaint names validator key, field and record', wp_json_encode($beschwerden));
-$say(count((new WpdbRecordRepository())->valuesOf((int) $refs['s'])) === $vorher, 'nothing was written');
+$gemeldet = is_array($antwort) ? ($antwort['reported'] ?? []) : [];
+$say(count($gemeldet) === 1 && ($gemeldet[0]['key'] ?? '') === 'below_min' && ($gemeldet[0]['field'] ?? 0) === (int) $refs['b'] && ($gemeldet[0]['record'] ?? 0) === (int) $refs['s'] && ($gemeldet[0]['text'] ?? '') !== '', 'the answer reports validator key, field, record and words', wp_json_encode($gemeldet));
+$say(count((new WpdbRecordRepository())->valuesOf((int) $refs['s'])) === $vorher + 2, 'both rows were written');
 
 $einfach = wp_get_ability('taxmod/write-data')->execute(['changes' => [
     ['op' => 'set_values', 'record' => (int) $refs['s'], 'values' => [(string) $refs['a'] => '2']],
 ]]);
-$say(is_wp_error($einfach) && $einfach->get_error_code() === 'taxmod_invalid', 'a plain value below min is refused the same way');
+$say(is_array($einfach) && count($einfach['reported'] ?? []) === 1, 'a plain value below min is saved and reported the same way');
+
+$passend = wp_get_ability('taxmod/write-data')->execute(['changes' => [
+    ['op' => 'set_values', 'record' => (int) $refs['s'], 'values' => [(string) $refs['a'] => '7']],
+]]);
+$say(is_array($passend) && ! isset($passend['reported']), 'a fitting value reports nothing');
 
 echo "\n== stored values a validator would now refuse ==\n";
 
@@ -147,7 +153,7 @@ $verweigert = $plugin->screen()->storedValuesRefused(
 $alt = array_values(array_filter($verweigert, static fn (array $z): bool => $z['record'] === (int) $refs['alt']));
 
 $say(count($alt) === 1 && $alt[0]['field'] === (int) $refs['b'] && $alt[0]['value'] === '2', 'the list row stored before the validator is named', wp_json_encode($alt));
-$say(array_filter($verweigert, static fn (array $z): bool => $z['record'] === (int) $refs['s']) === [], 'a fitting value is not');
+$say(count(array_filter($verweigert, static fn (array $z): bool => $z['record'] === (int) $refs['s'])) === 1, 'the row saved with a note is named, the fitting value is not');
 
 echo $failed === 0 ? "\nAll good.\n" : "\n$failed FAILED\n";
 

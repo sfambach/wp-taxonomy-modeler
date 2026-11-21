@@ -2,7 +2,8 @@
 
 /**
  * Two faulty fields in one save give two complaints, each with its own address, and none is lost on the way to the page
- * (renderer plan step 5, D-1424, [D-632](../../docs/NewConcept/90-decision-log.md)).
+ * (renderer plan step 5, D-1424, [D-632](../../docs/NewConcept/90-decision-log.md)). Since [D-1554](../../docs/NewConcept/90-decision-log.md) a range
+ * error is saved and the complaints are a note, no longer a refusal.
  *
  * ⚠️ *Measured where a person meets it: the save is posted through the node page, the redirect is followed, and the page that
  * comes back is read. Before step 5 both complaints stood in one sentence and nothing said which field each belonged to.*
@@ -108,9 +109,12 @@ try {
 ob_end_clean();
 parse_str((string) parse_url($umgeleitet, PHP_URL_QUERY), $teile);
 
-echo "== the save is refused, with both complaints ==\n";
+// D-1554 (concept change, PR-9): «a range error is saved and reported» — before, this save was refused.
+echo "== the save is kept with a note, with both complaints ==\n";
 
-$say(str_starts_with(rawurldecode((string) ($teile['taxmod_message'] ?? '')), 'Not saved'), 'the save is refused', rawurldecode((string) ($teile['taxmod_message'] ?? '')));
+$hinweis = strstr(__('Saved with a note: %s', 'taxmod'), '%s', true);
+$say(str_starts_with(rawurldecode((string) ($teile['taxmod_message'] ?? '')), (string) $hinweis), 'the save is kept and says why', rawurldecode((string) ($teile['taxmod_message'] ?? '')));
+$say(count((new \Taxmod\WordPress\Persistence\WpdbRecordRepository())->valuesOf($satz)) >= 2, 'both values were written');
 $say(($teile['taxmod_complaints'] ?? '') !== '', 'the complaints are kept for the next page');
 
 echo "\n== the page that comes back ==\n";
