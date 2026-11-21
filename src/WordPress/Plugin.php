@@ -155,6 +155,7 @@ final class Plugin
             \Taxmod\Core\Rules\RuleBook::GREATER    => __('greater than', 'taxmod'),
             \Taxmod\Core\Rules\RuleBook::LESS       => __('less than', 'taxmod'),
             \Taxmod\Core\Rules\RuleBook::CONTAINS   => __('contains', 'taxmod'),
+            \Taxmod\Core\Rules\RuleBook::BELOW      => __('lies below', 'taxmod'),
         ];
     }
 

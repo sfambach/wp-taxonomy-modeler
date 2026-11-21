@@ -24,6 +24,7 @@ return [
         'greater than'   => 'größer',
         'less than'      => 'kleiner',
         'contains'       => 'enthält',
+        'lies below'     => 'liegt unter',
         '%1$d entry with %2$d values goes to the shadow when this becomes a setting.'    => '%1$d Eintrag mit %2$d Werten geht in den Schatten, wenn dies eine Einstellung wird.' . "\0" . '%1$d Einträge mit %2$d Werten gehen in den Schatten, wenn dies eine Einstellung wird.',
         '%1$d of %2$d'                                                                   => '%1$d von %2$d',
         '%1$d records with %2$d values removed for good. The node was already gone; its changelog entries stay.' => '%1$d Sätze mit %2$d Werten endgültig entfernt. Der Knoten war schon weg; seine Protokolleinträge bleiben.',

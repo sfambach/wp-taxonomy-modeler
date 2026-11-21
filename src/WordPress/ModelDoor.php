@@ -888,7 +888,35 @@ final class ModelDoor
      */
     public function firstRule(array $rules, array $context, array $values = [], ?\Closure $usable = null): ?int
     {
-        return (new RuleBook($rules))->first($context, $values, $usable);
+        $book = new RuleBook($rules);
+
+        return $book->first($context, $values, $usable, $this->nodesAbove($book->fieldsBelow(), $values));
+    }
+
+    /**
+     * D-1563: for «liegt unter», each value of these fields with the nodes above it — read from the nodes' own path in one query
+     * (CD-7), never a walk per level.
+     *
+     * @param list<int>                $fields
+     * @param array<int, list<string>> $values
+     * @return array<string, list<string>>
+     */
+    private function nodesAbove(array $fields, array $values): array
+    {
+        $ids = [];
+        foreach ($fields as $field) {
+            foreach ($values[$field] ?? [] as $value) {
+                if (ctype_digit($value)) {
+                    $ids[(int) $value] = true;
+                }
+            }
+        }
+        $out = [];
+        foreach ($ids === [] ? [] : (new Persistence\WpdbNodeRepository())->byIds(array_keys($ids)) as $node) {
+            $out[(string) $node->id] = array_map('strval', $node->ancestorIds());
+        }
+
+        return $out;
     }
 
     /**
