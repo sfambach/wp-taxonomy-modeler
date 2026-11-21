@@ -3522,3 +3522,8 @@ details.taxmod-record-section > summary {
 .taxmod-form-optional > .taxmod-field-remove {
     flex: 0 0 auto;
 }
+
+/* Live check 15: in a compact form ✕ is the one trash of a field — a choice's own stands hidden, ✕ presses it. */
+.taxmod-form-optional .taxmod-record-clear {
+    display: none !important;
+}

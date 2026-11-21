@@ -4214,6 +4214,10 @@
 			if ( ! row ) {
 				return;
 			}
+			// A choice resets itself through its own trash, hidden in a compact form (live check 15).
+			row.querySelectorAll( '.taxmod-record-clear' ).forEach( function ( own ) {
+				own.click();
+			} );
 			row.querySelectorAll( 'input, select, textarea' ).forEach( function ( field ) {
 				if ( field.type === 'checkbox' || field.type === 'radio' ) {
 					field.checked = false;
