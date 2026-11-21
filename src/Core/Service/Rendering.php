@@ -8575,6 +8575,36 @@ final class Rendering implements Presets, \Taxmod\Core\Port\FieldAddons
      *
      * @return array{renderer: string, rows: list<list<RenderedField>>, result: RenderResult}|null `null`, wenn hier kein Teil liegt.
      */
+    /**
+     * Die Werte eines Teils, dazu der Verweis auf jeden seiner Einheitenwert-Teile — damit er beim Anzeigen als sein Name steht.
+     *
+     * ⚠️ *Live-Check an 48255 (21.11.): in der Tabelle «Anschlüsse» stand «15, polig» — der innere Teil wurde als Formular gezeichnet und
+     * die Zelle fasste seine Felder mit Komma zusammen. Oben steht ein Einheitenwert als sein Name, «15 polig» (D-1215); eine Ebene
+     * tiefer fehlte der Verweis, weil die Teile getrennt von den Werten reisen. Die Worte holt derselbe Aufruf je Zeile wie bisher.*
+     *
+     * @param list<Relation>       $felder
+     * @param array<string, mixed> $teil
+     * @return array<int, TypedValue>
+     */
+    private function withUnitValueParts(array $felder, array $teil): array
+    {
+        $werte = $teil['werte'] ?? [];
+
+        foreach ($felder as $feld) {
+            $innerer = $teil['teile'][$feld->id][0]['id'] ?? 0;
+
+            if ($innerer === 0 || $feld->kind !== RelationKind::Composition || $feld->multiplicity->allowsMany() || isset($werte[$feld->id])
+                || $this->gemerkterKnoten($feld->toNodeId)?->klasse !== \Taxmod\Core\Model\NodeClass\UnitValue::class
+            ) {
+                continue;
+            }
+
+            $werte[$feld->id] = TypedValue::ofRecordReference((int) $innerer);
+        }
+
+        return $werte;
+    }
+
     private function partBelow(
         Relation $relation,
         ?SimpleType $type,
@@ -8739,7 +8769,7 @@ final class Rendering implements Presets, \Taxmod\Core\Port\FieldAddons
             // D-1389: a preset prefix only stands in the drawn form; the values of the part stay as they are.
             $gezeichnet = $purpose === Purpose::Edit
                 ? $this->withPresetPrefix($ziel, $relation, $dieseFelder, $teil === null ? ($verweisliste ? [] : $values) : $teil['werte'], $erlaubteWahl)
-                : ($teil === null ? ($verweisliste ? [] : $values) : $teil['werte']);
+                : ($teil === null ? ($verweisliste ? [] : $values) : $this->withUnitValueParts($dieseFelder, $teil));
             $zeilen[] = $this->fieldsFor(
                 $dieseFelder,
                 $gezeichnet,
