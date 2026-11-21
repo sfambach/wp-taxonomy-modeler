@@ -961,7 +961,8 @@ final class SettingsScreen
      *
      * ⚠️ **Ein Umstand und keine Einstellung** ([D-389](../../../docs/NewConcept/90-decision-log.md)):
      * *er reist in der Adresse (`taxmod_locale`), so wie der Faltzustand. Er wird nirgends gespeichert
-     * — wer die Seite ohne ihn aufruft, arbeitet in der Standardsprache.*
+     * — wer die Seite ohne ihn aufruft, arbeitet in seiner eigenen Sprache (INF-146), ausserhalb des Admin in der
+     * Standardsprache.*
      *
      * ⚠️ **An **einer** Stelle gelesen, aus demselben Grund, aus dem
      * {@see self::neutralLocale()} an einer steht** ([D-387](../../../docs/NewConcept/90-decision-log.md)):
@@ -974,7 +975,25 @@ final class SettingsScreen
             ? sanitize_text_field(wp_unslash((string) $_GET['taxmod_locale']))
             : '';
 
-        return $asked === '' ? self::neutralLocale() : $asked;
+        return self::pickLocale($asked, is_admin() ? get_user_locale() : '', self::neutralLocale());
+    }
+
+    /**
+     * Die gewählte Sprache, sonst im Admin die des Benutzers, sonst die Standardsprache.
+     *
+     * ⚠️ *INF-146, sein Wort am 2026-11-21: «Ja, bitte in meiner Sprache.» Live-Check 13 sah «Value / Prefix / Unit», obwohl
+     * «Wert / Präfix / Einheit» unter de_DE stand: ohne `taxmod_locale` zeichnete der Admin in der Standardsprache en_US.
+     * Fehlt ein Text in der Benutzersprache, fällt die Kette weiter auf die Standardsprache (D-645). Ausserhalb des Admin
+     * (REST, Fähigkeiten, Cron) bleibt es die Standardsprache, damit Schreiber dort keine Übersetzung anlegen, wo sie den
+     * Grundnamen meinen.*
+     */
+    public static function pickLocale(string $asked, string $userLocale, string $neutral): string
+    {
+        if ($asked !== '') {
+            return $asked;
+        }
+
+        return $userLocale === '' ? $neutral : $userLocale;
     }
 
     public static function inDeveloperMode(): bool
