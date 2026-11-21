@@ -60,7 +60,7 @@ function check(string $what, bool $passed, string $detail = ''): void
 $door  = new ModelDoor();
 $rules = [
     ['id' => 2, 'position' => 1, 'conditions' => [1 => 7], 'filters' => [['field' => 40, 'value' => 'SMD']]],
-    ['id' => 3, 'position' => 2, 'conditions' => [1 => 0]],
+    ['id' => 3, 'position' => 2, 'conditions' => [1 => 70]],
 ];
 
 check('the door has firstRule', method_exists($door, 'firstRule'));
@@ -71,10 +71,11 @@ check('no rule → null, the caller\'s default', $door->firstRule([$rules[0]], [
 
 // D-1563: «liegt unter» — the door reads the nodes above each value from the nodes' own path, in one query.
 $kind  = array_key_first($door->children(402));
-$below = [['id' => 4, 'position' => 0, 'conditions' => [], 'filters' => [['field' => 40, 'value' => '402', 'operator' => Taxmod\Core\Rules\RuleBook::BELOW]]]];
-check('a node below the one named holds «liegt unter»', $kind !== null && $door->firstRule($below, [], [40 => [(string) $kind]]) === 4, 'child of Model: ' . var_export($kind, true));
-check('the node named itself holds «liegt unter»', $door->firstRule($below, [], [40 => ['402']]) === 4);
-check('a node above it does not', $door->firstRule($below, [], [40 => ['1']]) === null);
+$below = [['id' => 4, 'position' => 0, 'conditions' => [1 => 70], 'filters' => [['field' => 40, 'value' => '402', 'operator' => Taxmod\Core\Rules\RuleBook::BELOW]]]];
+check('a node below the one named holds «liegt unter»', $kind !== null && $door->firstRule($below, [1 => [70]], [40 => [(string) $kind]]) === 4, 'child of Model: ' . var_export($kind, true));
+check('the node named itself holds «liegt unter»', $door->firstRule($below, [1 => [70]], [40 => ['402']]) === 4);
+check('a node above it does not', $door->firstRule($below, [1 => [70]], [40 => ['1']]) === null);
+check('a rule that names no node holds nothing (D-1563)', $door->firstRule([['id' => 5, 'position' => 0, 'conditions' => [1 => 0]]], [1 => [70, 7]]) === null);
 check('«liegt unter» has its word', (Taxmod\WordPress\Plugin::operatorWords()[Taxmod\Core\Rules\RuleBook::BELOW] ?? '') !== '');
 
 echo "\n$ok OK, $bad FAIL\n";
