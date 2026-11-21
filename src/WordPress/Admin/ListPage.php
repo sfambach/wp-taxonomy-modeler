@@ -30,6 +30,9 @@ use Taxmod\WordPress\Plugin;
  */
 final class ListPage
 {
+    /** The primary «Zurück» of a dialog whose action is risky; admin.js closes the dialog with it as «Abbrechen» does. */
+    public const DIALOG_BACK = 'taxmod-dialog-back';
+
     /** The admin-post action that keeps a user's column choice (D-1054). */
     public const COLUMNS_ACTION = 'taxmod_list_columns';
 
@@ -1533,9 +1536,19 @@ final class ListPage
         string $icon = '',
         /** D-1539: wide for a dialog that lists things to choose from — {@see DialogMarkup::WIDE}. */
         bool $wide = false,
+        /**
+         * Set, the action is one to think twice about: this word («Zurück») is the primary button, first and holding the focus,
+         * and closes like «Abbrechen»; the action itself is a plain button. ⚠️ *Prüftor 21.11., live check C1: two buttons both
+         * said «Abbrechen», and the one that cancelled the order held the focus.*
+         */
+        string $back = '',
     ): string {
-        $submit = '<button type="submit" class="button button-primary" name="' . esc_attr($submitName) . '" value="' . esc_attr($submitValue) . '"'
+        $submit = '<button type="submit" class="button' . ($back === '' ? ' button-primary' : '') . '" name="' . esc_attr($submitName) . '" value="' . esc_attr($submitValue) . '"'
             . ($form === '' ? '' : ' form="' . esc_attr($form) . '"') . '>' . esc_html($submitLabel) . '</button>';
+
+        if ($back !== '') {
+            $submit = '<button type="button" class="button button-primary ' . self::DIALOG_BACK . '">' . esc_html($back) . '</button>' . $submit;
+        }
 
         return DialogMarkup::of(
             $switch,
@@ -1546,7 +1559,7 @@ final class ListPage
             // D-1500: an opener drawn as its icon is an icon square like every other row action.
             $icon === '' ? 'button taxmod-dialog-open' : 'button taxmod-square taxmod-dialog-open',
             '',
-            __('Cancel', 'taxmod'),
+            $back === '' ? __('Cancel', 'taxmod') : '',
             openerTitle: $icon === '' ? '' : $opener,
             wide: $wide,
         );
