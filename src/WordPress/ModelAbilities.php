@@ -228,7 +228,7 @@ final class ModelAbilities
         wp_register_ability('taxmod/apply', [
             'label'               => __('Change the model', 'taxmod'),
             'description'         => __(
-                'Applies a list of changes as one act (one change number, all or nothing). The answer names its change number as "act"; undo_act {act} takes a change back. Ops: create_node, rename_node, trash_node, trash_unused_constant, move_node, add_field, rename_field, remove_field, move_field, retarget_field, merge_field, create_record, set_values, remove_record, make_variants, add_variant, merge_record, move_part, reorder_values, duplicate_record, set_kind, set_multiplicity, move_record, set_list, set_label, set_addons, set_setting, hide_field. Fields and rules of one op: taxmod/help {op}. Any op may carry "ref"; later ops use "@ref" in place of an id. Values are typed as on the admin screen. brief: true answers with the count and the refs only. dry_run: true writes nothing: a list of only merge_field answers what each would move (records, both, duplicates); any other list is run whole and rolled back, answering fits, applied, refs, reported and the first refusal.',
+                'Applies a list of changes as one act (one change number, all or nothing). The answer names its change number as "act"; undo_act {act} takes a change back. Ops: create_node, rename_node, trash_node, trash_unused_constant, move_node, add_field, rename_field, remove_field, move_field, retarget_field, merge_field, create_record, set_values, remove_record, make_variants, add_variant, merge_record, move_part, reorder_values, duplicate_record, set_kind, set_multiplicity, move_record, set_list, set_label, set_addons, set_setting, hide_field. Fields and rules of one op: taxmod/help {op}. Any op may carry "ref"; later ops use "@ref" in place of an id. Values are typed as on the admin screen. brief: true answers with the count and the refs only. dry_run: true writes nothing: a list of only merge_field answers what each would move (records, both, duplicates); any other list is run whole and rolled back, answering fits, not_asked (module vetoes are not asked), applied, refs, reported and the first refusal.',
                 'taxmod'
             ),
             'category'            => self::CATEGORY,
@@ -1270,7 +1270,8 @@ final class ModelAbilities
         $screen   = $this->screen();
         $gemeldet = array_map(static fn (\Taxmod\Core\Addon\Complaint $c): array => ['key' => $c->key, 'text' => $screen->reportedText($c), 'node' => $c->address?->nodeId, 'field' => $c->address?->edgeId, 'record' => $c->address?->recordId], $screen->takeReported());
 
-        return ['dry_run' => true, 'written' => false, 'fits' => $fits, 'applied' => $applied, 'refs' => $refs]
+        // D-1561: modules hear nothing in a dry run, so their vetoes (stock on merge_record) were not asked — fits is no guarantee.
+        return ['dry_run' => true, 'written' => false, 'fits' => $fits, 'not_asked' => ['module vetoes'], 'applied' => $applied, 'refs' => $refs]
             + ($refused === null ? [] : ['refused' => $refused])
             + ($gemeldet === [] ? [] : ['reported' => $gemeldet]);
     }

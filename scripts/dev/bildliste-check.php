@@ -87,7 +87,7 @@ $gehoert = 0;
 $journal    = static fn (): int => (int) $wpdb->get_var('SELECT COUNT(*) FROM ' . \Taxmod\WordPress\Persistence\Schema::table('changelog'));
 $journalVor = $journal();
 $probe      = $apply->execute(['dry_run' => true, 'changes' => [['op' => 'rename_node', 'node' => $ref['n'], 'name' => '__probe x'], ['op' => 'create_node', 'ref' => 'neu', 'name' => '__probe neu', 'parent' => $ref['n']]]]);
-$pruefe(is_array($probe) && ($probe['fits'] ?? null) === true && ($probe['written'] ?? null) === false && count($probe['applied'] ?? []) === 2 && isset($probe['refs']['neu']), 'a dry run of other ops runs the whole list and says it fits — ' . wp_json_encode($probe));
+$pruefe(is_array($probe) && ($probe['fits'] ?? null) === true && ($probe['written'] ?? null) === false && count($probe['applied'] ?? []) === 2 && isset($probe['refs']['neu']) && ($probe['not_asked'] ?? null) === ['module vetoes'], 'a dry run of other ops runs the whole list and says it fits — ' . wp_json_encode($probe));
 $pruefe($knotenName() === $nameVorher && (new \Taxmod\WordPress\Persistence\WpdbNodeRepository())->find((int) ($probe['refs']['neu'] ?? 0)) === null, '… and wrote nothing');
 $pruefe($gehoert === 0, 'no module heard the dry run (' . $gehoert . ')');
 $pruefe($journal() === $journalVor, 'the dry run left no row in the journal (' . $journalVor . ' → ' . $journal() . ')');
