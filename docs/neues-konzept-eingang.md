@@ -1421,3 +1421,8 @@ Anlass: [INF-073](#inf-073--bestand-und-fertigung-vom-wareneingang-über-die-pla
 - **Anlass:** Stefan 21.11. «varianten erstellen war nicht möglich» — live fehlte das Feld «Variante von» (Plan-Schritt 8 von [D-1208](NewConcept/90-decision-log.md) nie gelaufen). Der Datenjob setzt «Je Variante» nur an den drei Feldern, die D-1208 ausdrücklich nennt: Bilder, mit/ohne Pins, Pinbelegung.
 - **Offen:** D-1208 nennt «etwa Farbe oder Pins» nur als Beispiel. Soll «Farbe» (und weitere, z. B. Ausrichtung) je Variante eigen sein? Ohne Antwort bleibt Farbe am Vater.
 - **Live nicht gefunden:** das Feld «mit/ohne Pins», das D-1208 als vorhanden nennt («Das Feld für mit/ohne Pins gibt es schon»), gibt es live nicht (gesucht 21.11. an Displays und Steckverbindern). Es wird nicht neu angelegt; offen, ob und wo es entstehen soll.
+
+## INF-142 · Druck-Vorwahlen mit «für»: wohin bei der Übernahme? (2026-11-21)
+
+- **Anlass:** Übernahme der heutigen Etiketten-Vorwahlen in Druckregeln ([D-1552](NewConcept/90-decision-log.md), [INF-137](#inf-137--vorwahl-rückfall-druck-weg-nach-übernahme-2026-11-21)). Zuordnung vom Prüftor 21.11. freigegeben: Gruppe → Knoten der Regel; Bauform → Filter Art «Feld»; Platzart → Filter Art «Bestand», Feld Platzart; Etikett und Exemplare bleiben Felder der Regel.
+- **Offen:** Jede Vorwahl nennt heute, wofür sie gilt («für»: Material, Posten oder Lagerort). Eine Regel aus Knoten + Filter hat dafür kein Feld. Wie wird «für» abgebildet (eigener Regeltyp, Filter, Feld der Druckregel)? Bis dahin listet die Lese-Ability `taxmod-stock/rule-proposals` solche Vorwahlen nur auf, mit dem Grund «Zuordnung von … offen», ohne Operation.
