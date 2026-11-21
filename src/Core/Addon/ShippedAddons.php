@@ -18,6 +18,7 @@ final class ShippedAddons
         $registry->add(new VariantAddon());
         $registry->add(new VariantOfAddon());
         $registry->add(new ChoiceFromFieldAddon());
+        $registry->add(new ConfidentialAddon());
 
         return $registry;
     }

@@ -9,6 +9,7 @@ use Taxmod\Core\Model\RecordType;
 use Taxmod\Core\Model\RelationRecord;
 use Taxmod\Core\Model\TypedValue;
 use Taxmod\Core\Repository\RecordRepository;
+use Taxmod\WordPress\Privacy\FieldSeal;
 
 /**
  * The data half, in its own two tables and its own id space (D-164).
@@ -284,7 +285,7 @@ final class WpdbRecordRepository implements RecordRepository
             $zeilen[] = [(int) $r['position'], (int) $r['id'], (int) $r['relation_id'], TypedValue::rawOf(
                 $r['value_int'] === null ? null : (int) $r['value_int'],
                 StoredDecimal::read($r['value_decimal']),
-                $r['value_text'],
+                FieldSeal::openText($r['value_text'] === null ? null : (string) $r['value_text']),
                 $r['value_date'],
                 $r['value_ref'] === null ? null : (int) $r['value_ref'],
                 $r['value_date'] === null ? null : \Taxmod\Core\Model\ValuePrecision::tryFrom((string) ($r['value_precision'] ?? '')),
@@ -305,7 +306,7 @@ final class WpdbRecordRepository implements RecordRepository
             TypedValue::fromStorage(
                 $r['value_int'] === null ? null : (int) $r['value_int'],
                 StoredDecimal::read($r['value_decimal']),
-                $r['value_text'] === null ? null : (string) $r['value_text'],
+                FieldSeal::openText($r['value_text'] === null ? null : (string) $r['value_text']),
                 $r['value_date'] === null ? null : (string) $r['value_date'],
                 $r['value_ref'] === null ? null : (int) $r['value_ref'],
                 ReferenceSpace::tryFrom((string) ($r['value_ref_kind'] ?? '')),
@@ -330,26 +331,7 @@ final class WpdbRecordRepository implements RecordRepository
             $recordId
         ));
 
-        return array_map(
-            static fn (array $r): RelationRecord => new RelationRecord(
-                (int) $r['node_record_id'],
-                (int) $r['relation_id'],
-                (string) $r['locale'],
-                TypedValue::fromStorage(
-                    $r['value_int'] === null ? null : (int) $r['value_int'],
-                    // ⚠️ The padding `decimal(30,10)` adds on read is taken off here and nowhere else.
-                    StoredDecimal::read($r['value_decimal']),
-                    $r['value_text'] === null ? null : (string) $r['value_text'],
-                    $r['value_date'] === null ? null : (string) $r['value_date'],
-                    $r['value_ref'] === null ? null : (int) $r['value_ref'],
-                    ReferenceSpace::tryFrom((string) ($r['value_ref_kind'] ?? '')),
-                    \Taxmod\Core\Model\ValuePrecision::tryFrom((string) ($r['value_precision'] ?? '')),
-                ),
-                (int) $r['id'],
-                (int) $r['position'],
-            ),
-            $rows ?: []
-        );
+        return array_map(static fn (array $r): RelationRecord => self::wert($r), $rows ?: []);
     }
 
     public function referrersOf(int $recordId): array
@@ -541,7 +523,8 @@ final class WpdbRecordRepository implements RecordRepository
             'position'      => $value->position,
             'value_int'     => $value->value->int,
             'value_decimal' => $value->value->decimal,
-            'value_text'    => $value->value->text,
+            // D-1514: a confidential edge stores its text sealed — here, the one place a value row is written.
+            'value_text'    => FieldSeal::sealText($value->relationId, $value->value->text),
             'value_date'    => $value->value->date,
             'value_ref'     => $value->value->reference,
             // ⚠️ *Der Raum wird **mitgeschrieben**, nicht abgeleitet: sobald jede Tabelle ihren eigenen
@@ -820,6 +803,11 @@ final class WpdbRecordRepository implements RecordRepository
             default                    => ['value_text', (string) $value->text],
         };
 
+        // D-1514: a sealed text equals nothing in SQL — it is opened and compared here.
+        if ($column === 'value_text' && FieldSeal::isConfidential($relationId)) {
+            return $this->confidentialMatches(null, $relationId, static fn (string $text): bool => $text === (string) $bound);
+        }
+
         $ids = Query::column('Datensaetze zu einem Kantenwert lesen', $wpdb->prepare(
             'SELECT DISTINCT node_record_id FROM ' . Schema::table('relation_records') . "
              WHERE relation_id = %d AND {$column} = %s",
@@ -867,7 +855,11 @@ final class WpdbRecordRepository implements RecordRepository
                 $params = [...$params, ...$knoten];
             }
 
-            $sql .= ')';
+            $term    = (string) $bedingung['text'];
+            $offen   = $this->confidentialMatches($ids, null, static fn (string $text): bool => Wildcard::matches($text, $term));
+            [$oder, $mehr] = self::orIdIn($offen);
+            $sql    .= $oder . ')';
+            $params  = [...$params, ...$mehr];
         }
 
         $sql     .= ' ORDER BY r.id DESC LIMIT %d';
@@ -905,9 +897,11 @@ final class WpdbRecordRepository implements RecordRepository
             }
 
             if ($bedingung['op'] === 'contains') {
-                [$like, $muster] = self::likeAny('v.value_text')((string) ($values[0] ?? ''));
-                $where .= ' AND ' . $exists . ' AND ' . $like . ')';
-                $params = [...$params, ...($feld > 0 ? [$feld] : []), ...$muster];
+                $term            = (string) ($values[0] ?? '');
+                [$like, $muster] = self::likeAny('v.value_text')($term);
+                [$oder, $mehr]   = self::orIdIn($this->confidentialMatches($ids, $feld > 0 ? $feld : null, static fn (string $text): bool => Wildcard::matches($text, $term)));
+                $where .= ' AND (' . $exists . ' AND ' . $like . ')' . $oder . ')';
+                $params = [...$params, ...($feld > 0 ? [$feld] : []), ...$muster, ...$mehr];
 
                 continue;
             }
@@ -936,8 +930,9 @@ final class WpdbRecordRepository implements RecordRepository
                 $teil   = [...$teil, ...$tage];
             }
 
-            $where .= ' AND ' . $exists . ' AND (' . implode(' OR ', $oder) . '))';
-            $params = [...$params, ...($feld > 0 ? [$feld] : []), ...$teil];
+            [$offen, $mehr] = self::orIdIn($this->confidentialMatches($ids, $feld > 0 ? $feld : null, static fn (string $text): bool => in_array($text, $values, true)));
+            $where .= ' AND (' . $exists . ' AND (' . implode(' OR ', $oder) . '))' . $offen . ')';
+            $params = [...$params, ...($feld > 0 ? [$feld] : []), ...$teil, ...$mehr];
         }
 
         $von   = ' FROM ' . Schema::table('node_records') . ' r WHERE ' . $where;
@@ -1186,6 +1181,63 @@ final class WpdbRecordRepository implements RecordRepository
         }
 
         return $aus;
+    }
+
+    /**
+     * D-1514: the records whose sealed text on a confidential edge passes `$test` — read once for the nodes, opened here,
+     * because SQL sees only the sealed form. Few records carry such fields (contacts), so the filter runs in PHP.
+     *
+     * @param list<int>|null           $nodeIds null: every node
+     * @param \Closure(string): bool   $test
+     * @return list<int>
+     */
+    private function confidentialMatches(?array $nodeIds, ?int $relationId, \Closure $test): array
+    {
+        global $wpdb;
+
+        $kanten = array_keys(FieldSeal::confidentialRelations());
+
+        if ($relationId !== null) {
+            $kanten = in_array($relationId, $kanten, true) ? [$relationId] : [];
+        }
+
+        if ($kanten === [] || $nodeIds === []) {
+            return [];
+        }
+
+        $sql    = 'SELECT v.node_record_id, v.value_text FROM ' . Schema::table('relation_records') . ' v';
+        $params = $kanten;
+        $wo     = ' WHERE v.relation_id IN (' . implode(',', array_fill(0, count($kanten), '%d')) . ') AND v.value_text LIKE %s';
+        $params[] = $wpdb->esc_like(\Taxmod\Core\Privacy\FieldCipher::PREFIX) . '%';
+
+        if ($nodeIds !== null) {
+            $sql   .= ' JOIN ' . Schema::table('node_records') . ' r ON r.id = v.node_record_id';
+            $wo    .= ' AND r.node_id IN (' . implode(',', array_fill(0, count($nodeIds), '%d')) . ')';
+            $params = [...$params, ...$nodeIds];
+        }
+
+        $treffer = [];
+
+        foreach (Query::rows('Vertrauliche Werte zum Suchen lesen', $wpdb->prepare($sql . $wo, ...$params)) ?: [] as $r) {
+            $text = FieldSeal::openText((string) $r['value_text']);
+
+            if ($text !== null && $text !== FieldSeal::LOCKED && $test($text)) {
+                $treffer[(int) $r['node_record_id']] = true;
+            }
+        }
+
+        return array_keys($treffer);
+    }
+
+    /**
+     * «OR r.id IN (…)» with its placeholders, empty where nothing matched.
+     *
+     * @param list<int> $ids
+     * @return array{0: string, 1: list<int>}
+     */
+    private static function orIdIn(array $ids): array
+    {
+        return $ids === [] ? ['', []] : [' OR r.id IN (' . implode(',', array_fill(0, count($ids), '%d')) . ')', $ids];
     }
 
     /**
