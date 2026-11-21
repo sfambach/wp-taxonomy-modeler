@@ -1449,5 +1449,6 @@ Anlass: [INF-073](#inf-073--bestand-und-fertigung-vom-wareneingang-über-die-pla
 - **Anlass:** Prüftor 21.11. (D-1563 Schritt 3). Die Druckregeln lesen je Filter nur Feld, Operator und Wert (`wp_tax_label` `PrintRules`), die Werte kommen immer aus dem Satz selbst (`LabelService::dialogCatalog`, `valuesOf([$record])`).
 - **Beschluss dazu:** [D-1552](NewConcept/90-decision-log.md): «each term naming whose fields it offers («Felder von», 0..1: Bestand → stock lot, Einkauf → purchase, Prozess → process; empty = the rule's node)».
 - **Heute:** «Bestand», «Einkauf» und «Prozess» lesen in den Druckregeln die Werte des Satzes selbst, nicht die des Postens, Einkaufs oder Prozesses. Die Druckregeln haben deshalb nur Filter der Art «Feld» (D-1563 Schritt 3). Ob die Testregeln im Lager die Art lesen, ist nicht gemessen.
+- **Offen auch:** Soll die Sammel-Etikettenwahl im Lager («Etiketten drucken …» für mehrere Materialien) der Druckregel folgen? Heute ist dort das erste Materialetikett vorgewählt, als Vorgabe der Liste (Prüftor 21.11.: bleibt bis dahin so).
 - **Offen:** Wo eine Druckfrage den Posten, Einkauf oder Prozess hernimmt (beim Material-Etikett gibt es keinen), und ob ein Filter, dessen Art nicht auflösbar ist, dann nie hält (wie ein nicht gebauter Operator, [D-1541](NewConcept/90-decision-log.md)).
 - **Nicht entschieden. Keine Annahme gebaut.**
