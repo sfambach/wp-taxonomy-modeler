@@ -50,7 +50,7 @@ use Taxmod\WordPress\Persistence\WpdbRelationRepository;
  */
 final class Plugin
 {
-    public const VERSION     = '0.2.206';
+    public const VERSION     = '0.2.207';
 
     /** `apply_filters(RECORD_EDITOR_FILTER, '', $recordId, $returnTo, $toolbar, $roots)`: the record's edit form for a module's page (D-1025); `$toolbar` = the module's own button groups (escaped HTML), placed after «Save» in the one toolbar (D-1308); `$roots` = relation id → the roots its choice offers, from the module's structure setting (D-1546). */
     public const RECORD_EDITOR_FILTER = 'taxmod_record_editor';
