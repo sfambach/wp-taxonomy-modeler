@@ -82,6 +82,7 @@ $page = <<<'HTML'
     </span></span>
   </span>
   <input type="hidden" name="values[50]" value="" id="hid">
+  <select name="values[60][n1][61]" id="fsel" data-taxmod-fields-of="30" data-taxmod-fields-url="http://taxmod.test/ajax?action=taxmod_node_fields"><option value=""></option></select>
   <div id="filter" data-taxmod-follows="30"><span id="filter-text">alt</span></div>
 </form>
 </div>
@@ -109,9 +110,14 @@ const dir = process.argv[2];
     const page = await browser.newPage();
     page.on('pageerror', e => out.errors.push(String(e)));
     const asked = [];
+    const fields = [];
     await page.route('http://taxmod.test/**', route => {
       const url = new URL(route.request().url());
       const name = url.pathname.replace(/^\//, '');
+      if (name === 'ajax') {
+        fields.push(url.searchParams.get('node'));
+        return route.fulfill({ contentType: 'application/json', body: JSON.stringify({ success: true, data: [{ id: '5', name: 'Wert' }] }) });
+      }
       if (url.searchParams.has('taxmod_chosen')) {
         asked.push({ chosen: url.searchParams.get('taxmod_chosen'), header: route.request().headers()['x-taxmod-live'] || '' });
         const sent = JSON.parse(url.searchParams.get('taxmod_chosen'));
@@ -133,11 +139,15 @@ const dir = process.argv[2];
     await page.click('#open');
     await page.check('#r1', { force: true });
     out.inDialog = await said();
+    out.fieldsBeforeOk = fields.length;
     await page.click('#ok', { force: true });
     out.ok = await said();
     await page.waitForFunction(() => document.getElementById('filter-text').textContent !== 'alt', null, { timeout: 5000 }).catch(() => {});
     out.filter = await page.textContent('#filter-text');
     out.asked = asked.slice();
+    await page.waitForFunction(() => document.getElementById('fsel').options.length > 1, null, { timeout: 5000 }).catch(() => {});
+    out.fields = fields.slice();
+    out.fsel = await page.evaluate(() => Array.from(document.getElementById('fsel').options).map(o => o.textContent));
 
     await page.click('#open');
     await page.check('#r2', { force: true });
@@ -179,6 +189,8 @@ if (is_array($answer) && ! isset($answer['error'])) {
     claim('… «OK» says it once', $one($answer['ok'], 'values[30]', '41'), json_encode($answer['ok']));
     claim('… the follower is fetched with the choice, named in its header', count($answer['asked']) === 1 && json_decode($answer['asked'][0]['chosen'], true) === ['values[30]' => '41'] && $answer['asked'][0]['header'] === 'filter', json_encode($answer['asked']));
     claim('… and put in place', $answer['filter'] === 'Felder von 41', (string) $answer['filter']);
+    claim('D-1550 rule filter: the node\'s fields are not asked for while the dialog is open', $answer['fieldsBeforeOk'] === 0, (string) $answer['fieldsBeforeOk']);
+    claim('… on «OK» they are asked for the chosen node and fill the field choice', $answer['fields'] === ['41'] && $answer['fsel'] === ['', 'Wert'], json_encode([$answer['fields'], $answer['fsel']]));
     claim('«Abbrechen» says nothing and puts the choice back', $answer['cancel'] === [] && $answer['afterCancel'] === '41', json_encode([$answer['cancel'], $answer['afterCancel']]));
     claim('«OK» without a new choice says nothing', $answer['okUnchanged'] === [], json_encode($answer['okUnchanged']));
     claim('a value a script writes is said through taxmodChosen', $one($answer['script'], 'values[50]', '99'), json_encode($answer['script']));
