@@ -124,6 +124,30 @@ final class FieldCipher
         return $plain;
     }
 
+    public function sealingKeyId(): string
+    {
+        return $this->sealingKeyId;
+    }
+
+    /** The key id a sealed text names; null for a plain text. */
+    public static function keyIdOf(?string $stored): ?string
+    {
+        if (! self::isSealed($stored)) {
+            return null;
+        }
+
+        $rest  = substr((string) $stored, strlen(self::PREFIX));
+        $colon = strpos($rest, ':');
+
+        return $colon === false ? null : substr($rest, 0, $colon);
+    }
+
+    /** A text sealed with a former key, sealed again with the sealing one (D-1562); anything else stays as it is. */
+    public function reseal(string $stored): string
+    {
+        return $this->needsResealing($stored) ? $this->seal($this->open($stored)) : $stored;
+    }
+
     /** Whether a stored text was sealed with another key than the sealing one — what a re-keying job looks for. */
     public function needsResealing(string $stored): bool
     {

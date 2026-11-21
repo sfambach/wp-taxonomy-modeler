@@ -41,9 +41,25 @@ final class FieldSeal
 
     private const VAULT_CONTEXT = 'taxmod-data-key';
 
-    /** The confidential edges, remembered between requests (a cache of the settings). */
     /** Former keys, still read: an array key id → key text, for a change of key. */
     public const OLD_KEYS_CONSTANT = 'TAXMOD_DATA_KEYS_OLD';
+
+    /** The id the key entered on the tab seals with (D-1562); `k1` until the first change. */
+    public const KEY_ID_OPTION = 'taxmod_data_key_id';
+
+    /** The former keys of the tab, key id → key text, as one JSON sealed with the vault (D-951, D-1562). */
+    public const OLD_KEYS_OPTION = 'taxmod_data_keys_old';
+
+    /** Per former key: when it was retired and since when nothing is sealed with it any more — no secret, plain. */
+    public const RETIRED_OPTION = 'taxmod_data_keys_retired';
+
+    /**
+     * D-1562: a former key may be deleted by hand at the earliest this long after nothing live was sealed with it — the
+     * nightly copies (D-1407, seven kept) still hold its values.
+     */
+    public const DROP_WAIT = 8 * 86400;
+
+    private const OLD_KEYS_CONTEXT = 'taxmod-data-keys-old';
 
     private static ?FieldCipher $cipher = null;
 
@@ -73,10 +89,12 @@ final class FieldSeal
             return self::$cipher = null;
         }
 
-        $old  = defined(self::OLD_KEYS_CONSTANT) ? constant(self::OLD_KEYS_CONSTANT) : [];
-
-        foreach (is_array($old) ? $old : [] as $oldId => $text) {
-            $keys[(string) $oldId] ??= FieldCipher::keyFromText((string) $text);
+        foreach (self::oldKeys() as $oldId => $oldText) {
+            try {
+                $keys[$oldId] ??= FieldCipher::keyFromText($oldText);
+            } catch (FieldDoesNotOpen) {
+                // *A damaged former key opens nothing; the values it sealed read as the lock, the current key still works.*
+            }
         }
 
         return self::$cipher = new FieldCipher($keys);
@@ -93,17 +111,169 @@ final class FieldSeal
         return self::storedKey()->slot()->fromConstant();
     }
 
-    /** The id the current key seals with; `k1` unless wp-config.php names another. */
+    /** The id the current key seals with: wp-config.php first, else the tab's (D-1562), else `k1`. */
     public static function keyId(): string
     {
-        return defined(self::KEY_ID_CONSTANT) ? (string) constant(self::KEY_ID_CONSTANT) : 'k1';
+        if (defined(self::KEY_ID_CONSTANT)) {
+            return (string) constant(self::KEY_ID_CONSTANT);
+        }
+
+        $id = get_option(self::KEY_ID_OPTION, 'k1');
+
+        return is_string($id) && preg_match('/^[a-z0-9]{1,16}$/', $id) === 1 ? $id : 'k1';
     }
 
     /**
-     * The edges that carry «Vertraulich», kept in an autoloaded option and read again after a setting was written.
+     * The former keys, still read: those of wp-config.php, then those the tab retired.
      *
-     * ⚠️ *Remembered across requests because every save asks it: a query of its own per save raised the statement count of
-     * a five-field save (save-record-reads-check, CD-7). The option is a cache of the settings, never their source.*
+     * @return array<string, string> key id → key text
+     */
+    public static function oldKeys(): array
+    {
+        $keys     = [];
+        $constant = defined(self::OLD_KEYS_CONSTANT) ? constant(self::OLD_KEYS_CONSTANT) : [];
+
+        foreach (is_array($constant) ? $constant : [] as $id => $text) {
+            $keys[(string) $id] = (string) $text;
+        }
+
+        return $keys + self::storedOldKeys();
+    }
+
+    /** @return array<string, string> key id → key text, the keys the tab retired */
+    public static function storedOldKeys(): array
+    {
+        $json = self::oldKeysStore()->value();
+        $keys = is_string($json) ? json_decode($json, true) : null;
+
+        return is_array($keys) ? array_map(strval(...), array_filter($keys, is_string(...))) : [];
+    }
+
+    /**
+     * Per former key of the tab: when it was retired, since when nothing is sealed with it (null while something is).
+     *
+     * @return array<string, array{retired: int, clean_since: ?int}>
+     */
+    public static function retired(): array
+    {
+        $state = get_option(self::RETIRED_OPTION, []);
+        $aus   = [];
+
+        foreach (is_array($state) ? $state : [] as $id => $row) {
+            $aus[(string) $id] = [
+                'retired'     => (int) ($row['retired'] ?? 0),
+                'clean_since' => isset($row['clean_since']) ? (int) $row['clean_since'] : null,
+            ];
+        }
+
+        return $aus;
+    }
+
+    /**
+     * D-1562: the key in use becomes a former key, still read; the new one seals from now on, under the next free id.
+     * Capability, nonce and the owner's ticks are the tab's.
+     *
+     * @return string the new key id
+     */
+    public static function changeKey(#[\SensitiveParameter] string $newText): string
+    {
+        $current = self::storedKey()->value();
+
+        if (self::keyFromConstant() || $current === null || self::cipher() === null) {
+            throw FieldDoesNotOpen::withoutKey();
+        }
+
+        if (FieldCipher::keyFromText($newText) === FieldCipher::keyFromText($current)) {
+            throw FieldDoesNotOpen::sameKey();
+        }
+
+        $oldId = self::keyId();
+        $used  = [$oldId => true] + array_fill_keys(array_keys(self::oldKeys()), true);
+        $n     = 1;
+
+        while (isset($used['k' . $n])) {
+            ++$n;
+        }
+
+        $newId = 'k' . $n;
+        $old   = self::storedOldKeys();
+
+        $old[$oldId] = $current;
+        self::oldKeysStore()->save((string) json_encode($old));
+
+        $state         = self::retired();
+        $state[$oldId] = ['retired' => time(), 'clean_since' => null];
+        update_option(self::RETIRED_OPTION, $state, false);
+
+        update_option(self::KEY_ID_OPTION, $newId, true);
+        self::storedKey()->save($newText);
+        self::forgetKey();
+
+        return $newId;
+    }
+
+    /** From when a former key may be deleted by hand; null while values are still sealed with it. */
+    public static function dropAllowedFrom(string $keyId): ?int
+    {
+        $since = self::retired()[$keyId]['clean_since'] ?? null;
+
+        return $since === null ? null : $since + self::DROP_WAIT;
+    }
+
+    /** D-1562: by hand only, never before {@see self::dropAllowedFrom()}. Answers whether the key was deleted. */
+    public static function dropOldKey(string $keyId, int $now): bool
+    {
+        $from = self::dropAllowedFrom($keyId);
+        $old  = self::storedOldKeys();
+
+        if ($from === null || $now < $from || ! isset($old[$keyId])) {
+            return false;
+        }
+
+        unset($old[$keyId]);
+        self::oldKeysStore()->save($old === [] ? '{}' : (string) json_encode($old));
+
+        $state = self::retired();
+        unset($state[$keyId]);
+        update_option(self::RETIRED_OPTION, $state, false);
+        self::forgetKey();
+
+        return true;
+    }
+
+    /**
+     * What the job counted per former key: «clean since» starts when nothing is sealed with it, and stops again if
+     * something is (an old backup restored).
+     *
+     * @param array<string, int> $sealedWith key id → values still sealed with it
+     */
+    public static function noteSealedWith(array $sealedWith, int $now): void
+    {
+        $state   = self::retired();
+        $changed = false;
+
+        foreach ($state as $id => $row) {
+            $left  = $sealedWith[$id] ?? 0;
+            $since = $left > 0 ? null : ($row['clean_since'] ?? $now);
+
+            if ($since !== $row['clean_since']) {
+                $state[$id]['clean_since'] = $since;
+                $changed                   = true;
+            }
+        }
+
+        if ($changed) {
+            update_option(self::RETIRED_OPTION, $state, false);
+        }
+    }
+
+    private static function oldKeysStore(): StoredSecret
+    {
+        return new StoredSecret(self::OLD_KEYS_OPTION, self::OLD_KEYS_CONTEXT);
+    }
+
+    /**
+     * The edges that carry «Vertraulich», read once per request and again after a setting was written.
      *
      * @return array<int, true>
      */
@@ -195,6 +365,31 @@ final class FieldSeal
         $fields['value'] = (string) $sealed;
 
         return FrozenState::of($fields)->write();
+    }
+
+    /** A chronicle state whose value was sealed with a former key, sealed again with the current one (D-1562). */
+    public static function resealState(?string $state): ?string
+    {
+        $parsed = FrozenState::parse($state);
+        $value  = $parsed?->field('value');
+        $cipher = self::cipher();
+
+        if ($parsed === null || $value === null || $cipher === null || ! $cipher->needsResealing($value)) {
+            return $state;
+        }
+
+        $fields          = $parsed->fields();
+        $fields['value'] = $cipher->reseal($value);
+
+        return FrozenState::of($fields)->write();
+    }
+
+    /** Whether a chronicle state holds a value sealed with a former key. */
+    public static function stateNeedsResealing(?string $state): bool
+    {
+        $value = FrozenState::parse($state)?->field('value');
+
+        return $value !== null && self::cipher()?->needsResealing($value) === true;
     }
 
     /** Whether a chronicle state still holds a plain, non-empty value of a confidential edge — without sealing it. */
