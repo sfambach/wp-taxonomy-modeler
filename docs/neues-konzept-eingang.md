@@ -1385,3 +1385,11 @@ Anlass: [INF-073](#inf-073--bestand-und-fertigung-vom-wareneingang-über-die-pla
 
 - **Anlass:** Grenzlauf ([D-1427](NewConcept/90-decision-log.md)). In der Saat (`data/saat.json`) hat die Beschriftung von «Parts List» in de_DE den Tabellentext «Test 4». Er sieht nach liegengebliebenem Testinhalt aus.
 - **Offen:** ob er durch «Stückliste» ersetzt oder geleert wird. Das ändert die Saat und ihre Prüfsumme, deshalb nicht nebenbei. Bis zur Antwort bleibt er unverändert.
+
+## INF-136 · Feldkatalog Schritt 1: Annahmen beim Bau (2026-11-21)
+
+- **Anlass:** Bau von [D-1553](NewConcept/90-decision-log.md) (PR #147). Was das Konzept nicht sagte und der Bau festlegte, `INFERRED`:
+  - Der gesäte **Einheitenwert zählt als Grundtyp** wie Integer («Einheitswert › Länge», konzept.md §10).
+  - **Zusammengesetzt** ist ein Knoten der neuen Klasse «Zusammengesetzter Datentyp», nicht jeder per Komposition gehaltene Knoten (Konzept-Thread 21.11. mit Stefans Wort 07:16 «eine neue Klasse … zusammengesetzter Datentyp»). Die Klasse erlaubt als Kinder nur sich selbst und trägt `summary_fields`/`mass_felder` wie Kategorie, damit ein Klassenwechsel nichts verliert ([D-733](NewConcept/90-decision-log.md)).
+  - Rolle (Grundtyp · Datenelement · zusammengesetzt) wird abgeleitet, nicht gespeichert.
+- **Offen:** ob «Abmessung» und weitere bestehende Knoten die Klasse bekommen und in den Ast «Data Types» wandern — späterer Datenjob mit dry_run und undo_act, Stefan entscheidet je Knoten.
