@@ -33,6 +33,12 @@ final class ListPage
     /** The actions column's width where a list names none; every list keeps it unless it says otherwise. */
     public const ACTIONS_WIDTH = '21em';
 
+    /** Below this width of its container a list leaves its secondary columns out (Live-Check 7: 706 px beside the navigation). */
+    public const NARROW = '800px';
+
+    /** Numbers the lists of one page that leave columns out, for their own id. */
+    private static int $ranked = 0;
+
     /** The primary «Zurück» of a dialog whose action is risky; admin.js closes the dialog with it as «Abbrechen» does. */
     public const DIALOG_BACK = 'taxmod-dialog-back';
 
@@ -571,7 +577,7 @@ final class ListPage
      * The heads of the shown columns for {@see self::table()}: each sortable, a set filter marked with a dot.
      *
      * @param callable(array<string, string>): string $url the list's address with these query values changed
-     * @return list<array{0: string, 1: string, 2: string, 3: ''|'asc'|'desc'}>
+     * @return list<array{0: string, 1: string, 2: string, 3: ''|'asc'|'desc', 4: bool}>
      */
     public static function heads(ListView $view, callable $url): array
     {
@@ -582,7 +588,7 @@ final class ListPage
             $current = $view->orderBy === $column->key;
             $next    = $current && ! $view->descending ? 'desc' : 'asc';
             $heads[] = [$column->label . (isset($active[$column->key]) ? ' •' : ''), $column->width, $url(['orderby' => $column->key, 'order' => $next === 'desc' ? 'desc' : '']),
-                $current ? ($view->descending ? 'desc' : 'asc') : ''];
+                $current ? ($view->descending ? 'desc' : 'asc') : '', $column->secondary && ! $view->chose()];
         }
 
         return $heads;
@@ -1345,7 +1351,7 @@ final class ListPage
      * The table: a checkbox column first, the given columns, the actions column last. A column with a sort address is
      * sortable; its state says whether the list is sorted by it now.
      *
-     * @param list<array{0: string, 1?: string|null, 2?: string, 3?: ''|'asc'|'desc'}> $columns label, CSS width, sort address, state
+     * @param list<array{0: string, 1?: string|null, 2?: string, 3?: ''|'asc'|'desc', 4?: bool}> $columns label, CSS width, sort address, state, secondary (gives way when narrow)
      * @param string $filterRow from {@see self::filterRow()}, under the heads
      * @param bool   $complete  every row of the answer stands in `$rows` (no further page): the head may narrow and sort them on
      *                          the page without asking the server (D-1462)
@@ -1373,16 +1379,33 @@ final class ListPage
 
         $head .= '<th scope="col" class="manage-column" style="width:' . esc_attr($actionsWidth === '' ? self::ACTIONS_WIDTH : $actionsWidth) . ';text-align:right">' . esc_html__('Actions', 'taxmod') . '</th></tr>';
 
+        // Live-Check 7 (21.11.2026): beside the navigation a list has 706 px. A secondary column gives way below NARROW — by its
+        // place in the row, so the head, the filter row and every row lose the same cell; the details row spans them all.
+        $ranked = '';
+        $table  = '';
+
+        foreach (array_values($columns) as $at => $column) {
+            if (($column[4] ?? false) === true) {
+                $table  = $table === '' ? 'taxmod-list-' . ++self::$ranked : $table;
+                $cell   = ':nth-child(' . ($at + 2) . ')';
+                $ranked .= ($ranked === '' ? '' : ',') . "#{$table}>thead>tr>{$cell},#{$table}>tbody>tr:not(.taxmod-list-details)>{$cell},#{$table}>tfoot>tr>{$cell}";
+            }
+        }
+
+        $ranked = $ranked === '' ? '' : ":has(>#{$table}){container-type:inline-size}@container (max-width:" . self::NARROW . "){{$ranked}{display:none}}";
+
         // D-1227: every list sorts, groups and filters by the same head, drawn by one script over the rows drawn here.
         wp_enqueue_script(Plugin::LIST_HEAD_SCRIPT);
 
-        return '<style>.taxmod-list-toggle{display:inline-flex;align-items:center;justify-content:center;vertical-align:middle;padding:0 6px}.taxmod-list-toggle .dashicons{width:20px;height:20px;font-size:20px;line-height:1;transition:transform .15s}.taxmod-list-toggle[aria-expanded="true"] .dashicons{transform:rotate(180deg)}'
+        return '<style>.taxmod-list-toggle{display:inline-flex;align-items:center;justify-content:center;vertical-align:middle;padding:0}.taxmod-list-toggle .dashicons{width:20px;height:20px;font-size:20px;line-height:1;transition:transform .15s}.taxmod-list-toggle[aria-expanded="true"] .dashicons{transform:rotate(180deg)}'
             // D-1068: one height for every button in a list, his word 2026-11-01 «button höhen us sollten generell definiert werden damit sie übgerall gleich aussehen».
             . '.wp-core-ui .taxmod-list .button{display:inline-flex;align-items:center;justify-content:center;box-sizing:border-box;height:30px;min-height:30px;line-height:1;padding-top:0;padding-bottom:0;vertical-align:middle;font-size:13px}'
             // D-1230: a row opened by its link (#id) stands out, e.g. a lot from the Platzbestand.
             . '.taxmod-list tr:target > *{background:#fff8c5}'
-            . self::detailsStyle() . '</style>' . self::detailsScript()
-            . '<table class="wp-list-table widefat fixed striped table-view-list taxmod-list"' . ($complete ? ' data-taxmod-complete' : '') . '><thead>' . $head . $filterRow . '</thead><tbody>' . $rows . '</tbody>'
+            // Live-Check 7: a long head word («Mindestbestand») breaks at its syllables instead of widening a narrow column.
+            . '.taxmod-list > thead th, .taxmod-list > tfoot th{hyphens:auto;overflow-wrap:break-word}'
+            . self::detailsStyle() . $ranked . '</style>' . self::detailsScript()
+            . '<table' . ($table === '' ? '' : ' id="' . $table . '"') . ' class="wp-list-table widefat fixed striped table-view-list taxmod-list"' . ($complete ? ' data-taxmod-complete' : '') . '><thead>' . $head . $filterRow . '</thead><tbody>' . $rows . '</tbody>'
             // His screenshot 2026-11-19 05:47: on a table with no rows the foot reads as the head twice; it repeats the head only below rows.
             . (trim($rows) === '' || str_contains($rows, 'class="no-items') ? '' : '<tfoot>' . $head . '</tfoot>') . '</table>';
     }
@@ -1623,7 +1646,7 @@ final class ListPage
         }
 
         return $html . '<td style="text-align:right;white-space:nowrap">'
-            . '<button type="button" class="button taxmod-list-toggle" aria-expanded="' . ($expanded ? 'true' : 'false') . '" title="' . esc_attr__('Details', 'taxmod') . '" aria-label="' . esc_attr__('Details', 'taxmod') . '" onclick="taxmodListShow(this)">'
+            . '<button type="button" class="button taxmod-square taxmod-list-toggle" aria-expanded="' . ($expanded ? 'true' : 'false') . '" title="' . esc_attr__('Details', 'taxmod') . '" aria-label="' . esc_attr__('Details', 'taxmod') . '" onclick="taxmodListShow(this)">'
             // ⚠️ *His words: 2026-10-25 «als richtigen Button aber ruhig mit diesen Pfeil nach unten», 2026-10-28 «Der Pfeil im Button
             // ist immer noch komisch. Kannst du nicht irgendwie ein Icon nehmen?» — so the button is the icon alone; it turns when open.*
             . \Taxmod\Core\Renderer\IconMarkup::dashicon('arrow-down-alt2') . '</button> ' . $buttons . '</td></tr>'

@@ -91,4 +91,12 @@ final class ListViewTest extends TestCase
         self::assertTrue((new ListView($this->columns(), search: 'ne'))->narrowed());
         self::assertTrue((new ListView($this->columns(), filters: ['group' => 'quar']))->narrowed());
     }
+
+    #[Test]
+    public function a_choice_of_columns_is_known_so_a_secondary_column_kept_by_hand_stays(): void
+    {
+        self::assertFalse((new ListView($this->columns()))->chose(), 'the starting set is no choice');
+        self::assertTrue((new ListView($this->columns(), ['group']))->chose());
+        self::assertTrue((new ListView($this->columns(), []))->chose(), 'choosing none is a choice too');
+    }
 }
