@@ -1404,6 +1404,9 @@ final class ListPage
             . '.taxmod-list tr:target > *{background:#fff8c5}'
             // Live-Check 7: a long head word («Mindestbestand») breaks at its syllables instead of widening a narrow column.
             . '.taxmod-list > thead th, .taxmod-list > tfoot th{hyphens:auto;overflow-wrap:break-word}'
+            // Live-Check 17: one long word per column («Bestandsposten», «150x150x50») set the table's least width past its box (833 in 706 px);
+            // `anywhere` lets a word give way in that least width, where `break-word` only breaks once the width is already fixed.
+            . '.taxmod-list > tbody > tr > td{hyphens:auto;overflow-wrap:anywhere}'
             . self::detailsStyle() . $ranked . '</style>' . self::detailsScript()
             . '<table' . ($table === '' ? '' : ' id="' . $table . '"') . ' class="wp-list-table widefat fixed striped table-view-list taxmod-list"' . ($complete ? ' data-taxmod-complete' : '') . '><thead>' . $head . $filterRow . '</thead><tbody>' . $rows . '</tbody>'
             // His screenshot 2026-11-19 05:47: on a table with no rows the foot reads as the head twice; it repeats the head only below rows.
