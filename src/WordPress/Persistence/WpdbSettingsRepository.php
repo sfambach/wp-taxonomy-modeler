@@ -70,6 +70,9 @@ final class WpdbSettingsRepository implements SettingsRepository
 
     public function addValue(SettingsValue $value): SettingsValue
     {
+        // D-1514: which edges are confidential is a setting; a write may change it.
+        \Taxmod\WordPress\Privacy\FieldSeal::forget();
+
         global $wpdb;
 
         [$spalten, $formate] = $this->columnsOf($value);
@@ -89,6 +92,9 @@ final class WpdbSettingsRepository implements SettingsRepository
 
     public function saveValue(SettingsValue $value, int $expectedVersion): void
     {
+        // D-1514: which edges are confidential is a setting; a write may change it.
+        \Taxmod\WordPress\Privacy\FieldSeal::forget();
+
         global $wpdb;
 
         $id = $value->id ?? throw new \LogicException('Eine Zeile ohne Id kann nicht neu geschrieben werden.');
@@ -206,6 +212,9 @@ final class WpdbSettingsRepository implements SettingsRepository
 
     public function forgetValue(int $id): ?int
     {
+        // D-1514: which edges are confidential is a setting; a write may change it.
+        \Taxmod\WordPress\Privacy\FieldSeal::forget();
+
         global $wpdb;
 
         $version = Query::value('Version der Einstellungszeile vor dem Wandern lesen', $wpdb->prepare(

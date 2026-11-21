@@ -2,6 +2,7 @@
 
 namespace Taxmod\WordPress\Persistence;
 
+use Taxmod\WordPress\Privacy\FieldSeal;
 use Taxmod\Core\Model\ChangeSummary;
 use Taxmod\Core\Model\FrozenState;
 use Taxmod\Core\Repository\Changelog;
@@ -117,8 +118,9 @@ final class WpdbChangelog implements Changelog
                 'by_user_id'      => $this->human(),
                 'what'            => $what,
                 'version'         => $version,
-                'before_state'    => $before,
-                'after_state'     => $after,
+                // D-1514: a value of a confidential edge enters the chronicle sealed, as it stands in its row.
+                'before_state'    => FieldSeal::sealState($before),
+                'after_state'     => FieldSeal::sealState($after),
             ],
             ['%d', '%d', '%s', '%s', '%d', '%s', '%d', '%s', '%s']
         );
@@ -202,7 +204,7 @@ final class WpdbChangelog implements Changelog
                 $values[] = $fassung;
             }
 
-            array_push($values, $row['before'], $row['after']);
+            array_push($values, FieldSeal::sealState($row['before']), FieldSeal::sealState($row['after']));
         }
 
         $wpdb->query($wpdb->prepare(
@@ -269,8 +271,8 @@ final class WpdbChangelog implements Changelog
             static fn (array $r): array => [
                 'ownerId' => (int) $r['owner_id'],
                 'what'    => (string) $r['what'],
-                'before'  => $r['before_state'],
-                'after'   => $r['after_state'],
+                'before'  => FieldSeal::openState($r['before_state']),
+                'after'   => FieldSeal::openState($r['after_state']),
             ],
             $rows ?: []
         );
