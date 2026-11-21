@@ -30,6 +30,9 @@ use Taxmod\WordPress\Plugin;
  */
 final class ListPage
 {
+    /** The actions column's width where a list names none; every list keeps it unless it says otherwise. */
+    public const ACTIONS_WIDTH = '21em';
+
     /** The primary «Zurück» of a dialog whose action is risky; admin.js closes the dialog with it as «Abbrechen» does. */
     public const DIALOG_BACK = 'taxmod-dialog-back';
 
@@ -1346,8 +1349,11 @@ final class ListPage
      * @param string $filterRow from {@see self::filterRow()}, under the heads
      * @param bool   $complete  every row of the answer stands in `$rows` (no further page): the head may narrow and sort them on
      *                          the page without asking the server (D-1462)
+     * @param string $actionsWidth CSS width of the actions column; a list with few buttons per row gives the names the room
+     *                          (his screenshot 2026-11-21 17:14 «boar eh was für ne anzeige»). The rows come as a finished
+     *                          string, so the width is the caller's word, not counted here.
      */
-    public static function table(array $columns, string $rows, string $filterRow = '', bool $complete = false): string
+    public static function table(array $columns, string $rows, string $filterRow = '', bool $complete = false, string $actionsWidth = self::ACTIONS_WIDTH): string
     {
         $head = '<tr><td class="manage-column column-cb check-column"><input type="checkbox" aria-label="' . esc_attr__('Select all', 'taxmod') . '"></td>';
 
@@ -1365,7 +1371,7 @@ final class ListPage
                 . esc_html($column[0]) . '</span><span class="sorting-indicators"><span class="sorting-indicator asc" aria-hidden="true"></span><span class="sorting-indicator desc" aria-hidden="true"></span></span></a></th>';
         }
 
-        $head .= '<th scope="col" class="manage-column" style="width:21em;text-align:right">' . esc_html__('Actions', 'taxmod') . '</th></tr>';
+        $head .= '<th scope="col" class="manage-column" style="width:' . esc_attr($actionsWidth === '' ? self::ACTIONS_WIDTH : $actionsWidth) . ';text-align:right">' . esc_html__('Actions', 'taxmod') . '</th></tr>';
 
         // D-1227: every list sorts, groups and filters by the same head, drawn by one script over the rows drawn here.
         wp_enqueue_script(Plugin::LIST_HEAD_SCRIPT);
