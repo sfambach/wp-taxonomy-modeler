@@ -1580,7 +1580,7 @@ check('das Eingabefeld eines Satzes trägt die Grenze als min', preg_match('/<in
 
 
 // ⚠️ **Zeile 8: die Validatoren laufen beim Speichern** ([D-760](../../docs/NewConcept/90-decision-log.md)) — erst prüfen, dann schreiben;
-// eine Beschwerde, und nichts wird gespeichert. *Am Datum mit Grenze von D-757: der Bereichs-Wächter «range» an der Stelle.*
+// seit D-1554 sperrt nur ein Formfehler, ein Bereichsfehler wird gespeichert und gemeldet. *Am Datum mit Grenze von D-757: der Bereichs-Wächter «range» an der Stelle.*
 // ⚠️ *Seit D-845 eine Zusatzfunktion: gewählt über die Liste im Einstellungsbereich, abgeschickt wie ein Browser sie schickt.*
 check('die Liste der Zusatzfunktionen bietet am Datum «range» an, mit Vorlage (D-845)', (bool) preg_match('/taxmod-addon-candidates".*?<option value="range">.*?<template class="taxmod-addon-template" data-taxmod-addon="range">/s', seite($wann->id)));
 speichern($wann->id, ['taxmod_setting_addons' => ['present' => '1', 'n1' => ['name' => 'range']]]);
@@ -1588,7 +1588,8 @@ check('abgeschickt steht «range» als gewählte Zusatzfunktion am Knoten (D-845
 speichern($wann->id, ['taxmod_setting_addons' => ['present' => '1', 'n1' => ['name' => 'gibt-es-nicht']]]);
 check('ein Name, den die Registratur nicht kennt, wird abgewiesen, und «range» bleibt (CD-5)', ! gelungen() && (int) $wpdb->get_var("SELECT COUNT(*) FROM {$p}settings_value WHERE node_id = {$wann->id} AND attribut = 'addons'") === 1, letzteMeldung());
 abschicken(['do' => 'save_record', 'id' => (string) $satzKnoten->id, 'node_record_id' => (string) $sId, 'taxmod_value' => [(string) $sId => [(string) $satzFeld->id => '43', (string) $wannFeld->id => '2019-05-01T10:00']], '_taxmod_nonce' => wp_create_nonce('taxmod_node_' . $satzKnoten->id)]);
-check('ein Wert unter der Grenze wird abgewiesen, mit Feld und Grenze in der Meldung, und nichts geschrieben — auch nicht der Nachbar (D-760)', ! gelungen() && str_contains(letzteMeldung(), '__es wann') && str_contains(letzteMeldung(), '2020-01-01') && (string) $wpdb->get_var("SELECT value_int FROM {$p}relation_records WHERE node_record_id = {$sId} AND relation_id = {$satzFeld->id}") !== '43' && (int) $wpdb->get_var("SELECT COUNT(*) FROM {$p}relation_records WHERE node_record_id = {$sId} AND relation_id = {$wannFeld->id}") === 0, letzteMeldung());
+// D-1554 (Konzeptänderung, PR-9): «a range error is saved and reported» — vorher abgewiesen, jetzt gespeichert mit Hinweis.
+check('ein Wert unter der Grenze wird gespeichert und gemeldet, mit Grenze in der Meldung, der Nachbar auch (D-1554)', str_contains(letzteMeldung(), '2020-01-01') && (string) $wpdb->get_var("SELECT value_int FROM {$p}relation_records WHERE node_record_id = {$sId} AND relation_id = {$satzFeld->id}") === '43' && (int) $wpdb->get_var("SELECT COUNT(*) FROM {$p}relation_records WHERE node_record_id = {$sId} AND relation_id = {$wannFeld->id}") === 1, letzteMeldung());
 abschicken(['do' => 'save_record', 'id' => (string) $satzKnoten->id, 'node_record_id' => (string) $sId, 'taxmod_value' => [(string) $sId => [(string) $wannFeld->id => '2021-03-01T10:00']], '_taxmod_nonce' => wp_create_nonce('taxmod_node_' . $satzKnoten->id)]);
 check('ein Wert innerhalb der Grenzen wird gespeichert', gelungen() && (string) $wpdb->get_var("SELECT value_date FROM {$p}relation_records WHERE node_record_id = {$sId} AND relation_id = {$wannFeld->id}") === '2021-03-01 10:00:00', letzteMeldung());
 

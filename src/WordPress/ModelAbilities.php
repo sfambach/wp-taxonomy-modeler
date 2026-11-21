@@ -326,7 +326,7 @@ final class ModelAbilities
         wp_register_ability('taxmod/write-data', [
             'label'               => __('Write records', 'taxmod'),
             'description'         => __(
-                'Like taxmod/apply, but only for data: create_record, set_values, remove_record, make_variants, add_variant, merge_record, move_record, move_part, reorder_values, duplicate_record on user records, and undo_act {act} for a change that wrote records only. Nodes, fields and settings cannot be changed here. One change number, all or nothing; "ref" and "@ref" work as in apply. A value a validator refuses — also a row of a field taking several or a field of a part — refuses the whole list with error taxmod_invalid, its data listing every complaint (validator, key, values, node, field, record).',
+                'Like taxmod/apply, but only for data: create_record, set_values, remove_record, make_variants, add_variant, merge_record, move_record, move_part, reorder_values, duplicate_record on user records, and undo_act {act} for a change that wrote records only. Nodes, fields and settings cannot be changed here. One change number, all or nothing; "ref" and "@ref" work as in apply. A value a form validator (shape, syntax) refuses — also a row of a field taking several or a field of a part — refuses the whole list with error taxmod_invalid, its data listing every complaint (validator, key, values, node, field, record). A value outside its range is saved and listed under reported, with the same places (D-1554).',
                 'taxmod'
             ),
             'category'            => self::CATEGORY,
@@ -1159,6 +1159,8 @@ final class ModelAbilities
         $changelog->beginAct();
         $this->onlyRecords = $onlyData;
         $akt               = null;
+        // *Nothing left from a call before this one (D-1554).*
+        $this->screen()->takeReported();
         $erwartet = RecordStamp::fromList(is_array($input['expect'] ?? null) ? array_values(array_filter($input['expect'], 'is_array')) : []);
 
         try {
@@ -1198,10 +1200,23 @@ final class ModelAbilities
         // ⚠️ *The versions after the write, for the records the caller named or touched — its next change list can expect them (D-1148).*
         $versionen = $onlyData ? $this->screen()->entries()->stampOf($beruehrt)->versions : [];
 
+        // D-1554: a range error was saved and is said here, each with its place — only when there is one.
+        $screen   = $this->screen();
+        $gemeldet = array_map(static fn (\Taxmod\Core\Addon\Complaint $c): array => [
+            'validator' => $c->validator,
+            'key'       => $c->key,
+            'values'    => (object) $c->values,
+            'text'      => $screen->reportedText($c),
+            'node'      => $c->address?->nodeId,
+            'field'     => $c->address?->edgeId,
+            'record'    => $c->address?->recordId,
+        ], $screen->takeReported());
+        $extra    = $gemeldet === [] ? [] : ['reported' => $gemeldet];
+
         // ⚠️ *brief: the caller already holds its list; echoing every op back is tokens for nothing (D-1210).*
-        return ! empty($input['brief'])
+        return (! empty($input['brief'])
             ? ['count' => count($ergebnis), 'act' => $akt, 'refs' => $refs, 'backup' => $sicherung, 'backup_made' => $nacht === null ? null : false, 'backup_at' => $nacht['at'] ?? null, 'backup_warning' => $warnung, 'versions' => $versionen]
-            : ['applied' => $ergebnis, 'act' => $akt, 'refs' => $refs, 'backup' => $sicherung, 'backup_made' => $nacht === null ? null : false, 'backup_at' => $nacht['at'] ?? null, 'backup_warning' => $warnung, 'versions' => $versionen];
+            : ['applied' => $ergebnis, 'act' => $akt, 'refs' => $refs, 'backup' => $sicherung, 'backup_made' => $nacht === null ? null : false, 'backup_at' => $nacht['at'] ?? null, 'backup_warning' => $warnung, 'versions' => $versionen]) + $extra;
     }
 
     /**
