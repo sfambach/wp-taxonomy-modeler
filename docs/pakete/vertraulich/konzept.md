@@ -56,15 +56,28 @@ kommt erst, wenn das zu langsam wird.
 
 ## Schlüssel
 
-- `define( 'TAXMOD_DATA_KEY', '<64 Hex-Ziffern>' );` in `wp-config.php`. Nicht `wp_salt` — ein Salt-Wechsel machte sonst
-  alle Kontakte unlesbar.
-- **Stefan bewahrt eine Kopie außerhalb des Servers auf.** Ohne Schlüssel sind die Kontakte unwiederbringlich weg, auch
+```mermaid
+flowchart LR
+  T["Konfiguration › Datenschlüssel"] -->|Vorschlag kopieren, einfügen, Haken «Kopie aufbewahrt»| O[("Option taxmod_data_key\nversiegelt mit dem Tresor D-951")]
+  C["TAXMOD_DATA_KEY in wp-config.php"] -->|geht vor| F["FieldSeal::cipher()"]
+  O --> F
+```
+
+- Ein **eigener** Schlüssel (32 Byte, 64 Hex-Ziffern), eingegeben im Reiter **«Datenschlüssel»** der Konfiguration und
+  gespeichert wie die Zugangsdaten der Module: versiegelt mit dem Tresor (D-951, `StoredSecret`). Ein Datenbank-Dump allein
+  öffnet ihn nicht, dazu braucht es die Salts aus `wp-config.php`. Stefans Wunsch 21.11.: «muss ich den dann in der
+  wp-config eingeben oder kann ich den auch in einer Einstellung eingeben?»
+- Der Reiter zeigt einen frischen Vorschlag nur an — gespeichert wird erst, was Stefan einfügt und mit dem Haken «Kopie
+  aufbewahrt» speichert. Ein Schlüssel, der die schon versiegelten Daten nicht öffnet, wird abgewiesen; ein Schlüssel in
+  Gebrauch wird hier nicht ersetzt.
+- **Stefan bewahrt eine Kopie außerhalb des Servers auf.** Werden die Salts geändert, öffnet sich die Option nicht mehr —
+  dann trägt er den Schlüssel aus dem Passwortmanager neu ein, die Daten bleiben lesbar. Ohne Kopie sind sie weg, auch
   aus der Sicherung.
-- Schlüsselwechsel: `TAXMOD_DATA_KEY_ID` (Vorgabe `k1`) für den neuen, `TAXMOD_DATA_KEYS_OLD` (`['k1' => '…']`) für die
-  alten, die nur noch lesen.
+- `TAXMOD_DATA_KEY` in `wp-config.php` geht vor (wie bei D-951). Schlüsselwechsel: `TAXMOD_DATA_KEY_ID` (Vorgabe `k1`)
+  für den neuen, `TAXMOD_DATA_KEYS_OLD` (`['k1' => '…']`) für die alten, die nur noch lesen.
 - Fehlt der Schlüssel, wird ein vertrauliches Feld **nicht geschrieben** (Fehlermeldung, nie still Klartext), ein
-  versiegelter Wert liest sich als «🔒», und «🔒» als Wert wird abgewiesen — ein ohne Schlüssel gespeichertes Formular
-  kann die Daten nicht überschreiben. Administratoren sehen einen Hinweis mit einer fertigen Schlüsselzeile.
+  versiegelter Wert liest sich als «🔒», und «🔒» als Wert wird abgewiesen. Administratoren sehen einen Hinweis mit Link
+  zum Reiter.
 
 ## Altbestand
 

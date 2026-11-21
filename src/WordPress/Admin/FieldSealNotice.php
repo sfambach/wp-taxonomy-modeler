@@ -2,13 +2,12 @@
 
 namespace Taxmod\WordPress\Admin;
 
-use Taxmod\Core\Privacy\FieldCipher;
 use Taxmod\WordPress\Plugin;
 use Taxmod\WordPress\Privacy\FieldSeal;
 
 /**
- * The warning an administrator sees while fields are confidential and wp-config.php holds no data key (D-1514): such
- * fields are not written until the key is there, and the warning says how, with a fresh key to copy.
+ * The warning an administrator sees while fields are confidential and no data key is set (D-1514): such fields are not
+ * written until the key is there, and the warning links to the tab where it is entered.
  *
  * @see docs/pakete/vertraulich/konzept.md
  */
@@ -25,14 +24,14 @@ final class FieldSealNotice
             return '';
         }
 
-        $line = "define( '" . FieldSeal::KEY_CONSTANT . "', '" . FieldCipher::newKeyText() . "' );";
+        $tab = add_query_arg(['page' => 'taxmod-settings', 'tab' => \Taxmod\WordPress\Privacy\DataKeyTab::SLUG], admin_url('admin.php'));
 
         return sprintf(
-            '<div class="notice notice-warning"><p><strong>%s</strong> %s</p><p><code>%s</code></p><p>%s</p></div>',
+            '<div class="notice notice-warning"><p><strong>%s</strong> %s <a href="%s">%s</a></p></div>',
             esc_html__('Taxonomy Modeller:', 'taxmod'),
-            esc_html__('Some fields are confidential, but wp-config.php holds no data key, so they cannot be saved. Add this line to wp-config.php, above «That\'s all, stop editing»:', 'taxmod'),
-            esc_html($line),
-            esc_html__('Keep a copy of the key outside this server, e.g. in a password manager. Without the key the confidential data cannot be read again — not even from a backup.', 'taxmod')
+            esc_html__('Some fields are confidential, but no data key is set, so they cannot be saved.', 'taxmod'),
+            esc_url($tab),
+            esc_html__('Set the data key', 'taxmod')
         );
     }
 }

@@ -12,8 +12,8 @@
  *   W --> J["Altbestand: FieldSealJob versiegelt nach"]
  * ```
  *
- * The first part reads the source and needs no WordPress; the second runs inside the clamp (lib/no-write.php) and
- * defines a data key for itself when wp-config.php has none.
+ * The first part reads the source and needs no WordPress; the second runs inside the clamp (lib/no-write.php) and,
+ * where no key is set, stores one through the tab «Datenschlüssel» (rolled back with everything else).
  *
  * @see docs/pakete/vertraulich/konzept.md
  */
@@ -110,6 +110,7 @@ use Taxmod\WordPress\ModelDoor;
 use Taxmod\WordPress\Persistence\Schema;
 use Taxmod\WordPress\Persistence\WpdbNodeRepository;
 use Taxmod\WordPress\Persistence\WpdbRecordRepository;
+use Taxmod\WordPress\Privacy\DataKeyTab;
 use Taxmod\WordPress\Privacy\FieldSeal;
 use Taxmod\WordPress\Privacy\FieldSealJob;
 
@@ -157,12 +158,22 @@ $ref = $built['refs'];
 if (FieldSeal::cipher() === null) {
     $marked = $apply->execute(['changes' => [['op' => 'set_addons', 'node' => $text->id, 'field' => $ref['name'], 'addons' => [['name' => 'confidential']]]]]);
     $answer = $apply->execute(['changes' => [['op' => 'create_record', 'ref' => 'x', 'node' => $ref['k'], 'values' => [(string) $ref['name'] => 'ohne Schlüssel']]]]);
-    check('without a data key a confidential field is refused, never stored plain', ! is_wp_error($marked) && is_wp_error($answer) && str_contains($why($answer), FieldSeal::KEY_CONSTANT), $why($answer));
-    check('without a key the notice offers a key line', str_contains(\Taxmod\WordPress\Admin\FieldSealNotice::markup(), FieldSeal::KEY_CONSTANT));
-    define(FieldSeal::KEY_CONSTANT, FieldCipher::newKeyText());
-    FieldSeal::forgetKey();
+    check('without a data key a confidential field is refused, never stored plain', ! is_wp_error($marked) && is_wp_error($answer), $why($answer));
+    check('without a key the notice links to the tab', str_contains(\Taxmod\WordPress\Admin\FieldSealNotice::markup(), DataKeyTab::SLUG));
+    check('the tab proposes a fresh key', preg_match('/<code>[0-9a-f]{64}<\/code>/', DataKeyTab::credentials()) === 1);
+
+    $key = FieldCipher::newKeyText();
+    DataKeyTab::save(['taxmod_data_key' => $key, 'taxmod_data_key_kept' => '0']);
+    check('without the tick «copy kept» the key is not stored', FieldSeal::cipher() === null);
+    DataKeyTab::save(['taxmod_data_key' => 'abc', 'taxmod_data_key_kept' => '1']);
+    check('a key that is not 64 hex digits is not stored', FieldSeal::cipher() === null);
+    DataKeyTab::save(['taxmod_data_key' => $key, 'taxmod_data_key_kept' => '1']);
+    check('with the tick the key is stored and used', FieldSeal::cipher() !== null);
+    check('it is stored sealed with the vault, not plain', ! str_contains((string) get_option(FieldSeal::KEY_OPTION), $key) && FieldSeal::storedKey()->value() === $key);
+    DataKeyTab::save(['taxmod_data_key' => FieldCipher::newKeyText(), 'taxmod_data_key_kept' => '1']);
+    check('a key in use is not replaced on the tab', FieldSeal::storedKey()->value() === $key);
 } else {
-    echo "  SKIP the part without a key: wp-config.php defines one\n";
+    echo "  SKIP the part without a key: a key is set already\n";
 }
 
 $marked = $apply->execute(['changes' => [

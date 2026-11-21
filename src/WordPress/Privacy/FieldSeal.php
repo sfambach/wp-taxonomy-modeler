@@ -7,20 +7,22 @@ use Taxmod\Core\Addon\ConfidentialAddon;
 use Taxmod\Core\Exception\FieldDoesNotOpen;
 use Taxmod\Core\Model\FrozenState;
 use Taxmod\Core\Privacy\FieldCipher;
+use Taxmod\WordPress\Import\StoredSecret;
 use Taxmod\WordPress\Persistence\Query;
 use Taxmod\WordPress\Persistence\Schema;
 
 /**
  * Where a confidential field is sealed and opened (D-1514): the record repository on every value row, the chronicle on
- * every frozen value. Which fields are confidential says the add-on «Vertraulich» at the edge; the key stands in
- * wp-config.php as `TAXMOD_DATA_KEY` and never in the database.
+ * every frozen value. Which fields are confidential says the add-on «Vertraulich» at the edge; the key is entered on the
+ * Configuration tab «Datenschlüssel» and stored sealed with the vault (D-951), or stands in wp-config.php as
+ * `TAXMOD_DATA_KEY`, which goes first.
  *
  * ```mermaid
  * flowchart LR
  *   W["putValue / Chronik"] -->|sealText / sealState| DB[("enc1:…")]
  *   DB -->|openText / openState| R["Leser: Klartext"]
  *   A["Zusatzfunktion «Vertraulich» an der Kante"] -.-> W
- *   K["TAXMOD_DATA_KEY"] -.-> W & R
+ *   K["Schlüssel: Tresor-Option oder TAXMOD_DATA_KEY"] -.-> W & R
  * ```
  *
  * ⚠️ *Without the key nothing confidential is written (refused, never stored plain) and a sealed value reads as
@@ -36,6 +38,11 @@ final class FieldSeal
     public const KEY_CONSTANT = 'TAXMOD_DATA_KEY';
 
     public const KEY_ID_CONSTANT = 'TAXMOD_DATA_KEY_ID';
+
+    /** The option that holds the key entered on the Configuration tab, sealed with the vault. */
+    public const KEY_OPTION = 'taxmod_data_key';
+
+    private const VAULT_CONTEXT = 'taxmod-data-key';
 
     /** Former keys, still read: an array key id → key text, for a change of key. */
     public const OLD_KEYS_CONSTANT = 'TAXMOD_DATA_KEYS_OLD';
@@ -55,12 +62,19 @@ final class FieldSeal
 
         self::$cipherRead = true;
 
-        if (! defined(self::KEY_CONSTANT) || ! is_string(constant(self::KEY_CONSTANT)) || trim((string) constant(self::KEY_CONSTANT)) === '') {
+        // *D-951: a constant in wp-config.php goes first, else the key stored with the vault of the module secrets.*
+        $text = self::storedKey()->value();
+
+        if ($text === null || trim($text) === '') {
             return self::$cipher = null;
         }
 
-        $id   = defined(self::KEY_ID_CONSTANT) ? (string) constant(self::KEY_ID_CONSTANT) : 'k1';
-        $keys = [$id => FieldCipher::keyFromText((string) constant(self::KEY_CONSTANT))];
+        try {
+            $keys = [self::keyId() => FieldCipher::keyFromText($text)];
+        } catch (FieldDoesNotOpen) {
+            return self::$cipher = null;
+        }
+
         $old  = defined(self::OLD_KEYS_CONSTANT) ? constant(self::OLD_KEYS_CONSTANT) : [];
 
         foreach (is_array($old) ? $old : [] as $oldId => $text) {
@@ -68,6 +82,23 @@ final class FieldSeal
         }
 
         return self::$cipher = new FieldCipher($keys);
+    }
+
+    /** Where the key is kept: the constant first, else the option sealed with the vault (D-951). */
+    public static function storedKey(): StoredSecret
+    {
+        return new StoredSecret(self::KEY_OPTION, self::VAULT_CONTEXT, self::KEY_CONSTANT);
+    }
+
+    public static function keyFromConstant(): bool
+    {
+        return self::storedKey()->slot()->fromConstant();
+    }
+
+    /** The id the current key seals with; `k1` unless wp-config.php names another. */
+    public static function keyId(): string
+    {
+        return defined(self::KEY_ID_CONSTANT) ? (string) constant(self::KEY_ID_CONSTANT) : 'k1';
     }
 
     /**

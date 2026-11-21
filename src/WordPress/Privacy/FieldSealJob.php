@@ -77,6 +77,19 @@ final class FieldSealJob
         ];
     }
 
+    /** One live value sealed with this key id, to test an entered key against; null while nothing is sealed with it. */
+    public static function sealedSample(string $keyId): ?string
+    {
+        global $wpdb;
+
+        $value = Query::value('Einen versiegelten Wert lesen', $wpdb->prepare(
+            'SELECT value_text FROM ' . Schema::table('relation_records') . ' WHERE value_text LIKE %s LIMIT 1',
+            $wpdb->esc_like(FieldCipher::PREFIX . $keyId . ':') . '%'
+        ));
+
+        return is_string($value) && $value !== '' ? $value : null;
+    }
+
     /** @param list<int> $kanten */
     private static function sealRows(string $tabelle, array $kanten, int $limit): int
     {
