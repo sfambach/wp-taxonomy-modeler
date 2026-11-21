@@ -1897,6 +1897,24 @@ ol.taxmod-switch-cascade .taxmod-list-remove,
     gap: .5em;
 }
 
+/* D-1555: the similar data elements below the name, each with «Use»; empty when nothing is similar. */
+.taxmod-similar {
+    display: flex;
+    flex-direction: column;
+    gap: .4em;
+}
+
+.taxmod-similar:empty {
+    display: none;
+}
+
+.taxmod-similar-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: .5em;
+}
+
 .taxmod-dialog-foot {
     display: flex;
     justify-content: flex-end;

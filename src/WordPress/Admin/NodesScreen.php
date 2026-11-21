@@ -2413,20 +2413,13 @@ final class NodesScreen
 
     /**
      * D-1555: creating a node below a base type makes a data element, so the similar ones below the same base type are shown
-     * first; only with «Create as a new data element» ticked is it made anyway (U3, U4). Same name rule as MCP similar-fields.
+     * first; only with «Create anyway» ticked is it made anyway (U3, U4). Same name rule as MCP similar-fields. The dialog
+     * shows them while the name is typed ({@see similarInDialog()}); this refusal holds when the act arrives without.
      */
     private function similarRefusal(string $name, int $parentId): ?string
     {
-        $catalogue = $this->catalogue();
-        $parent    = $parentId > 0 ? $this->editor->find($parentId) : null;
-        $base      = $parent === null || $catalogue === null ? null : $catalogue->baseTypeOf($parent);
-        $baseNode  = $base === null ? null : $this->editor->find($base);
-
-        if ($name === '' || ! empty($_POST['new_element']) || $parent === null || $baseNode === null) {
-            return null;
-        }
-
-        $similar = $catalogue->similarElements($name, $parent, (new \Taxmod\WordPress\Persistence\WpdbNodeRepository())->subtreeOf($baseNode));
+        $parent  = $parentId > 0 ? $this->editor->find($parentId) : null;
+        $similar = $parent === null || ! empty($_POST['create_anyway']) ? [] : $this->similarTo($name, $parent);
 
         if ($similar === []) {
             return null;
@@ -2434,26 +2427,58 @@ final class NodesScreen
 
         return sprintf(
             /* translators: %s: the similar data elements, e.g. «Jahr» (#12), «Baujahr» (#40). */
-            __('Similar data elements exist: %s. Use one of them, or tick «Create as a new data element» to create it anyway.', 'taxmod'),
+            __('Similar data elements exist: %s. Use one of them, or tick «Create anyway».', 'taxmod'),
             implode(', ', array_map(static fn (Node $n): string => '«' . $n->name . '» (#' . $n->id . ')', array_slice($similar, 0, 5)))
         );
     }
 
+    /** @return list<Node> the data elements below the same base type whose name is like $name; empty outside the catalogue. */
+    private function similarTo(string $name, Node $parent): array
+    {
+        $catalogue = $this->catalogue();
+        $base      = $catalogue?->baseTypeOf($parent);
+        $baseNode  = $base === null ? null : $this->editor->find($base);
+
+        return $name === '' || $catalogue === null || $baseNode === null ? []
+            : $catalogue->similarElements($name, $parent, (new \Taxmod\WordPress\Persistence\WpdbNodeRepository())->subtreeOf($baseNode));
+    }
+
+    /**
+     * D-1555 U3/U4 in the dialog: follows the typed name over `taxmod:chosen` (D-1551) and lists the similar data elements,
+     * each with «Use», and only then «Create anyway». Nothing similar, nothing shown.
+     */
+    private function similarInDialog(Node $parent, string $id): string
+    {
+        $typed   = ChosenValue::of('name');
+        $similar = is_string($typed) ? array_slice($this->similarTo(trim($typed), $parent), 0, 5) : [];
+        $html    = '';
+
+        if ($similar !== []) {
+            $html .= '<span class="taxmod-similar-head">' . esc_html__('Similar data elements exist. Use one of them?', 'taxmod') . '</span>';
+
+            foreach ($similar as $element) {
+                $html .= '<span class="taxmod-similar-row"><span>' . esc_html($element->name) . ' <code>#' . (int) $element->id . '</code></span>'
+                    . '<a class="button" href="' . esc_url(add_query_arg(['page' => 'taxmod', 'taxmod_node' => $element->id], admin_url('admin.php'))) . '">' . esc_html__('Use', 'taxmod') . '</a></span>';
+            }
+
+            $html .= '<label class="taxmod-dialog-field">' . ListPage::field(InputKind::Tick, 'create_anyway', '1') . '<span>' . esc_html__('Create anyway', 'taxmod') . '</span></label>';
+        }
+
+        return '<span id="' . esc_attr($id . '-similar') . '" class="taxmod-similar" data-taxmod-follows="name">' . $html . '</span>';
+    }
+
     private function newChildDialog(Node $parent, string $id): Dialog
     {
-        // D-1555 U4: below a base type a new data element is made deliberately — the tick says so.
-        $bewusst = $this->catalogue()?->baseTypeOf($parent) === null ? ''
-            : '<label class="taxmod-dialog-field">' . ListPage::field(InputKind::Tick, 'new_element', '1') . '<span>' . esc_html__('Create as a new data element', 'taxmod') . '</span></label>'
-            . '<p class="description">' . esc_html__('This makes a data element of the Feldkatalog. A similar existing one is shown first and is usually the better choice.', 'taxmod') . '</p>';
+        $imKatalog = $this->catalogue()?->baseTypeOf($parent) !== null;
 
         return new Dialog(
             $id,
             /* translators: %s: the name of the parent node. */
             sprintf(__('New node under %s', 'taxmod'), $parent->name),
             '<label class="taxmod-dialog-field"><span>' . esc_html__('Name', 'taxmod') . '</span>'
-            . '<input type="text" name="name" placeholder="' . esc_attr__('New node', 'taxmod') . '" class="taxmod-toolbar-name"></label>'
+            . '<input type="text" name="name" placeholder="' . esc_attr__('New node', 'taxmod') . '" class="taxmod-toolbar-name"' . ($imKatalog ? ' data-taxmod-typed' : '') . '></label>'
             . '<label class="taxmod-dialog-field"><span>' . esc_html__('Class', 'taxmod') . '</span>' . $this->classChooser($parent) . '</label>'
-            . $bewusst,
+            . ($imKatalog ? $this->similarInDialog($parent, $id) : ''),
             __('Add', 'taxmod'),
             __('Cancel', 'taxmod')
         );

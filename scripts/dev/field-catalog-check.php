@@ -180,8 +180,21 @@ $kinderVorher = count((new WpdbNodeRepository())->childrenOf($int));
 $aehnlich     = $abschicken($int->id, 'add_child', ['name' => '__fc Baujahr']);
 $say(str_contains($aehnlich['message'], '__fc Baujahr') && count((new WpdbNodeRepository())->childrenOf($int)) === $kinderVorher, 'a new node below Integer with a similar name shows the similar element and is not made', $aehnlich['message']);
 
-$bewusst = $abschicken($int->id, 'add_child', ['name' => '__fc Baujahr', 'new_element' => '1']);
-$say(count((new WpdbNodeRepository())->childrenOf($int)) === $kinderVorher + 1, 'ticked «Create as a new data element», it is made', $bewusst['message']);
+$bewusst = $abschicken($int->id, 'add_child', ['name' => '__fc Baujahr', 'create_anyway' => '1']);
+$say(count((new WpdbNodeRepository())->childrenOf($int)) === $kinderVorher + 1, 'ticked «Create anyway», it is made', $bewusst['message']);
+
+// D-1555 in the dialog: the list follows the typed name over taxmod:chosen (D-1551); «Create anyway» only when something is similar.
+$imDialog = static function (string $name) use ($plugin, $int): string {
+    $_GET['taxmod_chosen'] = wp_slash((string) wp_json_encode(['name' => $name]));
+    $html = (string) (new \ReflectionMethod($plugin->screen(), 'similarInDialog'))->invoke($plugin->screen(), $int, 'fc-dialog');
+    unset($_GET['taxmod_chosen']);
+
+    return $html;
+};
+$mitAehnlichen = $imDialog('__fc Baujahr');
+$say(str_contains($mitAehnlichen, 'id="fc-dialog-similar"') && str_contains($mitAehnlichen, 'data-taxmod-follows="name"') && str_contains($mitAehnlichen, '__fc Baujahr') && str_contains($mitAehnlichen, 'taxmod_node=') && str_contains($mitAehnlichen, 'name="create_anyway"'), 'the dialog lists the similar ones while typing, each with «Use», then «Create anyway»', $mitAehnlichen);
+$ohne = $imDialog('Zzqx Vvkw');
+$say(! str_contains($ohne, 'create_anyway') && str_contains($ohne, 'data-taxmod-follows="name"'), 'nothing similar: no list and no «Create anyway»', $ohne);
 
 $frei = $abschicken((int) $refs['ding'], 'add_child', ['name' => '__fc Baujahr']);
 $say($frei['node'] > 0, 'outside the catalogue a similar name is no reason to ask', $frei['message']);
