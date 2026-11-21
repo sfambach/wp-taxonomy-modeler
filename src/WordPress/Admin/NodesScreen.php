@@ -2325,6 +2325,8 @@ final class NodesScreen
         // methods would make a second place that could disagree with the first.*
         $hidden     = $this->hiddenAmong($rows);
         $showHidden = $this->showsHidden();
+        // D-1574 (D): im eingegrenzten Baum parkt nur eine leere Gruppe — welche Sätze tragen, einmal für alle Zeilen (`CD-7`).
+        $this->filledNodes = $this->scopeFromRequest() === null ? [] : $this->nodesWithRecords(array_map(static fn (array $row): int => $row['node']->id, $rows));
 
         foreach ($rows as $row) {
             $node               = $row['node'];
@@ -2779,10 +2781,10 @@ final class NodesScreen
                 'trash_node',
                 // ⚠️ The **label** stays a word even though an icon is drawn — it is the accessible
                 // name, and `🗑` was replaced because an emoji outline cannot be thickened (D-380).
-                __('Park', 'taxmod'),
+                $this->emptyInScope($row['node']->id, $row['hasChildren']) ? __('Park', 'taxmod') : __('Only an empty group can be parked: move its materials and subgroups away first', 'taxmod'),
                 __('Park this node; its children move up to its parent', 'taxmod'),
                 // A protected node cannot be parked (D-194) — the core refuses it anyway.
-                ! $this->framework->isProtected($row['node']),
+                ! $this->framework->isProtected($row['node']) && $this->emptyInScope($row['node']->id, $row['hasChildren']),
                 // ⚠️ It takes something away, and the renderer paints that. *Parking is not
                 // destroying — the trash is a place (D-123) — but it is the one act in this row
                 // that removes a node from where it was.*
@@ -4192,9 +4194,9 @@ final class NodesScreen
             // Ohne `name`, damit es nie mitgeschickt wird — dasselbe wie beim Baumdialog.
             . '<input type="checkbox" class="taxmod-dialog-switch" id="' . esc_attr($switch) . '">'
             . '<label class="button taxmod-icon-button taxmod-dialog-open" for="' . esc_attr($switch) . '"'
-            . ' title="' . esc_attr__('Trash this node and everything under it — it is used, so this asks first', 'taxmod') . '">'
+            . ' title="' . esc_attr__('Trash this node and everything under it — it is used, so this asks first', 'taxmod') . '"'
+            . ' aria-label="' . esc_attr__('Trash', 'taxmod') . '">'
             . IconMarkup::dashicon('trash')
-            . '<span class="screen-reader-text">' . esc_html__('Trash', 'taxmod') . '</span>'
             . '</label>'
             . '<span class="taxmod-dialog">'
             . '<label class="taxmod-dialog-shade" for="' . esc_attr($switch) . '"></label>'
@@ -7090,11 +7092,12 @@ final class NodesScreen
         // ⚠️ *Ein Symbol ohne Rahmen und mit Namen, wie jeder Symbolknopf dieser Seite — `icon-button-check`
         // hat die erste Fassung mit «, ‹ als nackten Zeichen in `button`-Kästen rot gemeldet.*
         $link = static function (string $ziel, string $icon, string $titel, bool $moeglich): string {
-            $gesicht = IconMarkup::dashicon($icon, $titel);
+            // Live-Check 19: the name on the link, the shape mute.
+            $gesicht = IconMarkup::dashicon($icon);
 
             return $moeglich
-                ? '<a class="button ' . ControlMarkup::ICON_ONLY . '" href="' . esc_url($ziel) . '" title="' . esc_attr($titel) . '">' . $gesicht . '</a>'
-                : '<span class="button disabled ' . ControlMarkup::ICON_ONLY . '" aria-disabled="true" title="' . esc_attr($titel) . '">' . $gesicht . '</span>';
+                ? '<a class="button ' . ControlMarkup::ICON_ONLY . '" href="' . esc_url($ziel) . '" title="' . esc_attr($titel) . '" aria-label="' . esc_attr($titel) . '">' . $gesicht . '</a>'
+                : '<span class="button disabled ' . ControlMarkup::ICON_ONLY . '" aria-disabled="true" title="' . esc_attr($titel) . '" aria-label="' . esc_attr($titel) . '">' . $gesicht . '</span>';
         };
         $nach = fn (int $blatt): string => $this->backTo($selected->id, [self::RECORD_PAGE => (string) $blatt]);
 
@@ -7311,8 +7314,8 @@ final class NodesScreen
         $home = $satzId > 0 ? $this->recordHome($satzId, $knotenId) : null;
 
         // *Ein Icon-Quadrat mit Tooltip wie die anderen Knöpfe der Toolbar (seine Regel 18.11.: «Buttons einheitliche Größe, Icon-Quadrate mit Tooltip»).*
-        return $home === null ? '' : ' <a class="button taxmod-icon-button taxmod-record-home" href="' . esc_url($home) . '" title="' . esc_attr__('Open in its module', 'taxmod') . '">'
-            . ListPage::icon('external', __('Open in its module', 'taxmod')) . '</a>';
+        return $home === null ? '' : ' ' . IconMarkup::lifted('<a class="button taxmod-icon-button taxmod-record-home" href="' . esc_url($home) . '" title="' . esc_attr__('Open in its module', 'taxmod') . '">'
+            . ListPage::icon('external', __('Open in its module', 'taxmod')) . '</a>');
     }
 
     /** D-1483: a module that owns the record (orders, stock, sales) names its own page; null leaves the Modeller's. */
@@ -8598,6 +8601,46 @@ final class NodesScreen
         if ($do === 'move' && ! $inside($target)) {
             ListPage::fail(__('A node cannot be moved out of the branch this page shows.', 'taxmod'));
         }
+
+        // D-1574 (D): «Papierkorb nur für eine leere Gruppe, ohne Materialien und Untergruppen».
+        if (in_array($do, ['trash', 'trash_with_uses', 'trash_node'], true)
+            && ($this->editor->childrenOf($id) !== [] || $this->nodesWithRecords([$id]) !== [])) {
+            ListPage::fail(__('Only an empty group can be parked: move its materials and subgroups away first', 'taxmod'));
+        }
+    }
+
+    /** @var array<int, true> Knoten der gezeichneten Zeilen, die eigene Sätze tragen (D-1574) */
+    private array $filledNodes = [];
+
+    /** Ob ein Knoten hier geparkt werden darf: im ganzen Baum immer, im eingegrenzten nur leer (D-1574, D). */
+    private function emptyInScope(int $nodeId, bool $hasChildren): bool
+    {
+        return $this->scopeFromRequest() === null || (! $hasChildren && ! isset($this->filledNodes[$nodeId]));
+    }
+
+    /**
+     * Welche dieser Knoten eigene Sätze tragen — eine Abfrage für alle (`CD-7`), dieselbe Bedingung wie die Satzliste des Knotens.
+     *
+     * @param list<int> $nodeIds
+     * @return array<int, true>
+     */
+    private function nodesWithRecords(array $nodeIds): array
+    {
+        global $wpdb;
+
+        $nodeIds = array_values(array_unique(array_filter($nodeIds)));
+
+        if ($nodeIds === []) {
+            return [];
+        }
+
+        $ids = \Taxmod\WordPress\Persistence\Query::column('Knoten mit Sätzen', $wpdb->prepare(
+            'SELECT DISTINCT node_id FROM ' . \Taxmod\WordPress\Persistence\Schema::table('node_records') . ' WHERE relation_id = 0 AND node_id IN ('
+            . implode(',', array_fill(0, count($nodeIds), '%d')) . ')',
+            ...$nodeIds
+        ));
+
+        return array_fill_keys(array_map('intval', $ids), true);
     }
 
     private function showsRoot(): bool

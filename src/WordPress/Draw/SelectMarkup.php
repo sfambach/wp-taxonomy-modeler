@@ -68,9 +68,9 @@ final class SelectMarkup
 
     public static function add(AddChosen $add, string $class): string
     {
-        return '<button type="button" class="button ' . ControlMarkup::ICON_ONLY . ' ' . self::e($class) . '"'
+        return IconMarkup::lifted('<button type="button" class="button ' . ControlMarkup::ICON_ONLY . ' ' . self::e($class) . '"'
             . ($add->operable ? ' style="color:#1d2327"' : ' disabled style="color:#1d2327;opacity:.35"') . '>'
-            . IconMarkup::dashicon('plus-alt2', $add->label) . '</button>';
+            . IconMarkup::dashicon('plus-alt2', $add->label) . '</button>');
     }
 
     /** @param array<string, string> $attributes */

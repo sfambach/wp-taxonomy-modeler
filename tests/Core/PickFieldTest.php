@@ -16,7 +16,7 @@ final class PickFieldTest extends TestCase
         $html = DialogMarkup::of('sw', 'Kiste groß', 'Kiste groß', '<span>tree</span>', '', 'taxmod-record-dialog-open', ok: 'OK', cancel: 'Abbrechen', tree: 'Baum');
 
         self::assertStringStartsWith('<span class="taxmod-chooser taxmod-pick">', $html);
-        self::assertMatchesRegularExpression('~<label class="taxmod-record-dialog-open" for="sw">Kiste groß</label><label class="button taxmod-icon-button taxmod-pick-tree" for="sw" title="Baum">~', $html);
+        self::assertMatchesRegularExpression('~<label class="taxmod-record-dialog-open" for="sw">Kiste groß</label><label class="button taxmod-icon-button taxmod-pick-tree" for="sw" title="Baum" aria-label="Baum">~', $html, 'Live-Check 19: the tree button names itself, its shape is mute');
     }
 
     #[Test]
