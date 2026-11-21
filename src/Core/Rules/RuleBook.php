@@ -14,7 +14,8 @@ namespace Taxmod\Core\Rules;
  * ```
  *
  * A condition names a node; it holds when that node is in the context's list for the condition — the caller lists a thing
- * with every node above it, so a rule on «Widerstände» holds for each resistor below. An empty condition always holds.
+ * with every node above it, so a rule on «Widerstände» holds for each resistor below. An empty condition holds, but a rule
+ * whose conditions name no node at all holds nothing (D-1563 (3): «Es muss ein Knoten ausgewählt werden»).
  * A filter narrows further, «field · value» (his word 20.11. «was ein Feld beinhalten muss, damit die Regel zieht»): it holds
  * when the thing has that value in that field. Every condition and every filter must hold. A filter may name its operator
  * (D-1552): «gleich», «ungleich», «größer», «kleiner», «enthält»; an operator not built never holds, so a rule is not applied
@@ -95,6 +96,10 @@ final class RuleBook
      */
     private function holds(array $conditions, array $context): bool
     {
+        if (array_filter($conditions) === []) {
+            return false;
+        }
+
         foreach ($conditions as $key => $node) {
             if ($node !== 0 && ! in_array($node, $context[$key] ?? [], true)) {
                 return false;
