@@ -6841,7 +6841,33 @@ final class Rendering implements Presets, \Taxmod\Core\Port\FieldAddons
      */
     public function referencesRecords(Relation $relation): bool
     {
-        return $this->drawsAsSummary($relation, $this->typesOf([$relation])[$relation->id] ?? null, $this->settingsForUseSites([$relation])[$relation->id] ?? []);
+        return $this->referencingRecords([$relation])[$relation->id] ?? false;
+    }
+
+    /**
+     * The same question for many fields at once, in the batched reads of {@see typesOf()} and {@see settingsForUseSites()} (`CD-7`) —
+     * for the field list of the Feldkatalog migration, which asks it for a page of fields.
+     *
+     * @param  list<Relation> $relations
+     * @return array<int, bool> relation id => offers records; only aggregations are named, any other kind never offers records
+     */
+    public function referencingRecords(array $relations): array
+    {
+        $aggregations = array_values(array_filter($relations, static fn (Relation $one): bool => $one->kind === RelationKind::Aggregation));
+
+        if ($aggregations === []) {
+            return [];
+        }
+
+        $types    = $this->typesOf($aggregations);
+        $resolved = $this->settingsForUseSites($aggregations);
+        $answer   = [];
+
+        foreach ($aggregations as $relation) {
+            $answer[$relation->id] = $this->drawsAsSummary($relation, $types[$relation->id] ?? null, $resolved[$relation->id] ?? []);
+        }
+
+        return $answer;
     }
 
     /**

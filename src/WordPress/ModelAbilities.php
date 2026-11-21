@@ -14,9 +14,11 @@ use Taxmod\Core\Model\RecordInTree;
 use Taxmod\Core\Model\RecordType;
 use Taxmod\Core\Model\RelationKind;
 use Taxmod\Core\Model\SeededRole;
+use Taxmod\Core\Model\SimpleType;
 use Taxmod\Core\Service\BlockUsage;
 use Taxmod\Core\Service\ModelEditor;
 use Taxmod\Core\Service\RecordQuery;
+use Taxmod\Core\Service\SimilarFields;
 use Taxmod\Core\Service\Tree;
 use Taxmod\Core\Repository\Changelog;
 use Taxmod\WordPress\Admin\NodesScreen;
@@ -98,6 +100,12 @@ final class ModelAbilities
 
     /** So viele Sätze liefert eine Seite von `read-node` höchstens. */
     private const MAX_RECORDS_PAGE = 1000;
+
+    /** So viele Felder liefert eine Seite von `fields` höchstens. */
+    private const MAX_FIELDS_PAGE = 1000;
+
+    /** Die Spalten einer kompakten Feldzeile — einmal genannt statt in jeder Zeile (D-1210). */
+    private const FIELD_COLUMNS = ['id', 'name', 'node', 'node_name', 'target', 'target_name', 'type', 'kind', 'multiplicity', 'chooses_records', 'values', 'records', 'uses', 'settings'];
 
     /** So viele Änderungen nimmt ein Aufruf — darüber teilt der Aufrufer. */
     private const MAX_CHANGES = 500;
@@ -316,7 +324,7 @@ final class ModelAbilities
         wp_register_ability('taxmod/write-data', [
             'label'               => __('Write records', 'taxmod'),
             'description'         => __(
-                'Like taxmod/apply, but only for data: create_record, set_values, remove_record, make_variants, add_variant, merge_record, move_record, move_part, reorder_values, duplicate_record on user records, and undo_act {act} for a change that wrote records only. Nodes, fields and settings cannot be changed here. One change number, all or nothing; "ref" and "@ref" work as in apply.',
+                'Like taxmod/apply, but only for data: create_record, set_values, remove_record, make_variants, add_variant, merge_record, move_record, move_part, reorder_values, duplicate_record on user records, and undo_act {act} for a change that wrote records only. Nodes, fields and settings cannot be changed here. One change number, all or nothing; "ref" and "@ref" work as in apply. A value a validator refuses — also a row of a field taking several or a field of a part — refuses the whole list with error taxmod_invalid, its data listing every complaint (validator, key, values, node, field, record).',
                 'taxmod'
             ),
             'category'            => self::CATEGORY,
@@ -407,6 +415,55 @@ final class ModelAbilities
             'meta'                => ['public' => true, 'annotations' => ['readonly' => true, 'destructive' => false, 'idempotent' => true]],
         ]);
 
+        // konzept.md §8 M-b (Stefan 2026-11-21: «möglichst fehlerfrei und schnell und mit wenig Token»): every field in one call
+        // instead of read-node per node, which costs hundreds of calls against the host's rate limit. Reads, never writes.
+        wp_register_ability('taxmod/fields', [
+            'label'               => __('List fields', 'taxmod'),
+            'description'         => __('Every field of every live node in one call, a page of them: relation id, name, owning node, target, simple type, kind, multiplicity, chooses_records, the settings stored at the field itself, how many values and records it holds, and uses (fields with the same target). Filters: name (part, case and umlauts folded), node (owner), under (owners in that subtree), target, type, kind (setting edges only with kind setting), with_values. Compact rows with columns unless compact is false.', 'taxmod'),
+            'category'            => self::CATEGORY,
+            'input_schema'        => [
+                'type'       => 'object',
+                'properties' => [
+                    'name'        => ['type' => 'string'],
+                    'node'        => ['type' => 'integer', 'minimum' => 1],
+                    'under'       => ['type' => 'integer', 'minimum' => 1],
+                    'target'      => ['type' => 'integer', 'minimum' => 1],
+                    'type'        => ['type' => 'string'],
+                    'kind'        => ['type' => 'string', 'enum' => array_map(static fn (RelationKind $k): string => $k->value, RelationKind::cases())],
+                    'with_values' => ['type' => 'boolean'],
+                    'compact'     => ['type' => 'boolean', 'default' => true],
+                    'limit'       => ['type' => 'integer', 'minimum' => 1, 'maximum' => self::MAX_FIELDS_PAGE, 'default' => 200],
+                    'offset'      => ['type' => 'integer', 'minimum' => 0, 'default' => 0],
+                ],
+                'additionalProperties' => false,
+            ],
+            'execute_callback'    => fn (mixed $input = null) => $this->guarded(fn (): array => $this->fields(is_array($input) ? $input : [])),
+            'permission_callback' => $this->allowedToRead(...),
+            'meta'                => ['public' => true, 'annotations' => ['readonly' => true, 'destructive' => false, 'idempotent' => true]],
+        ]);
+
+        // konzept.md §8 M-c, U3: the same likeness the «create field» dialog is to ask — one logic for a person and for the MCP,
+        // in the core ({@see SimilarFields}). Reads, never writes.
+        wp_register_ability('taxmod/similar-fields', [
+            'label'               => __('Find similar fields', 'taxmod'),
+            'description'         => __('Fields that look like the one described: same simple type (if given), the given settings (attribute: value, compared with the settings at the field over those of its target node) and a similar name (case, umlauts and signs folded). Best first, each with score, name_similarity, matching_settings, differing_settings and its field row (as taxmod/fields, uses = fields with the same target). Setting edges are not searched.', 'taxmod'),
+            'category'            => self::CATEGORY,
+            'input_schema'        => [
+                'type'       => 'object',
+                'properties' => [
+                    'name'     => ['type' => 'string'],
+                    'type'     => ['type' => 'string'],
+                    'settings' => ['type' => 'object', 'additionalProperties' => ['type' => ['string', 'integer', 'number']]],
+                    'exclude'  => ['type' => 'array', 'items' => ['type' => 'integer', 'minimum' => 1], 'maxItems' => 500],
+                    'limit'    => ['type' => 'integer', 'minimum' => 1, 'maximum' => 200, 'default' => 20],
+                ],
+                'additionalProperties' => false,
+            ],
+            'execute_callback'    => fn (mixed $input = null) => $this->guarded(fn (): array => $this->similarFields(is_array($input) ? $input : [])),
+            'permission_callback' => $this->allowedToRead(...),
+            'meta'                => ['public' => true, 'annotations' => ['readonly' => true, 'destructive' => false, 'idempotent' => true]],
+        ]);
+
         // *Vor und nach jedem Umbau an einem Renderer: welche Beiträge zeigen welchen Satz ([D-1052](../../docs/NewConcept/90-decision-log.md)).*
         wp_register_ability('taxmod/block-usage', [
             'label'               => __('List record block usage', 'taxmod'),
@@ -452,6 +509,143 @@ final class ModelAbilities
         }
 
         return ['referrers' => $out];
+    }
+
+    /**
+     * @param  array<string, mixed> $input `mixed`: the ability's input, checked by its schema
+     * @return array<string, mixed>
+     */
+    private function fields(array $input): array
+    {
+        $catalogue = $this->fieldCatalogue(isset($input['kind']) ? (string) $input['kind'] : null, isset($input['under']) ? (int) $input['under'] : null);
+        $name      = SimilarFields::folded((string) ($input['name'] ?? ''));
+        $rows      = array_values(array_filter($catalogue['rows'], static fn (array $row): bool =>
+            ($name === '' || str_contains(SimilarFields::folded($row['name']), $name))
+            && (! isset($input['node']) || $row['node'] === (int) $input['node'])
+            && (! isset($input['target']) || $row['target'] === (int) $input['target'])
+            && (! isset($input['type']) || $row['type'] === (string) $input['type'])
+            && (empty($input['with_values']) || $row['values'] > 0)));
+        $limit     = max(1, min(self::MAX_FIELDS_PAGE, (int) ($input['limit'] ?? 200)));
+        $page      = $this->withRecordChoosers(array_slice($rows, max(0, (int) ($input['offset'] ?? 0)), $limit), $catalogue['relations']);
+        $compact   = ($input['compact'] ?? true) !== false;
+
+        return ['total' => count($rows), 'offset' => max(0, (int) ($input['offset'] ?? 0))]
+            + ($compact
+                ? ['columns' => self::FIELD_COLUMNS, 'rows' => array_map(static fn (array $row): array => array_map(static fn (string $c): mixed => $c === 'settings' ? (object) $row[$c] : $row[$c], self::FIELD_COLUMNS), $page)]
+                : ['rows' => array_map(static fn (array $row): array => ['settings' => (object) $row['settings']] + $row, $page)]);
+    }
+
+    /**
+     * @param  array<string, mixed> $input `mixed`: the ability's input, checked by its schema
+     * @return array{count: int, matches: list<array<string, mixed>>}
+     */
+    private function similarFields(array $input): array
+    {
+        $catalogue = $this->fieldCatalogue(null, null);
+        $exclude   = array_flip(array_map('intval', is_array($input['exclude'] ?? null) ? $input['exclude'] : []));
+        $byId      = [];
+        $fields    = [];
+
+        foreach ($catalogue['rows'] as $row) {
+            if (isset($exclude[$row['id']])) {
+                continue;
+            }
+
+            $byId[$row['id']] = $row;
+            $fields[]         = ['relation' => $row['id'], 'name' => $row['name'], 'type' => $row['type'], 'target' => $row['target'], 'settings' => $row['compared'], 'uses' => $row['uses']];
+        }
+
+        $wanted  = ['type' => isset($input['type']) ? (string) $input['type'] : null, 'name' => (string) ($input['name'] ?? ''), 'settings' => array_map('strval', is_array($input['settings'] ?? null) ? $input['settings'] : [])];
+        $matches = (new SimilarFields())->among($wanted, $fields, max(1, min(200, (int) ($input['limit'] ?? 20))));
+        $rows    = $this->withRecordChoosers(array_map(static fn (array $m): array => $byId[$m['relation']], $matches), $catalogue['relations']);
+        $answer  = [];
+
+        foreach ($matches as $i => $match) {
+            $answer[] = $match + ['field' => array_combine(self::FIELD_COLUMNS, array_map(static fn (string $c): mixed => $c === 'settings' ? (object) $rows[$i][$c] : $rows[$i][$c], self::FIELD_COLUMNS))];
+        }
+
+        return ['count' => count($answer), 'matches' => $answer];
+    }
+
+    /**
+     * Every field of every live node with what the list shows — in five reads whatever the number of fields (`CD-7`): the fields,
+     * the tree, the types, the value counts, the settings. «chooses_records» is left to {@see withRecordChoosers()}, for a page only.
+     *
+     * @return array{rows: list<array<string, mixed>>, relations: array<int, \Taxmod\Core\Model\Relation>} `mixed`: one field row, its columns as {@see FIELD_COLUMNS} plus `compared`
+     */
+    private function fieldCatalogue(?string $kind, ?int $under): array
+    {
+        $framework = $this->framework();
+        $tree      = new Tree(new Persistence\WpdbNodeRepository());
+        $nodes     = [];
+
+        foreach ($tree->rowsUnder($framework->root(), [$framework->trash()->id], [], true, true) as $row) {
+            $nodes[$row['node']->id] = $row['node'];
+        }
+
+        $owners = $under === null ? $nodes : [];
+
+        if ($under !== null) {
+            foreach ($tree->rowsUnder($this->node($under), [$framework->trash()->id], [], true, true) as $row) {
+                $owners[$row['node']->id] = true;
+            }
+        }
+
+        $relations = array_values(array_filter(
+            (new Persistence\WpdbRelationRepository())->everyFieldRelation(),
+            static fn (\Taxmod\Core\Model\Relation $r): bool => isset($owners[$r->fromNodeId], $nodes[$r->fromNodeId]) && ($kind === null ? $r->kind !== RelationKind::Setting : $r->kind->value === $kind)
+        ));
+        $types     = $this->screen()->typesOfFields($relations);
+        $counts    = (new WpdbRecordRepository())->valueCountsByField();
+        $settings  = (new Persistence\WpdbSettingsRepository())->plainValuesByCarrier();
+        $uses      = array_count_values(array_map(static fn (\Taxmod\Core\Model\Relation $r): int => $r->toNodeId, $relations));
+        $rows      = [];
+        $byId      = [];
+
+        foreach ($relations as $r) {
+            $byId[$r->id] = $r;
+            $own          = $settings['field'][$r->id] ?? [];
+            $rows[]       = [
+                'id'              => $r->id,
+                'name'            => $r->name,
+                'node'            => $r->fromNodeId,
+                'node_name'       => isset($nodes[$r->fromNodeId]) ? $nodes[$r->fromNodeId]->name : '',
+                'target'          => $r->toNodeId,
+                'target_name'     => isset($nodes[$r->toNodeId]) ? $nodes[$r->toNodeId]->name : '',
+                'type'            => ($types[$r->id] ?? null)?->value,
+                'kind'            => $r->kind->value,
+                'multiplicity'    => $r->multiplicity->value,
+                'chooses_records' => false,
+                'values'          => $counts[$r->id]['values'] ?? 0,
+                'records'         => $counts[$r->id]['records'] ?? 0,
+                'uses'            => $uses[$r->toNodeId] ?? 0,
+                'settings'        => $own,
+                // *What similar-fields compares: the field's own settings over those of its target node.*
+                'compared'        => $own + ($settings['node'][$r->toNodeId] ?? []),
+            ];
+        }
+
+        return ['rows' => $rows, 'relations' => $byId];
+    }
+
+    /**
+     * @param  list<array<string, mixed>>                     $rows `mixed`: field rows of {@see fieldCatalogue()}
+     * @param  array<int, \Taxmod\Core\Model\Relation>    $relations
+     * @return list<array<string, mixed>>
+     */
+    private function withRecordChoosers(array $rows, array $relations): array
+    {
+        $screen = $this->screen();
+        $page   = array_values(array_filter(array_map(static fn (array $row): ?\Taxmod\Core\Model\Relation => $relations[$row['id']] ?? null, $rows)));
+        $types  = [];
+
+        foreach ($rows as $row) {
+            $types[$row['id']] = $row['type'] === null ? null : SimpleType::from($row['type']);
+        }
+
+        $choosers = $screen->recordChoosersAmong($page, $types);
+
+        return array_map(static fn (array $row): array => ['chooses_records' => isset($choosers[$row['id']])] + $row, $rows);
     }
 
     /** @return array{count: int, rows: list<array<string, int|string>>, csv: string} */
@@ -567,6 +761,25 @@ final class ModelAbilities
 
             if ($konflikt !== null) {
                 return new \WP_Error('taxmod_conflict', $konflikt->getMessage(), ['records' => $konflikt->records]);
+            }
+
+            // konzept.md §8 M-e: a validator's complaints come back one by one with their place, so a caller sees every wrong value
+            // of the list at once and where it stands — nothing was written.
+            $abgewiesen = $e;
+
+            while ($abgewiesen !== null && ! $abgewiesen instanceof \Taxmod\Core\Exception\RefusedByValidators) {
+                $abgewiesen = $abgewiesen->getPrevious();
+            }
+
+            if ($abgewiesen !== null) {
+                return new \WP_Error('taxmod_invalid', $e->getMessage(), ['complaints' => array_map(static fn (\Taxmod\Core\Addon\Complaint $c): array => [
+                    'validator' => $c->validator,
+                    'key'       => $c->key,
+                    'values'    => (object) $c->values,
+                    'node'      => $c->address?->nodeId,
+                    'field'     => $c->address?->edgeId,
+                    'record'    => $c->address?->recordId,
+                ], $abgewiesen->complaints)]);
             }
 
             return new \WP_Error('taxmod_refused', $e->getMessage());

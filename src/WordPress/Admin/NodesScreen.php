@@ -366,6 +366,72 @@ final class NodesScreen
     }
 
     /**
+     * Any fields with their simple type — the field list across all nodes (konzept.md §8 M-b), from the same reads as {@see fieldsWithTypes()}.
+     *
+     * @param  list<Relation> $relations
+     * @return array<int, SimpleType|null> relation id => type
+     */
+    public function typesOfFields(array $relations): array
+    {
+        return $this->rendering->typesFor($relations);
+    }
+
+    /**
+     * The stored values of these fields that their validators would refuse if written again — the measure of what D-1549 now refuses
+     * on rows of a list and fields of a part, which went past every validator before. Reads, never writes.
+     *
+     * @param  list<Relation> $relations
+     * @param  \Closure(list<int>): array<int, list<\Taxmod\Core\Model\RelationRecord>> $valuesOn the stored values of the named fields, by record
+     * @return list<array{field: int, record: int, value: string, complaint: string}>
+     */
+    public function storedValuesRefused(array $relations, \Closure $valuesOn): array
+    {
+        $pruefer = [\Taxmod\Core\Addon\RangeValidator::NAME, \Taxmod\Core\Addon\ShapeValidator::NAME, \Taxmod\Core\Addon\SyntaxValidator::NAME];
+        $namen   = $this->rendering->addonNamesAt($relations);
+        $geprueft = [];
+
+        foreach ($relations as $r) {
+            if (array_intersect($namen[$r->id] ?? [], $pruefer) !== []) {
+                $geprueft[$r->id] = $r;
+            }
+        }
+
+        $aus = [];
+
+        foreach ($valuesOn(array_keys($geprueft)) as $recordId => $werte) {
+            foreach ($werte as $wert) {
+                foreach ($this->rendering->complaintsFor($geprueft[$wert->relationId], $wert->value) as $complaint) {
+                    $aus[] = ['field' => $wert->relationId, 'record' => (int) $recordId, 'value' => (string) $wert->value->rawValue(), 'complaint' => $this->complaintText($complaint)];
+                }
+            }
+        }
+
+        return $aus;
+    }
+
+    /**
+     * {@see choosesRecords()} for many fields in one batch (`CD-7`).
+     *
+     * @param  list<Relation>               $relations
+     * @param  array<int, SimpleType|null>  $types from {@see typesOfFields()}
+     * @return array<int, true> relation id => chooses records, only those that do
+     */
+    public function recordChoosersAmong(array $relations, array $types): array
+    {
+        $fragen = array_values(array_filter($relations, static fn (Relation $r): bool => $r->kind === RelationKind::Aggregation && ($types[$r->id] ?? null) !== null));
+        $mit    = $this->rendering->referencingRecords($fragen);
+        $aus    = [];
+
+        foreach ($relations as $r) {
+            if ($r->kind === RelationKind::Aggregation && (($types[$r->id] ?? null) === null || ($mit[$r->id] ?? false))) {
+                $aus[$r->id] = true;
+            }
+        }
+
+        return $aus;
+    }
+
+    /**
      * Ein Satz zum Bearbeiten an fremder Stelle — die Seite «Admin» der Vorschau samt «Speichern», für ein Modul ([D-1025](../../../docs/NewConcept/90-decision-log.md)).
      *
      * ⚠️ *Sein Wort: «warum springt er zum bearbeiten in den tax wir haben doch die renderer dafür». Dieselbe Zeichnung und derselbe
@@ -5701,6 +5767,33 @@ final class NodesScreen
             }
         }
 
+        // ⚠️ **Auch die Zeilen eines mehrfachen Feldes und die Felder eines Teils** (konzept.md §8 M-e, Stefan 2026-11-21: «Fehler sofort
+        // sehen statt später»). *Gemessen am Code: der Lauf oben sah nur einfache Werte; `{values: [...]}` und Teile gingen an jedem
+        // Prüfer vorbei in {@see saveValueRows()} und {@see saveParts()} und wurden still gespeichert.*
+        $verschachtelt = $this->nestedValuesToCheck($attributes, $submitted);
+        $innenFelder   = [];
+
+        foreach ($verschachtelt as [$relation]) {
+            $innenFelder[$relation->id] = $relation;
+        }
+
+        $innenTypen    = $this->rendering->typesFor(array_values($innenFelder));
+
+        foreach ($verschachtelt as [$relation, $characters]) {
+            $type = $innenTypen[$relation->id] ?? null;
+
+            if ($type === null) {
+                continue;
+            }
+
+            $wert = $this->rendering->valuesFrom([$relation], [$relation->id => $characters])[$relation->id] ?? $type->valueFrom($characters);
+
+            foreach ($this->rendering->complaintsFor($relation, $wert) as $complaint) {
+                $beschwerden[] = $relation->name . ': ' . $this->complaintText($complaint);
+                $gesammelt[]   = $complaint->address !== null && $recordId > 0 ? $complaint->at($complaint->address->withRecord($recordId)) : $complaint;
+            }
+        }
+
         // ⚠️ **Auswahl aus Feld** ([D-1520](../../../docs/NewConcept/90-decision-log.md)): *gewählt werden darf nur, was das Quellfeld
         // desselben Satzes trägt — nach diesem Speichern, also das geschickte Quellfeld, sonst das gespeicherte.*
         $quellen   = $this->rendering->choiceSourcesOf(array_values($attributes));
@@ -5858,6 +5951,55 @@ final class NodesScreen
         foreach (is_array($roh) ? $roh : [] as $eines) {
             if (! is_array($eines) && ($id = absint(wp_unslash((string) $eines))) > 0) {
                 $aus[] = $id;
+            }
+        }
+
+        return $aus;
+    }
+
+    /**
+     * The values below the first level of a submitted record — each row of a field taking several (D-842) and each field of a part
+     * (D-741), parts of parts included — as field and characters, for the validators of {@see writeRecord()}.
+     *
+     * @param  array<int, Relation> $known     the fields at this level, by id; a part's fields are looked up
+     * @param  array<mixed>         $submitted `mixed`: form input in the shape of `$_POST`
+     * @return list<array{0: Relation, 1: string}>
+     */
+    private function nestedValuesToCheck(array $known, array $submitted, bool $inPart = false): array
+    {
+        $aus = [];
+
+        foreach ($submitted as $rawRelation => $rawValue) {
+            $relationId = absint($rawRelation);
+            $relation   = $known[$relationId] ?? ($inPart && $relationId > 0 ? $this->editor->relationById($relationId) : null);
+
+            if ($relation === null) {
+                continue;
+            }
+
+            if (! is_array($rawValue)) {
+                // *The first level's plain values are checked by the loop in writeRecord already.*
+                if ($inPart && ($characters = self::typedText((string) $rawValue)) !== '') {
+                    $aus[] = [$relation, $characters];
+                }
+
+                continue;
+            }
+
+            if (isset($rawValue['values']) && is_array($rawValue['values'])) {
+                foreach ($rawValue['values'] as $row) {
+                    if (! is_array($row) && ($characters = self::typedText((string) $row)) !== '') {
+                        $aus[] = [$relation, $characters];
+                    }
+                }
+
+                continue;
+            }
+
+            foreach ($rawValue as $inner) {
+                if (is_array($inner)) {
+                    $aus = [...$aus, ...$this->nestedValuesToCheck([], $inner, true)];
+                }
             }
         }
 

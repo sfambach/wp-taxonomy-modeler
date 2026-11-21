@@ -207,6 +207,39 @@ final class WpdbRecordRepository implements RecordRepository
         return $nachSatz;
     }
 
+    /**
+     * Every stored value of these fields, whichever record holds it — for the check that measures which stored values a validator
+     * would now refuse (D-1549). One read.
+     *
+     * @param  list<int> $relationIds
+     * @return array<int, list<RelationRecord>> record id => its values in these fields
+     */
+    public function valuesOnFields(array $relationIds): array
+    {
+        global $wpdb;
+
+        $felder = array_values(array_unique(array_filter(array_map('intval', $relationIds))));
+
+        if ($felder === []) {
+            return [];
+        }
+
+        $rows = Query::rows('Wertzeilen benannter Felder lesen', $wpdb->prepare(
+            'SELECT id, node_record_id, relation_id, locale, position, value_int, value_decimal, value_text, value_date, value_ref, value_ref_kind, value_precision
+             FROM ' . Schema::table('relation_records') . '
+             WHERE relation_id IN (' . implode(',', array_fill(0, count($felder), '%d')) . ')
+             ORDER BY node_record_id ASC, position ASC, id ASC',
+            ...$felder
+        ));
+        $nachSatz = [];
+
+        foreach ($rows ?: [] as $r) {
+            $nachSatz[(int) $r['node_record_id']][] = self::wert($r);
+        }
+
+        return $nachSatz;
+    }
+
     public function valuesOfNode(int $nodeId, array $relationIds): array
     {
         global $wpdb;
@@ -392,6 +425,26 @@ final class WpdbRecordRepository implements RecordRepository
 
         foreach ($rows as $r) {
             $aus[(int) $r['value_ref']] = (int) $r['anzahl'];
+        }
+
+        return $aus;
+    }
+
+    /**
+     * How many value rows and how many records each field holds, every field in one read — the «Zahl der Werte» of the field
+     * list (konzept.md §8 M-b). Read only.
+     *
+     * @return array<int, array{values: int, records: int}> relation id => counts; a field without values is missing
+     */
+    public function valueCountsByField(): array
+    {
+        $rows = Query::rows('Werte je Feld zaehlen', 'SELECT relation_id, COUNT(*) AS werte, COUNT(DISTINCT node_record_id) AS saetze FROM '
+            . Schema::table('relation_records') . ' GROUP BY relation_id');
+
+        $aus = [];
+
+        foreach ($rows as $r) {
+            $aus[(int) $r['relation_id']] = ['values' => (int) $r['werte'], 'records' => (int) $r['saetze']];
         }
 
         return $aus;
