@@ -163,4 +163,16 @@ final class ControlMarkupTest extends TestCase
         $this->assertTrue(ControlMarkup::isAWord(new Control('word:here', '', 'here')));
         $this->assertFalse(ControlMarkup::isAWord(new Control('do', 'trash', 'Delete')));
     }
+
+    #[Test]
+    public function a_hand_written_icon_control_takes_its_name_onto_itself(): void
+    {
+        $lifted = \Taxmod\WordPress\Draw\IconMarkup::lifted('<a class="button taxmod-square" href="x" title="Öffnen"><span title="Öffnen"><span class="taxmod-icon dashicons dashicons-visibility" aria-hidden="true"></span></span><span class="screen-reader-text">Öffnen</span></a>');
+
+        self::assertSame('<a class="button taxmod-square" href="x" title="Öffnen" aria-label="Öffnen"><span title="Öffnen"><span class="taxmod-icon dashicons dashicons-visibility" aria-hidden="true"></span></span></a>', $lifted, 'Live-Check 19: the reader text moves onto the link');
+        self::assertSame('<button type="button" class="button taxmod-icon-button" title="Löschen" aria-label="Löschen"><span class="taxmod-icon dashicons dashicons-trash" aria-hidden="true"></span></button>',
+            \Taxmod\WordPress\Draw\IconMarkup::lifted('<button type="button" class="button taxmod-icon-button" title="Löschen"><span class="taxmod-icon dashicons dashicons-trash" aria-label="Löschen"></span></button>'));
+        self::assertSame('<button class="button">Speichern</button>', \Taxmod\WordPress\Draw\IconMarkup::lifted('<button class="button">Speichern</button>'), 'words stay as they are');
+        self::assertStringContainsString(' aria-label="Seite"', \Taxmod\WordPress\Draw\IconMarkup::lifted('<button class="button" title="Seite"><span class="taxmod-icon dashicons dashicons-x" aria-hidden="true"></span></button>'), 'no name inside: the tooltip names it');
+    }
 }

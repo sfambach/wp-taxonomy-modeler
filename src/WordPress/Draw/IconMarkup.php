@@ -100,27 +100,59 @@ final class IconMarkup
     }
 
     /**
+     * Der Name eines Symbols zieht an das Element, das man bedient (Prüftor zu Live-Check 19): der Knopf trägt `aria-label`, das
+     * Symbol darin wird stumm. *Sonst nennt der Vorleser ein Bild in einem namenlosen Knopf.* Der Name kommt vom `aria-label`
+     * des Symbols oder aus dem Vorlesetext (`screen-reader-text`) daneben; der Vorlesetext fällt dann weg, sonst hiesse es zweimal.
+     *
+     * @return array{0: string, 1: string} das Attribut für den Knopf (mit führendem Leerzeichen, oder leer) und das stumme Gesicht
+     */
+    public static function liftName(string $face): array
+    {
+        $name = '';
+
+        if (preg_match('~<span class="screen-reader-text">([^<]*)</span>~', $face, $read) === 1) {
+            $name = $read[1];
+            $face = str_replace($read[0], '', $face);
+        }
+
+        if (preg_match('/ aria-label="([^"]*)"/', $face, $own) === 1) {
+            $name = $name === '' ? $own[1] : $name;
+            $face = preg_replace('/ aria-label="[^"]*"/', ' aria-hidden="true"', $face, 1) ?? $face;
+        }
+
+        return [$name === '' ? '' : ' aria-label="' . $name . '"', $face];
+    }
+
+    /**
+     * Ein ganzer Knopf oder Link, der nur ein Symbol zeigt, mit dem Namen an sich selbst ({@see self::liftName()}); ohne Namen
+     * im Inneren nimmt er seinen Tooltip. Ein Element mit eigenem Namen oder mit sichtbaren Worten bleibt, wie es ist.
+     */
+    public static function lifted(string $control): string
+    {
+        if (preg_match('~^(<(a|button|label)\b)([^>]*)>(.*)(</\2>)$~s', $control, $part) !== 1 || str_contains($part[3], ' aria-label=')) {
+            return $control;
+        }
+
+        [$named, $face] = self::liftName($part[4]);
+
+        if (trim(strip_tags($face)) !== '') {
+            return $control;
+        }
+
+        if ($named === '' && preg_match('/ title="([^"]*)"/', $part[3], $title) === 1 && $title[1] !== '') {
+            $named = ' aria-label="' . $title[1] . '"';
+        }
+
+        return $part[1] . $part[3] . $named . '>' . $face . $part[5];
+    }
+
+    /**
      * Benannt oder ausdrücklich stumm — nie beides und nie keins.
      *
      * ⚠️ *Vorher war es an jeder der sechs Stellen anders geregelt: zweimal `aria-label`, zweimal
      * `aria-hidden`, zweimal **gar nichts**. Das ist kein Geschmack, sondern der Unterschied
      * zwischen «Papierkorb» und «Grafik» im Screenreader.*
      */
-    /**
-     * Der Name eines Symbols zieht an das Element, das man bedient (Prüftor zu Live-Check 19): der Knopf trägt `aria-label`, das
-     * Symbol darin wird stumm. *Sonst nennt der Vorleser ein Bild in einem namenlosen Knopf.*
-     *
-     * @return array{0: string, 1: string} das Attribut für den Knopf (mit führendem Leerzeichen, oder leer) und das stumme Gesicht
-     */
-    public static function liftName(string $face): array
-    {
-        if (preg_match('/ aria-label="([^"]*)"/', $face, $name) !== 1) {
-            return ['', $face];
-        }
-
-        return [' aria-label="' . $name[1] . '"', preg_replace('/ aria-label="[^"]*"/', ' aria-hidden="true"', $face, 1) ?? $face];
-    }
-
     private static function naming(string $label): string
     {
         return $label === ''

@@ -75,7 +75,8 @@ final class DialogMarkup
             . ($tree === '' ? '' : ' title="' . Html::escape($tree) . '" aria-label="' . Html::escape($tree) . '"') . '>' . IconMarkup::dashicon('networking') . '</label>';
 
         // ⚠️ *Der Name des Öffners sitzt am Öffner, das Symbol darin ist stumm (Prüftor zu Live-Check 19).*
-        [$named, $opener] = str_contains($openerClass, ControlMarkup::ICON_ONLY) ? IconMarkup::liftName($opener) : ['', $opener];
+        $iconOnly         = str_contains($openerClass, ControlMarkup::ICON_ONLY) || str_contains($openerClass, 'taxmod-square');
+        [$named, $opener] = $iconOnly && trim(strip_tags(IconMarkup::liftName($opener)[1])) === '' ? IconMarkup::liftName($opener) : ['', $opener];
 
         return '<span class="taxmod-chooser' . ($tree === null ? '' : ' taxmod-pick') . '">'
             . Html::tag('input', [
@@ -87,7 +88,7 @@ final class DialogMarkup
             // ⚠️ *Ein Öffner, der nur ein Symbol ist, trägt dessen Namen als Tooltip (D-847).*
             . '<label class="' . Html::escape($openerClass) . '" for="' . $id . '"'
             . ($openerTitle !== '' ? ' title="' . Html::escape($openerTitle) . '"'
-                : (str_contains($openerClass, ControlMarkup::ICON_ONLY) && preg_match('/aria-label="([^"]*)"/', $named, $name) === 1 ? ' title="' . $name[1] . '"' : ''))
+                : ($iconOnly && preg_match('/aria-label="([^"]*)"/', $named, $name) === 1 ? ' title="' . $name[1] . '"' : ''))
             . $named . '>' . $opener . '</label>'
             . $baum
             . '<span class="taxmod-dialog' . (trim(strip_tags($title !== '' ? $title : $head)) === '' ? ' ' . self::UNTITLED : '') . ($wide ? ' ' . self::WIDE : '') . '">'

@@ -4194,9 +4194,9 @@ final class NodesScreen
             // Ohne `name`, damit es nie mitgeschickt wird — dasselbe wie beim Baumdialog.
             . '<input type="checkbox" class="taxmod-dialog-switch" id="' . esc_attr($switch) . '">'
             . '<label class="button taxmod-icon-button taxmod-dialog-open" for="' . esc_attr($switch) . '"'
-            . ' title="' . esc_attr__('Trash this node and everything under it — it is used, so this asks first', 'taxmod') . '">'
+            . ' title="' . esc_attr__('Trash this node and everything under it — it is used, so this asks first', 'taxmod') . '"'
+            . ' aria-label="' . esc_attr__('Trash', 'taxmod') . '">'
             . IconMarkup::dashicon('trash')
-            . '<span class="screen-reader-text">' . esc_html__('Trash', 'taxmod') . '</span>'
             . '</label>'
             . '<span class="taxmod-dialog">'
             . '<label class="taxmod-dialog-shade" for="' . esc_attr($switch) . '"></label>'
@@ -7092,11 +7092,12 @@ final class NodesScreen
         // ⚠️ *Ein Symbol ohne Rahmen und mit Namen, wie jeder Symbolknopf dieser Seite — `icon-button-check`
         // hat die erste Fassung mit «, ‹ als nackten Zeichen in `button`-Kästen rot gemeldet.*
         $link = static function (string $ziel, string $icon, string $titel, bool $moeglich): string {
-            $gesicht = IconMarkup::dashicon($icon, $titel);
+            // Live-Check 19: the name on the link, the shape mute.
+            $gesicht = IconMarkup::dashicon($icon);
 
             return $moeglich
-                ? '<a class="button ' . ControlMarkup::ICON_ONLY . '" href="' . esc_url($ziel) . '" title="' . esc_attr($titel) . '">' . $gesicht . '</a>'
-                : '<span class="button disabled ' . ControlMarkup::ICON_ONLY . '" aria-disabled="true" title="' . esc_attr($titel) . '">' . $gesicht . '</span>';
+                ? '<a class="button ' . ControlMarkup::ICON_ONLY . '" href="' . esc_url($ziel) . '" title="' . esc_attr($titel) . '" aria-label="' . esc_attr($titel) . '">' . $gesicht . '</a>'
+                : '<span class="button disabled ' . ControlMarkup::ICON_ONLY . '" aria-disabled="true" title="' . esc_attr($titel) . '" aria-label="' . esc_attr($titel) . '">' . $gesicht . '</span>';
         };
         $nach = fn (int $blatt): string => $this->backTo($selected->id, [self::RECORD_PAGE => (string) $blatt]);
 
@@ -7313,8 +7314,8 @@ final class NodesScreen
         $home = $satzId > 0 ? $this->recordHome($satzId, $knotenId) : null;
 
         // *Ein Icon-Quadrat mit Tooltip wie die anderen Knöpfe der Toolbar (seine Regel 18.11.: «Buttons einheitliche Größe, Icon-Quadrate mit Tooltip»).*
-        return $home === null ? '' : ' <a class="button taxmod-icon-button taxmod-record-home" href="' . esc_url($home) . '" title="' . esc_attr__('Open in its module', 'taxmod') . '">'
-            . ListPage::icon('external', __('Open in its module', 'taxmod')) . '</a>';
+        return $home === null ? '' : ' ' . IconMarkup::lifted('<a class="button taxmod-icon-button taxmod-record-home" href="' . esc_url($home) . '" title="' . esc_attr__('Open in its module', 'taxmod') . '">'
+            . ListPage::icon('external', __('Open in its module', 'taxmod')) . '</a>');
     }
 
     /** D-1483: a module that owns the record (orders, stock, sales) names its own page; null leaves the Modeller's. */

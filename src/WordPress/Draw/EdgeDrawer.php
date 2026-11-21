@@ -194,8 +194,8 @@ final class EdgeDrawer implements Drawer
                 . '<summary><span class="taxmod-record-node" data-taxmod-group="' . $i . '">' . self::e($ast->name)
                 . ($ast->count === 0 ? '' : ' <span class="taxmod-record-count">(' . $ast->count . ')</span>')
                 . '</span>'
-                . ($ast->addAt === '' ? '' : ' <a class="' . ControlMarkup::ICON_ONLY . ' taxmod-record-add" href="' . self::e($ast->addAt) . '" target="_blank" rel="noopener" title="' . self::e($ast->addWord) . '">'
-                    . IconMarkup::dashicon('plus-alt2', $ast->addWord) . '</a>')
+                . ($ast->addAt === '' ? '' : ' ' . IconMarkup::lifted('<a class="' . ControlMarkup::ICON_ONLY . ' taxmod-record-add" href="' . self::e($ast->addAt) . '" target="_blank" rel="noopener" title="' . self::e($ast->addWord) . '">'
+                    . IconMarkup::dashicon('plus-alt2', $ast->addWord) . '</a>'))
                 . '</summary>';
 
             $tiefe = $ast->depth;
@@ -236,8 +236,8 @@ final class EdgeDrawer implements Drawer
 
     private function referenceList(ReferenceList $l): string
     {
-        $knopf = fn (string $art, string $farbe, string $symbol, string $wort): string => '<button type="button" class="button taxmod-icon-button taxmod-ref-' . $art . '" style="color:' . $farbe . '"'
-            . ($wort === '' ? '' : ' title="' . self::e($wort) . '"') . '>' . $this->draw(Icon::named($symbol, $wort)) . '</button>';
+        $knopf = fn (string $art, string $farbe, string $symbol, string $wort): string => IconMarkup::lifted('<button type="button" class="button taxmod-icon-button taxmod-ref-' . $art . '" style="color:' . $farbe . '"'
+            . ($wort === '' ? '' : ' title="' . self::e($wort) . '"') . '>' . $this->draw(Icon::named($symbol, $wort)) . '</button>');
         $html  = '<table class="taxmod-ref-rows"><tbody>'
             . '<input type="hidden" name="' . self::e($l->name) . '" value=""' . ($l->form === '' ? '' : ' form="' . self::e($l->form) . '"') . '>';
 
@@ -308,8 +308,8 @@ final class EdgeDrawer implements Drawer
     /** Up, down and the bin of one link in a chain; the end that cannot move is greyed (D-370). */
     private function chainButtons(string $wort, bool $erstes, bool $letztes): string
     {
-        $knopf = fn (string $art, string $symbol, string $zusatz, string $farbe): string => '<button type="button" class="button taxmod-icon-button taxmod-list-' . $art . '"' . $zusatz . ' style="color:' . $farbe . '">'
-            . $this->draw(Icon::named($symbol, $wort)) . '</button>';
+        $knopf = fn (string $art, string $symbol, string $zusatz, string $farbe): string => IconMarkup::lifted('<button type="button" class="button taxmod-icon-button taxmod-list-' . $art . '"' . $zusatz . ' style="color:' . $farbe . '">'
+            . $this->draw(Icon::named($symbol, $wort)) . '</button>');
 
         return $knopf('move', 'arrow-up-alt2', ' data-taxmod-move="up"' . ($erstes ? ' disabled' : ''), $erstes ? '#1d2327;opacity:.35' : '#1d2327')
             . $knopf('move', 'arrow-down-alt2', ' data-taxmod-move="down"' . ($letztes ? ' disabled' : ''), $letztes ? '#1d2327;opacity:.35' : '#1d2327')
@@ -370,11 +370,11 @@ final class EdgeDrawer implements Drawer
     private function recordPicker(RecordPicker $p): string
     {
         $offen = $p->taken && $p->href !== null && $p->href !== '' && $p->openWord !== ''
-            ? '<a class="button ' . ControlMarkup::ICON_ONLY . ' taxmod-record-open" href="' . self::e($p->href) . '" target="_blank" rel="noopener" title="' . self::e($p->openWord) . '">'
-                . IconMarkup::dashicon('visibility', $p->openWord) . '</a>'
+            ? IconMarkup::lifted('<a class="button ' . ControlMarkup::ICON_ONLY . ' taxmod-record-open" href="' . self::e($p->href) . '" target="_blank" rel="noopener" title="' . self::e($p->openWord) . '">'
+                . IconMarkup::dashicon('visibility', $p->openWord) . '</a>')
             : '';
-        $ende = '<button type="button" class="button ' . ControlMarkup::ICON_ONLY . ' taxmod-record-clear"' . ($p->taken ? '' : ' hidden') . ' style="color:#b32d2e" title="' . self::e($p->clearWord) . '">'
-                . IconMarkup::dashicon('trash', $p->clearWord) . '</button>'
+        $ende = IconMarkup::lifted('<button type="button" class="button ' . ControlMarkup::ICON_ONLY . ' taxmod-record-clear"' . ($p->taken ? '' : ' hidden') . ' style="color:#b32d2e" title="' . self::e($p->clearWord) . '">'
+                . IconMarkup::dashicon('trash', $p->clearWord) . '</button>')
             . '<span class="taxmod-record-hits" hidden></span>'
             . '</span>';
 
@@ -399,8 +399,8 @@ final class EdgeDrawer implements Drawer
         return '<span class="taxmod-record-pick taxmod-record-remote' . ($nichts ? '' : ' taxmod-record-taken') . ($p->wrap ? ' taxmod-record-wrap' : '') . '">'
             . '<span class="taxmod-record-choices" hidden>' . $knopf('', $nichts) . ($nichts ? '' : $knopf((string) $p->chosen, true)) . '</span>'
             . '<input type="search" class="taxmod-record-quick" autocomplete="off" placeholder="' . self::e($p->searchWord) . '" aria-label="' . self::e($p->searchWord) . '"' . ($nichts ? '' : ' hidden') . '>'
-            . ($p->treeWord === '' ? '' : '<button type="button" class="button ' . ControlMarkup::ICON_ONLY . ' taxmod-record-browse"' . ($nichts ? '' : ' hidden') . ' title="' . self::e($p->treeWord) . '">'
-                . IconMarkup::dashicon('networking', $p->treeWord) . '</button>')
+            . ($p->treeWord === '' ? '' : IconMarkup::lifted('<button type="button" class="button ' . ControlMarkup::ICON_ONLY . ' taxmod-record-browse"' . ($nichts ? '' : ' hidden') . ' title="' . self::e($p->treeWord) . '">'
+                . IconMarkup::dashicon('networking', $p->treeWord) . '</button>'))
             . $zeigt
             . $offen . $ende;
     }
@@ -758,8 +758,8 @@ final class EdgeDrawer implements Drawer
     {
         $form    = $o->form === '' ? '' : ' form="' . self::e($o->form) . '"';
         $letzter = count($o->chosen) - 1;
-        $pfeil   = static fn (string $wohin, bool $aus, string $wort): string => '<button type="button" class="button ' . ControlMarkup::ICON_ONLY . ' taxmod-list-move" data-taxmod-move="' . $wohin . '"'
-            . ($aus ? ' disabled style="color:#1d2327;opacity:.35"' : ' style="color:#1d2327"') . '>' . IconMarkup::dashicon('arrow-' . $wohin . '-alt2', $wort) . '</button>';
+        $pfeil   = static fn (string $wohin, bool $aus, string $wort): string => IconMarkup::lifted('<button type="button" class="button ' . ControlMarkup::ICON_ONLY . ' taxmod-list-move" data-taxmod-move="' . $wohin . '"'
+            . ($aus ? ' disabled style="color:#1d2327;opacity:.35"' : ' style="color:#1d2327"') . '>' . IconMarkup::dashicon('arrow-' . $wohin . '-alt2', $wort) . '</button>');
         $html    = '<span class="taxmod-switch-picker"><ol class="taxmod-switch-cascade">';
 
         foreach ($o->chosen as $platz => $g) {
@@ -1047,8 +1047,8 @@ final class EdgeDrawer implements Drawer
         $daten = ($knoepfe->addressField === '' ? '' : ' data-taxmod-address="' . self::e($knoepfe->addressField) . '"')
             . ($knoepfe->captionField === '' ? '' : ' data-taxmod-caption="' . self::e($knoepfe->captionField) . '"')
             . ' data-taxmod-newtab="' . ($knoepfe->newTab ? '1' : '0') . '"';
-        $knopf = static fn (string $klasse, string $symbol, string $wort): string => '<button type="button" class="button ' . ControlMarkup::ICON_ONLY . ' ' . $klasse . '" style="color:#1d2327"'
-            . ($wort === '' ? '' : ' title="' . self::e($wort) . '"') . $daten . '>' . IconMarkup::dashicon($symbol, $wort) . '</button>';
+        $knopf = static fn (string $klasse, string $symbol, string $wort): string => IconMarkup::lifted('<button type="button" class="button ' . ControlMarkup::ICON_ONLY . ' ' . $klasse . '" style="color:#1d2327"'
+            . ($wort === '' ? '' : ' title="' . self::e($wort) . '"') . $daten . '>' . IconMarkup::dashicon($symbol, $wort) . '</button>');
 
         return $knopf('taxmod-media-library', 'media-default', $knoepfe->libraryWord) . $knopf('taxmod-media-wplink', 'admin-links', $knoepfe->linkWord);
     }

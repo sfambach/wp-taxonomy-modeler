@@ -180,10 +180,23 @@ $say(str_contains($post('trash_node', $kind2->id), __('Only an empty group can b
 $_POST = $_REQUEST = [];
 $_GET  = ['taxmod_scope' => (string) $ast->id, 'taxmod_collapsed' => 'none'];
 $leer  = $plugin->screen()->render();
-$parkt = static fn (string $html, int $id): bool => preg_match('/id="taxmod-node-' . $id . '".*?value="trash_node"[^>]*>/s', $html, $m) === 1 && ! str_contains($m[0], ' disabled');
-$say($parkt($leer, $kind->id) && ! $parkt($leer, $kind2->id), 'D-1574 (D): im Ast ist der Papierkorb nur an der leeren Gruppe frei, an der mit Untergruppe gesperrt');
+// ⚠️ *Ohne `.*?` über die ganze Seite: der erste Grenzlauf war an beiden Zusagen rot, ein fauler Ausdruck über Hunderte KB kann still
+// scheitern. Die Zeile reicht bis zur nächsten Zeile; was gefunden wurde, steht bei Rot daneben.*
+$parkt = static function (string $html, int $id) use (&$gesehen): bool {
+    $start = strpos($html, 'id="taxmod-node-' . $id . '"');
+    $next  = $start === false ? false : strpos($html, 'id="taxmod-node-', $start + 10);
+    $row   = $start === false ? '' : substr($html, $start, $next === false ? null : $next - $start);
+    $at    = strpos($row, 'value="trash_node"');
+    $tag   = $at === false ? '' : substr($row, (int) strrpos(substr($row, 0, $at), '<'), (int) strpos($row, '>', $at) - (int) strrpos(substr($row, 0, $at), '<') + 1);
+    $gesehen[$id] = $start === false ? 'keine Zeile' : ($tag === '' ? 'kein trash_node in der Zeile' : $tag);
+
+    return $tag !== '' && ! str_contains($tag, ' disabled');
+};
+$gesehen = [];
+$say($parkt($leer, $kind->id) && ! $parkt($leer, $kind2->id), 'D-1574 (D): im Ast ist der Papierkorb nur an der leeren Gruppe frei, an der mit Untergruppe gesperrt'
+    . ' — Kind: ' . ($gesehen[$kind->id] ?? '?') . ' · Kind 2: ' . ($gesehen[$kind2->id] ?? '?'));
 $_GET = ['taxmod_collapsed' => 'none'];
-$say($parkt($plugin->screen()->render(), $kind2->id), 'im ganzen Baum bleibt er frei');
+$say($parkt($plugin->screen()->render(), $kind2->id), 'im ganzen Baum bleibt er frei — Kind 2: ' . ($gesehen[$kind2->id] ?? '?'));
 $_GET = [];
 
 echo $failed === 0 ? "\nscope-check: ok\n" : "\nscope-check: {$failed} FAIL\n";
