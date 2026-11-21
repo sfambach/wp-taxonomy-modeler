@@ -14,6 +14,7 @@ $root   = dirname(__DIR__, 2);
 $page   = (string) file_get_contents($root . '/src/WordPress/Admin/ListPage.php');
 $column = (string) file_get_contents($root . '/src/Core/Listing/ListColumn.php');
 $rules  = (string) file_get_contents($root . '/src/WordPress/Admin/RulesPage.php');
+$css    = (string) file_get_contents($root . '/assets/admin.css');
 $red    = 0;
 
 foreach ([
@@ -30,6 +31,9 @@ foreach ([
     // Live-Check 7: the choices in the bar shrank to 2 px and their selects overlapped.
     'the choices box shrinks below its selects'              => str_contains($page, '.tablenav.taxmod-list-bar>.taxmod-list-choices,.tablenav.taxmod-list-bar>.bulkactions{flex:0 1 auto;min-width:min-content}'),
     'a select in the bar does not give way to 5.5em'          => str_contains($page, ':is(.taxmod-list-choices,.bulkactions) select{flex:1 1 10em;width:0;min-width:5.5em;max-width:10em}'),
+    // Live-Check 13: a clipped switch (`position:absolute`) without a frame widened the whole page past the list's scroll box.
+    'a chooser gives its switch no frame'                    => str_contains($css, ".taxmod-chooser {\n    display: inline-block;\n    max-width: 100%;\n    /* Live-Check 13") && str_contains($css, "    position: relative;\n}"),
+    'a toggle gives its input no frame'                      => str_contains($css, "    cursor: pointer;\n    position: relative;\n}"),
 ] as $what => $green) {
     if (! $green) {
         echo "FAIL {$what}\n";
