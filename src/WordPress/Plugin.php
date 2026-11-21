@@ -58,6 +58,9 @@ final class Plugin
     /** `apply_filters(NODE_SCREEN_FILTER, '', $scopeRoot, $hostSlug)`: the node page scoped to one branch, for a module's page `$hostSlug` (a `taxmod-…` admin page) whose links and acts come back to it (D-1574). */
     public const NODE_SCREEN_FILTER = 'taxmod_node_screen';
 
+    /** `apply_filters(NODE_SCREEN_HOSTS_FILTER, [])`: the admin pages a module draws the node page on; only these are taken as `taxmod_host` (D-1574). */
+    public const NODE_SCREEN_HOSTS_FILTER = 'taxmod_node_screen_hosts';
+
     /** `apply_filters(CLAIMED_FIELDS_FILTER, [], $recordId, $nodeId)`: relation id → ['label' => button text, 'url' => the module's dialog] — fields a module changes only through its own dialog; the record editor shows them read-only with that button — none when 'url' is empty — and its save leaves them alone (D-1334). */
     public const CLAIMED_FIELDS_FILTER = 'taxmod_claimed_fields';
 

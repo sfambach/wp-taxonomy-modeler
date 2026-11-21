@@ -2551,6 +2551,46 @@ final class NodesScreen
         return '<span id="' . esc_attr($id . '-similar') . '" class="taxmod-similar" data-taxmod-follows="name">' . $html . '</span>';
     }
 
+    /**
+     * Der Name des «+»: im eingegrenzten Baum legt es eine Untergruppe an, im ganzen Baum ein Kind (Prüftor zu Live-Check 15).
+     *
+     * @return array{label: string, title: string}
+     */
+    private function addChildWords(): array
+    {
+        return $this->scopeFromRequest() !== null
+            ? ['label' => __('Add subgroup', 'taxmod'), 'title' => __('Add a subgroup under this group', 'taxmod')]
+            : ['label' => __('Add child', 'taxmod'), 'title' => __('Add a child under this node', 'taxmod')];
+    }
+
+    /** Umbenennen aus der Zeile (D-1574): der Name im Dialog, der Akt `rename` beim Bestätigen. */
+    private function renameDialog(Node $node): Dialog
+    {
+        return new Dialog(
+            'taxmod-rename-' . $node->id,
+            /* translators: %s: the name of the node. */
+            sprintf(__('Rename %s', 'taxmod'), $node->name),
+            '<label class="taxmod-dialog-field"><span>' . esc_html__('Name', 'taxmod') . '</span>'
+            . ListPage::field(\Taxmod\Core\Description\InputKind::Line, 'name', $node->name, ['class' => 'taxmod-toolbar-name']) . '</label>',
+            __('Rename', 'taxmod'),
+            __('Cancel', 'taxmod')
+        );
+    }
+
+    /**
+     * Verschieben aus der Zeile (D-1574): der gemeinsame Wahlbaum, «OK» schickt `move` ab. Im eingegrenzten Baum öffnet er im Ast.
+     *
+     * ⚠️ *Gesperrt ist nur der Knoten selbst — seine Nachfahren je Zeile zu sammeln wäre ein Gang je Zeile (`CD-7`); unter sich
+     * selbst verschieben lehnt der Editor ab, aus dem Ast heraus {@see refuseOutsideScope()}.*
+     */
+    private function movePick(Node $node): \Taxmod\Core\Description\PickOpener
+    {
+        $scope = $this->scopeFromRequest();
+
+        return new \Taxmod\Core\Description\PickOpener('target', '', $node->parentId(), null, [$node->id], $scope === null ? array_slice($node->ancestorIds(), 0, 2) : [$scope->id],
+            __('Move this node under another', 'taxmod'), \Taxmod\Core\Description\Icon::named('move', __('Move', 'taxmod')));
+    }
+
     private function newChildDialog(Node $parent, string $id): Dialog
     {
         $imKatalog = $this->catalogue()?->baseTypeOf($parent) !== null;
@@ -2679,10 +2719,11 @@ final class NodesScreen
             // ⚠️ **Ein «+», und es fragt erst** ([D-730](../../../docs/NewConcept/90-decision-log.md)) — *sein Wort: «im baum erstellt
             // automatisch kategorie knoten … nur ein + bei beiden … es kommt ein dialog hoch, lässt den benutzer den type des
             // knoten wählen und mit ok anlegen / abbruch auch möglich».* Derselbe Dialog wie im Kopf der Seite.
-            // D-1574, Live-Check 15: im eingegrenzten Baum (Materialgruppen) steht das Wort, damit der Akt als solcher erkennbar ist.
-            $this->scopeFromRequest() !== null
-                ? new Control('do', 'add_child', __('+ Subgroup', 'taxmod'), __('Add a subgroup under this group', 'taxmod'), opens: $this->newChildDialog($row['node'], 'taxmod-add-' . $row['node']->id), address: $stelle)
-                : new Control('do', 'add_child', __('Add child', 'taxmod'), __('Add a child under this node', 'taxmod'), icon: 'plus-alt2', opens: $this->newChildDialog($row['node'], 'taxmod-add-' . $row['node']->id), address: $stelle),
+            // D-1574, Prüftor zu Live-Check 15: derselbe Knopf in beiden Bäumen (D-1511 Regel 3), nur sein Name folgt dem Zusammenhang.
+            new Control('do', 'add_child', $this->addChildWords()['label'], $this->addChildWords()['title'], icon: 'plus-alt2', opens: $this->newChildDialog($row['node'], 'taxmod-add-' . $row['node']->id), address: $stelle),
+            new Control('do', 'rename', __('Rename', 'taxmod'), __('Rename this node', 'taxmod'), ! $this->framework->isProtected($row['node']), icon: 'edit', opens: $this->renameDialog($row['node']), address: $stelle),
+            new Control('do', 'move', __('Move', 'taxmod'), __('Move this node under another', 'taxmod'), ! $this->framework->isProtected($row['node']), icon: 'move', address: $stelle,
+                picks: $this->movePick($row['node'])),
             // ⚠️ **Duplicate, asked for three times** — the owner, in the end plainly: *duplicating
             // `my_int` does not work, no button in the tree nor in the head.* The title says what does
             // **not** come along, because a copy that silently dropped forty children would be a
@@ -3835,9 +3876,7 @@ final class NodesScreen
             . $this->form(
                 $selected->id,
                 [],
-                ControlMarkup::button($this->scopeFromRequest() !== null
-                    ? new Control('do', 'add_child', __('+ Subgroup', 'taxmod'), __('Add a subgroup under this group', 'taxmod'), opens: $this->newChildDialog($selected, 'taxmod-add-head-' . $selected->id), address: Address::ofNode($selected->id))
-                    : new Control('do', 'add_child', __('Add child', 'taxmod'), __('Add a child under this node', 'taxmod'), icon: 'plus-alt2', opens: $this->newChildDialog($selected, 'taxmod-add-head-' . $selected->id), address: Address::ofNode($selected->id)))
+                ControlMarkup::button(new Control('do', 'add_child', $this->addChildWords()['label'], $this->addChildWords()['title'], icon: 'plus-alt2', opens: $this->newChildDialog($selected, 'taxmod-add-head-' . $selected->id), address: Address::ofNode($selected->id)))
             )
             // ⚠️ **The save button submits the settings panel from outside it.** `form="…"` is plain
             // HTML — a button may name the form it belongs to — so nothing needs scripting.
@@ -5017,11 +5056,7 @@ final class NodesScreen
 
         // ⚠️ *Der Öffner selbst ist an einer Stelle gebaut ({@see PickOpenerMarkup}) — der Kern braucht ihn ebenso für einen Verweis auf
         // einen ganzen Baum; hier kommen nur das Icon mit Wort und der Akt dahinter dazu.*
-        // D-1574, Live-Check 15: im eingegrenzten Baum zeigt «Verschieben» sein Wort statt des Icons.
-        $worded = $act === 'move' && $this->scopeFromRequest() !== null;
-
-        return PickOpenerMarkup::of(new \Taxmod\Core\Description\PickOpener($field, $formId, $chosen, $initial, $barred, $open, $title,
-                $worded ? \Taxmod\Core\Description\CurrentChoice::named($label) : \Taxmod\Core\Description\Icon::named($icon, $label), showsName: $worded))
+        return PickOpenerMarkup::of(new \Taxmod\Core\Description\PickOpener($field, $formId, $chosen, $initial, $barred, $open, $title, \Taxmod\Core\Description\Icon::named($icon, $label)))
             . ($act === '' ? '' : '<button type="submit" name="do" value="' . esc_attr($act) . '" class="taxmod-pick-submit" hidden' . ($address === null ? '' : ' data-taxmod-address="' . esc_attr($address->token()) . '"') . $form . '>' . esc_html($label) . '</button>');
     }
 
@@ -8480,14 +8515,16 @@ final class NodesScreen
     /**
      * Wohin Links und Rücksprünge führen: die einbettende Modulseite, solange die Eingrenzung gilt, sonst der Modeller.
      *
-     * ⚠️ *Die Adresse wird nicht geglaubt (`CD-5`): nur mit gültigem Ast und nur ein Taxmod-Seitenname, sonst wäre `taxmod_host`
-     * ein Sprung auf eine beliebige Seite des Adminbereichs.*
+     * ⚠️ *Die Adresse wird nicht geglaubt (`CD-5`): nur mit gültigem Ast und nur eine Seite, die ein Modul als Gastgeber angemeldet
+     * hat ({@see Plugin::NODE_SCREEN_HOSTS_FILTER}, Prüftor zu Live-Check 15), sonst wäre `taxmod_host` ein Sprung auf eine beliebige
+     * Seite des Adminbereichs.*
      */
     private function pageSlug(): string
     {
-        $host = sanitize_key((string) $this->circumstance(self::HOST));
+        $host  = sanitize_key((string) $this->circumstance(self::HOST));
+        $hosts = (array) apply_filters(Plugin::NODE_SCREEN_HOSTS_FILTER, []);
 
-        return str_starts_with($host, 'taxmod-') && $this->scopeFromRequest() !== null ? $host : 'taxmod';
+        return $host !== '' && in_array($host, $hosts, true) && $this->scopeFromRequest() !== null ? $host : 'taxmod';
     }
 
     /**

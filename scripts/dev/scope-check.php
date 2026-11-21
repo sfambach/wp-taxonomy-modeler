@@ -5,7 +5,8 @@
  * einschränken»), as a failing check: with `taxmod_scope` the tree starts at that node and shows it as its first row,
  * nothing beside it and no trash; links carry the scope; a scope that is no node, the trash or below it shows the whole tree;
  * no act leaves the branch: a move out of it, an act beside it and parking the branch itself are refused; embedded in a module's
- * page (`embeddedIn`, filter `taxmod_node_screen`) links come back to that page, never to one outside Taxmod.
+ * page (`embeddedIn`, filter `taxmod_node_screen`) links come back to that page only when it is registered as a host; a row
+ * carries the same buttons in both trees (add, rename, move), the «+» named for its context.
  *
  *     WP_ROOT=/path/to/wordpress php scripts/dev/scope-check.php
  */
@@ -83,17 +84,33 @@ $say(! str_contains($html, 'class="taxmod-trash"'), 'kein Papierkorb im eingegre
 $say(str_contains($html, 'taxmod_scope=' . $ast->id), 'die Links tragen die Eingrenzung');
 $say(preg_match('/data-taxmod-carry="[^"]*\btaxmod_scope\b/', $html) === 1, 'die Seite führt sie im Skript mit');
 
-$say(str_contains($html, '>' . esc_html__('+ Subgroup', 'taxmod') . '<'), 'die Zeile zeigt «+ Untergruppe» als Wort (Live-Check 15)');
+echo "\n== derselbe Knopf in beiden Bäumen (Prüftor zu Live-Check 15, D-1511 Regel 3) ==\n";
+$ganzerBaum = $draw(null);
+$knoepfe    = static function (string $html, int $id): array {
+    // *Die Zeile reicht von ihrer Id bis zur nächsten Zeile des Baums.*
+    preg_match('/id="taxmod-node-' . $id . '".*?(?=class="taxmod-tree-node|$)/s', $html, $zeile);
+    preg_match_all('/dashicons-([a-z0-9-]+)/', $zeile[0] ?? '', $icons);
+
+    return array_values(array_unique($icons[1]));
+};
+$imAst = $knoepfe($html, $kind->id);
+$say($imAst !== [] && $imAst === $knoepfe($ganzerBaum, $kind->id), 'die Zeile trägt im Ast dieselben Symbole wie im ganzen Baum (' . implode(' ', $imAst) . ')');
+$say(in_array('edit', $imAst, true) && in_array('move', $imAst, true), 'Umbenennen und Verschieben stehen in der Zeile');
+$say(str_contains($html, esc_attr__('Add a subgroup under this group', 'taxmod')) && ! str_contains($ganzerBaum, esc_attr__('Add a subgroup under this group', 'taxmod'))
+    && str_contains($ganzerBaum, esc_attr__('Add a child under this node', 'taxmod')), 'das «+» heisst im Ast «Untergruppe anlegen», im ganzen Baum «Kind anlegen»');
+$say(str_contains($html, 'id="taxmod-rename-' . $kind->id . '"') && str_contains($html, 'class="taxmod-pick-submit" hidden name="do" value="move"'), 'Umbenennen öffnet seinen Dialog, Verschieben den Wahlbaum mit dem Akt dahinter');
 
 echo "\n== in der Seite eines Moduls (Live-Check 15) ==\n";
 unset($_GET['taxmod_scope']);
 $_GET['taxmod_collapsed'] = 'none';
-$eingebettet = $plugin->screen()->embeddedIn($ast->id, 'taxmod-__sc-host')->render();
+$host = 'taxmod-__sc-host';
+$say(! str_contains($plugin->screen()->embeddedIn($ast->id, $host)->render(), 'page=' . $host), 'eine nicht angemeldete Seite ist kein Ziel, auch mit taxmod- davor');
+add_filter(\Taxmod\WordPress\Plugin::NODE_SCREEN_HOSTS_FILTER, static fn (array $hosts): array => [...$hosts, $host]);
+$eingebettet = $plugin->screen()->embeddedIn($ast->id, $host)->render();
 $say($row($eingebettet, $kind->id) && ! $row($eingebettet, $daneben->id), 'eingebettet gilt die Eingrenzung ohne Parameter in der Adresse');
-$say(str_contains($eingebettet, 'page=taxmod-__sc-host') && ! str_contains(str_replace('page=taxmod-__sc-host', '', $eingebettet), 'page=taxmod&amp;taxmod_collapsed'), 'Faltlinks führen auf die Modulseite');
-$say(! str_contains($plugin->screen()->embeddedIn($ast->id, 'options-general')->render(), 'page=options-general'), 'eine Seite ausserhalb von Taxmod ist kein Ziel');
-$_GET['taxmod_host'] = 'taxmod-__sc-host';
-$say(! str_contains($plugin->screen()->render(), 'page=taxmod-__sc-host'), 'ohne Eingrenzung führt kein Link auf die Modulseite');
+$say(str_contains($eingebettet, 'page=' . $host), 'die Links führen auf die angemeldete Modulseite');
+$_GET['taxmod_host'] = $host;
+$say(! str_contains($plugin->screen()->render(), 'page=' . $host), 'ohne Eingrenzung führt kein Link auf die Modulseite');
 unset($_GET['taxmod_host']);
 $say(has_filter(\Taxmod\WordPress\Plugin::NODE_SCREEN_FILTER) !== false, 'der Filter für Modulseiten ist angemeldet');
 
