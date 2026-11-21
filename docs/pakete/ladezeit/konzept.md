@@ -137,6 +137,7 @@ flowchart LR
 - **Wohin die Zeit ging** ([D-1482](../../NewConcept/90-decision-log.md)): je Eintrag die ms bis WordPress geladen ist, bis die Seite gezeichnet ist, und die Wartezeit auf fremde Server (nur ms). Die Fähigkeit nennt dazu, was eine leere Abfrage kostet; gemessen nur beim Lesen der Fähigkeit.
 - **Datenbank oder Programm** ([D-1493](../../NewConcept/90-decision-log.md)): je Eintrag die ms in den Anweisungen des Modells und die ms in seinen gestreamten Lesungen (nur Zahlen).
 - **Die Vorschau eines Satzes, Feld für Feld** ([D-1482, Nachtrag 2](../../NewConcept/90-decision-log.md)): die Fähigkeit `taxmod/preview-times` (nur lesen) zeichnet die bearbeitbare Vorschau eines Satzes und nennt je Schritt und je Feld ms, Abfragen und KB — Feldnamen und Zahlen, keine Werte. Seine Zeile (21.11.): *«Detail: Vorschau 15825 ms / 661 Abfragen»*; mit erfundenen Sätzen brauchte dieselbe Vorschau 0,3 s, gemessen wird also dort, wo seine Daten sind.
+- **Ein auffälliges Feld erklärt sich** ([D-1482, Nachtrag 3](../../NewConcept/90-decision-log.md)): ab 100 KB zählt die Messung das Markup des Feldes aus (häufigste Elemente und Klassennamen), ab 50 Abfragen nennt sie deren Formen mit Anzahl — jede Zahl und jeder Text darin ist durch `?` ersetzt. Weiterhin kein Wert eines Satzes.
 
 ## Schmale Lesung ([D-1486](../../NewConcept/90-decision-log.md), 2026-11-19)
 

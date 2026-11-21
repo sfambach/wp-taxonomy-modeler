@@ -14,6 +14,11 @@ final class FieldDoesNotOpen extends DomainError
         return new self('No data key is configured (TAXMOD_DATA_KEY in wp-config.php), so a confidential field cannot be written.');
     }
 
+    public static function sameKey(): self
+    {
+        return new self('The new data key is the one in use; a change of key needs another key.');
+    }
+
     public static function badKey(): self
     {
         return new self('The data key must be 32 bytes, written as 64 hex digits or as base64.');

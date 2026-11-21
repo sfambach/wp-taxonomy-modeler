@@ -107,6 +107,7 @@ require dirname(__DIR__, 2) . '/vendor/autoload.php';
 use Taxmod\Core\Model\Type\TextType;
 use Taxmod\Core\Privacy\FieldCipher;
 use Taxmod\WordPress\ModelDoor;
+use Taxmod\WordPress\Persistence\FieldSealRows;
 use Taxmod\WordPress\Persistence\Schema;
 use Taxmod\WordPress\Persistence\WpdbNodeRepository;
 use Taxmod\WordPress\Persistence\WpdbRecordRepository;
@@ -155,7 +156,9 @@ if (! is_array($built)) {
 
 $ref = $built['refs'];
 
-if (FieldSeal::cipher() === null) {
+$ownKey = FieldSeal::cipher() === null;
+
+if ($ownKey) {
     $marked = $apply->execute(['changes' => [['op' => 'set_addons', 'node' => $text->id, 'field' => $ref['name'], 'addons' => [['name' => 'confidential']]]]]);
     $answer = $apply->execute(['changes' => [['op' => 'create_record', 'ref' => 'x', 'node' => $ref['k'], 'values' => [(string) $ref['name'] => 'ohne Schlüssel']]]]);
     check('without a data key a confidential field is refused, never stored plain', ! is_wp_error($marked) && is_wp_error($answer), $why($answer));
@@ -245,6 +248,57 @@ for ($i = 0; $i < 50 && FieldSealJob::runBatch() > 0; $i++) {
 
 check('after the job nothing is plain', FieldSealJob::plainLeft() === ['live' => 0, 'history' => 0, 'journal' => 0], wp_json_encode(FieldSealJob::plainLeft()));
 check('the old value is now sealed and reads plain', FieldCipher::isSealed((string) $raw((int) $ref['alt'], $ref['ort'])) && ((new ModelDoor())->records($ref['k'])[$ref['alt']][$ref['ort']] ?? []) === ['Altstadt vor dem Umstellen']);
+
+echo "Change of key (D-1562)\n";
+
+if (! $ownKey || FieldSeal::keyFromConstant()) {
+    echo "  SKIP: the key was not set by this check — a change of key here would change a real key\n";
+} else {
+    $seal = wp_get_ability('taxmod/field-seal');
+    // *Stands for yesterday's nightly copy: the stored form of a value before the change (D-1407 copies the tables as they are).*
+    $yesterday = (string) $raw($p, $ref['name']);
+    $plainName = (string) (((new ModelDoor())->records($ref['k'])[$p][$ref['name']] ?? [''])[0]);
+    $count     = $seal->execute([]);
+    check('field-seal counts without writing, nothing to reseal yet', is_array($count) && $count['dry_run'] === true && $count['resealing_left'] === ['live' => 0, 'history' => 0, 'journal' => 0], wp_json_encode($count));
+    check('the key seals as k1', FieldSeal::keyId() === 'k1' && str_starts_with($yesterday, FieldCipher::PREFIX . 'k1:'));
+
+    $new = FieldCipher::newKeyText();
+    DataKeyTab::save(['taxmod_data_key_new' => $new, 'taxmod_data_key_kept' => '1', 'taxmod_data_key_change' => '0']);
+    check('without the tick «change now» the key stays', FieldSeal::keyId() === 'k1');
+    DataKeyTab::save(['taxmod_data_key_new' => $new, 'taxmod_data_key_kept' => '0', 'taxmod_data_key_change' => '1']);
+    check('without the tick «copy kept» the key stays', FieldSeal::keyId() === 'k1');
+    DataKeyTab::save(['taxmod_data_key_new' => (string) FieldSeal::storedKey()->value(), 'taxmod_data_key_kept' => '1', 'taxmod_data_key_change' => '1']);
+    check('the key in use is no new key', FieldSeal::keyId() === 'k1');
+    DataKeyTab::save(['taxmod_data_key_new' => $new, 'taxmod_data_key_kept' => '1', 'taxmod_data_key_change' => '1']);
+    check('with both ticks the key changes to k2', FieldSeal::keyId() === 'k2' && FieldSeal::storedKey()->value() === $new);
+    check('the former key is stored sealed, not plain', isset(FieldSeal::storedOldKeys()['k1']) && ! str_contains((string) wp_json_encode(get_option(FieldSeal::OLD_KEYS_OPTION)), (string) FieldSeal::storedOldKeys()['k1']));
+    check('before resealing everything still reads plain', ((new ModelDoor())->records($ref['k'])[$p][$ref['name']] ?? []) === [$plainName]);
+
+    $count = $seal->execute([]);
+    check('field-seal counts what is left to reseal', is_array($count) && $count['resealing_left']['live'] >= 1 && $count['resealing_left']['journal'] >= 1 && ($count['sealed_with_old_keys']['k1'] ?? 0) >= 1, wp_json_encode($count));
+
+    for ($i = 0; $i < 50; $i++) {
+        $run = $seal->execute(['dry_run' => false, 'limit' => 5000]);
+
+        if (! is_array($run) || $run['sealed'] === 0) {
+            break;
+        }
+    }
+
+    check('after the job nothing is left to reseal', is_array($run) && $run['left']['resealing'] === ['live' => 0, 'history' => 0, 'journal' => 0] && ($run['left']['sealed_with_old_keys']['k1'] ?? -1) === 0, wp_json_encode($run));
+    check('the value is sealed with k2 and reads as before', str_starts_with((string) $raw($p, $ref['name']), FieldCipher::PREFIX . 'k2:') && ((new ModelDoor())->records($ref['k'])[$p][$ref['name']] ?? []) === [$plainName]);
+    check('the chronicle holds nothing sealed with k1', FieldSealRows::journalSealedWithCount('k1') === 0);
+    check('yesterday\'s backup still opens after the change', FieldSeal::openText($yesterday) === $plainName);
+
+    $from = FieldSeal::dropAllowedFrom('k1');
+    check('the former key may go eight days after it is clean, not sooner', $from !== null && $from >= time() + FieldSeal::DROP_WAIT - 60, (string) $from);
+    check('the tab names the date and offers no delete yet', ! str_contains(DataKeyTab::credentials(), 'taxmod_data_key_drop_k1'));
+    DataKeyTab::save(['taxmod_data_key_drop_k1' => '1']);
+    check('a delete before the eight days is refused', isset(FieldSeal::storedOldKeys()['k1']));
+    check('nothing deletes it by itself', FieldSealJob::runBatch() === 0 && isset(FieldSeal::storedOldKeys()['k1']));
+    check('after the eight days, by hand, it goes', FieldSeal::dropOldKey('k1', (int) $from + 1) && ! isset(FieldSeal::storedOldKeys()['k1']));
+    check('then yesterday\'s backup no longer opens — why the wait is there', FieldSeal::openText($yesterday) === FieldSeal::LOCKED);
+}
 
 echo "\n$ok ok, $bad failed\n";
 exit($bad === 0 ? 0 : 1);

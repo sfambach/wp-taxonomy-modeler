@@ -130,6 +130,86 @@ final class FieldSealRows
         $wpdb->update(Schema::table('changelog'), ['before_state' => $before, 'after_state' => $after], ['id' => $id], ['%s', '%s'], ['%d']);
     }
 
+    /**
+     * D-1562: how many rows of a value table hold a text sealed with another key than `$keyId` — what a change of key
+     * leaves to reseal; or, with `$with` true, how many are sealed with `$keyId` itself.
+     */
+    public static function sealedCount(string $tabelle, string $keyId, bool $with = false): int
+    {
+        global $wpdb;
+
+        [$wo, $params] = self::sealedWhere($keyId, $with);
+
+        return (int) Query::value('Versiegelte Werte je Schlüssel zählen', $wpdb->prepare('SELECT COUNT(*) FROM ' . Schema::table(self::valueTable($tabelle)) . $wo, ...$params));
+    }
+
+    /**
+     * Up to `$limit` rows sealed with another key than `$keyId`.
+     *
+     * @return list<array{id: int, version: ?int, text: string}>
+     */
+    public static function sealedOtherRows(string $tabelle, string $keyId, int $limit): array
+    {
+        global $wpdb;
+
+        $tabelle       = self::valueTable($tabelle);
+        [$wo, $params] = self::sealedWhere($keyId, false);
+        $mitVersion    = $tabelle === 'relation_records_history';
+        $zeilen        = Query::rows('Mit altem Schlüssel versiegelte Werte lesen', $wpdb->prepare(
+            'SELECT id, ' . ($mitVersion ? 'version' : 'NULL AS version') . ', value_text FROM ' . Schema::table($tabelle) . $wo . ' LIMIT %d',
+            ...[...$params, $limit]
+        ));
+
+        return array_map(static fn (array $z): array => [
+            'id'      => (int) $z['id'],
+            'version' => $z['version'] === null ? null : (int) $z['version'],
+            'text'    => (string) $z['value_text'],
+        ], $zeilen ?: []);
+    }
+
+    /**
+     * The chronicle rows holding a sealed value (`value=enc1:`) that pass `$keep`.
+     *
+     * @param \Closure(?string, ?string): bool $keep before, after
+     * @return list<array{id: int, before_state: ?string, after_state: ?string}>
+     */
+    public static function journalSealedRows(\Closure $keep, int $limit): array
+    {
+        global $wpdb;
+
+        $like = '%' . $wpdb->esc_like('value=' . FieldCipher::PREFIX) . '%';
+        $aus  = [];
+
+        Query::each('Chronik mit versiegelten Werten lesen', $wpdb->prepare(
+            'SELECT id, before_state, after_state FROM ' . Schema::table('changelog') . ' WHERE before_state LIKE %s OR after_state LIKE %s ORDER BY id ASC',
+            $like,
+            $like
+        ), static function (array $z) use (&$aus, $keep, $limit): void {
+            $vorher  = $z['before_state'] === null ? null : (string) $z['before_state'];
+            $nachher = $z['after_state'] === null ? null : (string) $z['after_state'];
+
+            if (count($aus) < $limit && $keep($vorher, $nachher)) {
+                $aus[] = ['id' => (int) $z['id'], 'before_state' => $vorher, 'after_state' => $nachher];
+            }
+        });
+
+        return $aus;
+    }
+
+    /** How many chronicle rows hold a value sealed with this key id. */
+    public static function journalSealedWithCount(string $keyId): int
+    {
+        global $wpdb;
+
+        $like = '%' . $wpdb->esc_like('value=' . FieldCipher::PREFIX . $keyId . ':') . '%';
+
+        return (int) Query::value('Chronik je Schlüssel zählen', $wpdb->prepare(
+            'SELECT COUNT(*) FROM ' . Schema::table('changelog') . ' WHERE before_state LIKE %s OR after_state LIKE %s',
+            $like,
+            $like
+        ));
+    }
+
     /** One live value sealed with this key id, to test an entered key against; null while nothing is sealed with it. */
     public static function sealedSample(string $keyId): ?string
     {
@@ -147,6 +227,18 @@ final class FieldSealRows
     private static function valueTable(string $tabelle): string
     {
         return $tabelle === 'relation_records_history' ? 'relation_records_history' : 'relation_records';
+    }
+
+    /** @return array{0: string, 1: list<string>} */
+    private static function sealedWhere(string $keyId, bool $with): array
+    {
+        global $wpdb;
+
+        $mit = $wpdb->esc_like(FieldCipher::PREFIX . $keyId . ':') . '%';
+
+        return $with
+            ? [' WHERE value_text LIKE %s', [$mit]]
+            : [' WHERE value_text LIKE %s AND value_text NOT LIKE %s', [$wpdb->esc_like(FieldCipher::PREFIX) . '%', $mit]];
     }
 
     /**
