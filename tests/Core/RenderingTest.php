@@ -3033,6 +3033,31 @@ final class RenderingTest extends TestCase
         self::assertSame('FIC' . SummaryRenderer::SEPARATOR . '386-SC-HG', $texte[$board->id][$pc] ?? null, 'die Wahl des Boards samt seinem Hersteller, zwei Stufen tief');
     }
 
+    /** D-1558, live check 21.11. B2: a filter on a field that chooses records names the record, not its number. */
+    #[Test]
+    public function a_filter_on_a_record_field_names_the_record(): void
+    {
+        $text    = $this->type('Text');
+        $art     = $this->thing('Platzarten');
+        $artName = $this->editor->addField($art->id, $text->id, 'name');
+        $platz   = $this->thing('Lagerorte');
+        $welche  = $this->editor->addField($platz->id, $art->id, 'Platzart', RelationKind::Aggregation);
+
+        $box = $this->records->add(new NodeRecord(0, $art->id, 1, '2026-11-21 13:00:00', RecordType::User));
+        $this->records->putValue(RelationRecord::direct($box, $artName->id, TypedValue::ofText('Gridfinity Box')));
+        $this->neuZeichnen();
+
+        $words = $this->rendering->filterWords([
+            ['field' => $welche->id, 'value' => (string) $box],
+            ['field' => $welche->id, 'value' => '999999'],
+            ['field' => $artName->id, 'value' => 'frei'],
+        ]);
+
+        self::assertSame(['Platzart', 'Gridfinity Box'], $words[0], 'the record by its word');
+        self::assertSame(['Platzart', '999999'], $words[1], 'a record that is gone keeps its number');
+        self::assertSame(['name', 'frei'], $words[2], 'a text stays as it is');
+    }
+
     /** D-1365: a cable's two ends both speak in its name, joined by « / », the same end once. */
     #[Test]
     public function every_record_a_field_holds_speaks_in_a_derived_name(): void

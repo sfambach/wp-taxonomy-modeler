@@ -2271,6 +2271,11 @@ final class Rendering implements Presets, \Taxmod\Core\Port\FieldAddons
             $farbwerte = $renderer instanceof \Taxmod\Core\Renderer\ColorChoiceRenderer ? $this->farbwerteUnter($relation->toNodeId) : [];
             // D-1541: a field of the node chosen in the record (or the record holding it) — the field of a rule filter.
             $feldwahl = $renderer instanceof \Taxmod\Core\Renderer\FieldChoiceRenderer ? $this->felderDesGewaehlten($settings, $values + $ownerValues) : null;
+            // ⚠️ *Live check 21.11. B2: a rule without a node offers no fields, and the field it keeps stood there as «#149000104307».
+            // The kept field is still named by its name — one relation read (CD-7).*
+            if ($feldwahl !== null) {
+                $feldwahl = $this->withKeptField($feldwahl, (int) ($value->int ?? 0));
+            }
             // D-1552: a rule filter's operator, among those the rule book knows, in the software's words.
             if ($renderer instanceof \Taxmod\Core\Renderer\OperatorChoiceRenderer) {
                 $feldwahl = [];
@@ -8983,6 +8988,24 @@ final class Rendering implements Presets, \Taxmod\Core\Port\FieldAddons
     }
 
     /**
+     * A field choice keeps the field it stores in its offer, by that field's name — also where the node offers it no longer or
+     * no node is chosen (live check 21.11. B2: «#149000104307» stood for «Bauform»). A field that is gone stays «#id».
+     *
+     * @param array<string, string> $offer relation id → field name
+     * @return array<string, string>
+     */
+    public function withKeptField(array $offer, int $kept): array
+    {
+        if ($kept <= 0 || isset($offer[(string) $kept])) {
+            return $offer;
+        }
+
+        $relation = $this->relations?->byId($kept);
+
+        return $relation === null ? $offer : $offer + [(string) $kept => $relation->name];
+    }
+
+    /**
      * The node whose fields a field choice offers: the node the row's kind names (D-1552), else the node chosen in `knoten_feld`.
      *
      * @param array<string, mixed>   $settings `mixed`: resolved settings by key
@@ -9055,14 +9078,34 @@ final class Rendering implements Presets, \Taxmod\Core\Port\FieldAddons
      */
     public function filterWords(array $filters): array
     {
-        $options = [];
-        $out     = [];
+        $options   = [];
+        $relations = [];
+        $records   = [];
 
         foreach ($filters as $filter) {
-            $field    = $filter['field'];
-            $relation = $field > 0 ? $this->relations?->byId($field) : null;
-            $options[$field] ??= $this->valueOptionsOf($field);
-            $out[]    = [$relation?->name ?? ($field > 0 ? '#' . $field : ''), $options[$field][$filter['value']] ?? $filter['value']];
+            $field = $filter['field'];
+            $relations[$field] ??= $field > 0 ? $this->relations?->byId($field) : null;
+            $options[$field]   ??= $this->valueOptionsOf($field);
+
+            // ⚠️ *Live check 21.11. B2: «Platzart gleich 48236» — a field that chooses records kept the record's number. Its words
+            // come the way a chooser shows them, all records of a field in one run (CD-7).*
+            if ($options[$field] === [] && $relations[$field] !== null && ! $relations[$field]->isSetting() && ctype_digit($filter['value']) && (int) $filter['value'] > 0) {
+                $records[$field][] = (int) $filter['value'];
+            }
+        }
+
+        $wordsOf = [];
+
+        foreach ($records as $field => $ids) {
+            $wordsOf[$field] = $this->summaryTextsOf([['relation' => $relations[$field], 'records' => array_values(array_unique($ids))]])[$field] ?? [];
+        }
+
+        $out = [];
+
+        foreach ($filters as $filter) {
+            $field = $filter['field'];
+            $word  = $options[$field][$filter['value']] ?? (string) ($wordsOf[$field][(int) $filter['value']] ?? '');
+            $out[] = [$relations[$field]?->name ?? ($field > 0 ? '#' . $field : ''), $word !== '' ? $word : $filter['value']];
         }
 
         return $out;
