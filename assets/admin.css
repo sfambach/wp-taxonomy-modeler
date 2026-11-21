@@ -1308,6 +1308,13 @@ ol.taxmod-switch-cascade .taxmod-list-remove,
     width: 9em;
 }
 
+/* Prüftor 21.11. (Verbrauch: «Material oder …» abgeschnitten): in a page form the search field takes the chooser's standard
+ * width, the same 22em as every opener below; table rows keep the narrow field. */
+.taxmod-form-row .taxmod-record-quick {
+    width: 22em;
+    max-width: 100%;
+}
+
 /* ⚠️ Eine versteckte Trefferliste wird nicht gezeichnet (sein Bild: «was sind das für striche»). `display: flex` unten schlug das
  * `hidden`-Attribut, und unter jeder Satzauswahl stand die leere Liste als schmaler Kasten mit Rahmen. */
 .taxmod-record-hits[hidden] {
