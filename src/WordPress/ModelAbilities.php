@@ -387,6 +387,26 @@ final class ModelAbilities
             'meta'                => ['public' => true, 'annotations' => ['readonly' => true, 'destructive' => false, 'idempotent' => true]],
         ]);
 
+        // D-1547, Stefan 2026-11-21: «lass uns das ruhig mal einbauen, sodass wir da Gewissheit haben» — where settings stand before
+        // deciding that they stand only at the data element (taxmod-felder/konzept.md §6). Reads, never writes.
+        wp_register_ability('taxmod/settings-usage', [
+            'label'               => __('Count settings by carrier', 'taxmod'),
+            'description'         => __('How many setting rows each attribute (renderer, dialog, max …) has at a node, at a field (one use site) and inside a settings object, plus inactive rows; most field rows first. With attribute: also the rows of that attribute at fields — field (relation id), node, value — a page of them (limit, offset).', 'taxmod'),
+            'category'            => self::CATEGORY,
+            'input_schema'        => [
+                'type'       => 'object',
+                'properties' => [
+                    'attribute' => ['type' => 'string', 'pattern' => '^[a-z][a-z0-9_]*$'],
+                    'limit'     => ['type' => 'integer', 'minimum' => 1, 'maximum' => 500, 'default' => 100],
+                    'offset'    => ['type' => 'integer', 'minimum' => 0, 'default' => 0],
+                ],
+                'additionalProperties' => false,
+            ],
+            'execute_callback'    => fn (mixed $input = null) => $this->guarded(fn (): array => $this->settingsUsage(is_array($input) ? $input : [])),
+            'permission_callback' => $this->allowedToRead(...),
+            'meta'                => ['public' => true, 'annotations' => ['readonly' => true, 'destructive' => false, 'idempotent' => true]],
+        ]);
+
         // *Vor und nach jedem Umbau an einem Renderer: welche Beiträge zeigen welchen Satz ([D-1052](../../docs/NewConcept/90-decision-log.md)).*
         wp_register_ability('taxmod/block-usage', [
             'label'               => __('List record block usage', 'taxmod'),
@@ -435,6 +455,23 @@ final class ModelAbilities
     }
 
     /** @return array{count: int, rows: list<array<string, int|string>>, csv: string} */
+    /**
+     * @param  array<string, mixed> $input `mixed`: the ability's input, checked by its schema
+     * @return array{summary: list<array<string, int|string>>, fields?: list<array<string, bool|int|string>>}
+     */
+    private function settingsUsage(array $input): array
+    {
+        $repository = new \Taxmod\WordPress\Persistence\WpdbSettingsRepository();
+        $answer     = ['summary' => (new \Taxmod\Core\Service\SettingsUsage())->summary($repository->usageGroups())];
+        $attribute  = sanitize_key((string) ($input['attribute'] ?? ''));
+
+        if ($attribute !== '') {
+            $answer['fields'] = $repository->atFieldsNamed($attribute, max(1, min(500, (int) ($input['limit'] ?? 100))), max(0, (int) ($input['offset'] ?? 0)));
+        }
+
+        return $answer;
+    }
+
     private function blockUsage(): array
     {
         global $wpdb;
