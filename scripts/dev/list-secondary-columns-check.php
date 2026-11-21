@@ -27,6 +27,9 @@ foreach ([
     'the details toggle keeps its own padding'               => ! str_contains($page, 'vertical-align:middle;padding:0 6px}'),
     'a long head word does not break at its syllables'       => str_contains($page, '{hyphens:auto;overflow-wrap:break-word}'),
     'the rules list keeps the 21em actions column'           => str_contains($rules, ", '', false, self::ACTIONS_WIDTH)]]"),
+    // Live-Check 7: the choices in the bar shrank to 2 px and their selects overlapped.
+    'the choices box shrinks below its selects'              => str_contains($page, '.tablenav.taxmod-list-bar>.taxmod-list-choices,.tablenav.taxmod-list-bar>.bulkactions{flex:0 1 auto;min-width:min-content}'),
+    'a select in the bar does not give way to 5.5em'          => str_contains($page, ':is(.taxmod-list-choices,.bulkactions) select{flex:1 1 10em;width:0;min-width:5.5em;max-width:10em}'),
 ] as $what => $green) {
     if (! $green) {
         echo "FAIL {$what}\n";
