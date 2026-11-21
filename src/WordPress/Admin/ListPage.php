@@ -193,8 +193,8 @@ final class ListPage
     {
         wp_enqueue_script(Plugin::SIDE_TREE_SCRIPT);
 
-        $tool = static fn (string $act, string $icon, string $word): string => '<button type="button" class="button button-small taxmod-icon-button taxmod-side-tree-' . $act . '" title="' . esc_attr($word) . '">'
-            . \Taxmod\Core\Renderer\IconMarkup::dashicon($icon, $word) . '</button>';
+        $tool = static fn (string $act, string $icon, string $word): string => \Taxmod\WordPress\Draw\IconMarkup::lifted('<button type="button" class="button button-small taxmod-icon-button taxmod-side-tree-' . $act . '" title="' . esc_attr($word) . '">'
+            . \Taxmod\Core\Renderer\IconMarkup::dashicon($icon, $word) . '</button>');
 
         return '<div class="taxmod-side-tree' . ($class === '' ? '' : ' ' . esc_attr($class)) . '" data-taxmod-tree="' . esc_attr($tree) . '"'
             . ' data-taxmod-tree-open="' . esc_attr((string) wp_json_encode(self::treeState($tree)['open'])) . '"'
@@ -567,10 +567,10 @@ final class ListPage
     /** The button that shows or hides the filter row. */
     public static function filterToggle(): string
     {
-        return '<div class="alignleft actions"><button type="button" class="button taxmod-square" onclick="'
+        // D-1462: an icon, so the bar keeps one row beside a navigation; the word stays as tooltip and for the screen reader.
+        return '<div class="alignleft actions">' . \Taxmod\WordPress\Draw\IconMarkup::lifted('<button type="button" class="button taxmod-square" onclick="'
             . esc_attr("this.closest('.wrap').querySelectorAll('.taxmod-filter-row').forEach(function(r){r.hidden=!r.hidden})") . '">'
-            // D-1462: an icon, so the bar keeps one row beside a navigation; the word stays as tooltip and for the screen reader.
-            . self::icon('filter', __('Filter row', 'taxmod')) . '</button></div>';
+            . self::icon('filter', __('Filter row', 'taxmod')) . '</button>') . '</div>';
     }
 
     /**
@@ -1029,8 +1029,8 @@ final class ListPage
         return '<div class="tablenav top taxmod-list-bar">' . $start
             . $filters
             . (! $expandable ? '' : '<div class="alignleft actions taxmod-list-fold">'
-            . '<button type="button" class="button" onclick="' . esc_attr(self::toggleAll(false)) . '">' . self::icon('arrow-down-alt2', __('Expand all', 'taxmod')) . '</button> '
-            . '<button type="button" class="button" onclick="' . esc_attr(self::toggleAll(true)) . '">' . self::icon('arrow-up-alt2', __('Collapse all', 'taxmod')) . '</button></div>')
+            . \Taxmod\WordPress\Draw\IconMarkup::lifted('<button type="button" class="button" onclick="' . esc_attr(self::toggleAll(false)) . '">' . self::icon('arrow-down-alt2', __('Expand all', 'taxmod')) . '</button>') . ' '
+            . \Taxmod\WordPress\Draw\IconMarkup::lifted('<button type="button" class="button" onclick="' . esc_attr(self::toggleAll(true)) . '">' . self::icon('arrow-up-alt2', __('Collapse all', 'taxmod')) . '</button>') . '</div>')
             . $search
             . ($count === '' && $pages === '' ? '' : '<div class="tablenav-pages taxmod-list-pages' . ($pages === '' || ! str_contains($pages, 'pagination-links') ? ' one-page' : '') . '">'
             . ($count === '' ? '' : '<span class="displaying-num">' . esc_html($count) . '</span>') . ($pages === '' ? '' : ' ' . $pages) . '</div>') . '<br class="clear"></div>';
@@ -1486,13 +1486,13 @@ final class ListPage
 
     public static function back(string $url, string $label = ''): string
     {
-        return '<a class="button taxmod-icon-button taxmod-back" href="' . esc_url($url) . '" title="' . esc_attr($label === '' ? __('Back', 'taxmod') : $label) . '">'
-            . self::icon('arrow-left-alt', $label === '' ? __('Back', 'taxmod') : $label) . '</a>';
+        return \Taxmod\WordPress\Draw\IconMarkup::lifted('<a class="button taxmod-icon-button taxmod-back" href="' . esc_url($url) . '" title="' . esc_attr($label === '' ? __('Back', 'taxmod') : $label) . '">'
+            . self::icon('arrow-left-alt', $label === '' ? __('Back', 'taxmod') : $label) . '</a>');
     }
 
     public static function iconLink(string $icon, string $label, string $url): string
     {
-        return '<a class="button taxmod-square" href="' . esc_url($url) . '" title="' . esc_attr($label) . '">' . self::icon($icon, $label) . '</a>';
+        return \Taxmod\WordPress\Draw\IconMarkup::lifted('<a class="button taxmod-square" href="' . esc_url($url) . '" title="' . esc_attr($label) . '">' . self::icon($icon, $label) . '</a>');
     }
 
     /**
@@ -1523,16 +1523,16 @@ final class ListPage
     public static function iconButton(string $icon, string $label, string $url = '', string $name = '', string $value = '', string $form = '', string $disabled = '', string $formAction = ''): string
     {
         if ($disabled !== '') {
-            return '<button type="button" class="button taxmod-square" disabled title="' . esc_attr($disabled) . '">' . self::icon($icon, $disabled) . '</button>';
+            return \Taxmod\WordPress\Draw\IconMarkup::lifted('<button type="button" class="button taxmod-square" disabled title="' . esc_attr($disabled) . '">' . self::icon($icon, $disabled) . '</button>');
         }
 
         return $url !== ''
             ? self::iconLink($icon, $label, $url)
-            : '<button type="submit" class="button taxmod-square" title="' . esc_attr($label) . '"'
+            : \Taxmod\WordPress\Draw\IconMarkup::lifted('<button type="submit" class="button taxmod-square" title="' . esc_attr($label) . '"'
                 . ($name === '' ? '' : ' name="' . esc_attr($name) . '" value="' . esc_attr($value) . '"')
                 . ($form === '' ? '' : ' form="' . esc_attr($form) . '"')
                 // A row's own button that sends the shared form to another address, e.g. naming its row (Fertigung 0.0.93).
-                . ($formAction === '' ? '' : ' formaction="' . esc_url($formAction) . '"') . '>' . self::icon($icon, $label) . '</button>';
+                . ($formAction === '' ? '' : ' formaction="' . esc_url($formAction) . '"') . '>' . self::icon($icon, $label) . '</button>');
     }
 
     /** @param array<string, string> $attributes */

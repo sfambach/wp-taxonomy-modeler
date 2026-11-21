@@ -72,6 +72,8 @@ final class ControlMarkup
         // every way that matters to the layout, and only `face()` cares which of the two it is.*
         $bare = ($control->icon !== '' || $control->glyph !== '') && ! $control->iconWithLabel;
         $icon = $control->icon !== '';
+        // ⚠️ *Der Name sitzt am Knopf, nicht am Symbol (Prüftor zu Live-Check 19).*
+        [$named, $face] = IconMarkup::liftName(self::face($control, $icon));
 
         // ⚠️ **One place builds every button, and it took four hand-written ones to get here.** The
         // owner: *every time new buttons appear they look odd again — is there a button renderer?* *He
@@ -95,6 +97,7 @@ final class ControlMarkup
             . ' name="' . Html::escape($control->name) . '"'
             . ' value="' . Html::escape($control->value) . '"'
             . self::address($control)
+            . $named
             // ⚠️ **Ein Symbolknopf zeigt beim Darüberfahren seinen Namen** ([D-847](../../../docs/NewConcept/90-decision-log.md)) — sein Wort:
             // *«knöpfe grundsätzlich ein icon verwenden wenn es eins gibt und rechts vom feld. Tooltip knopf beschreibung/name».* Ohne eigenen
             // Titel ist es die Beschriftung, die das Symbol ersetzt.
@@ -109,7 +112,7 @@ final class ControlMarkup
             . ($usable ? '' : ';opacity:.35') . '">'
             // ⚠️ **An icon replaces the label but never the accessible name** — the label is what a
             // screen reader is left with, and a button with neither is a shape with no meaning.
-            . self::face($control, $icon)
+            . $face
             . '</button>';
     }
 

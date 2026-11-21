@@ -26,6 +26,9 @@ final class FieldSealJob
 
     private const BATCH = 500;
 
+    /** For the first, node-blind look at the chronicle: a state counts as a candidate whatever its record's node says. */
+    private const ANY_NODE = [];
+
     /** Hooked on admin_init: a short look at most every five minutes, at once again while work is left. */
     public static function onAdmin(): void
     {
@@ -42,8 +45,12 @@ final class FieldSealJob
         set_transient(self::THROTTLE, 1, $done >= self::BATCH ? 1 : 5 * MINUTE_IN_SECONDS);
     }
 
-    /** One batch over the three tables — values of a former key resealed (D-1562), plain values sealed; answers how many rows. */
-    public static function runBatch(int $limit = self::BATCH): int
+    /**
+     * One batch over the three tables — values of a former key resealed (D-1562), plain values that are confidential for their
+     * record's node sealed (D-1514, D-1578), and, only when asked (`$unseal`), sealed values that are no longer confidential
+     * there opened again; answers how many rows it changed.
+     */
+    public static function runBatch(int $limit = self::BATCH, bool $unseal = false): int
     {
         FieldSeal::ready();
         $cipher = FieldSeal::cipher();
@@ -52,26 +59,158 @@ final class FieldSealJob
             return 0;
         }
 
-        $done   = self::resealBatch($cipher, $limit);
-        $kanten = array_keys(FieldSeal::confidentialRelations());
-
-        if ($kanten === []) {
-            return $done;
-        }
+        $done = self::resealBatch($cipher, $limit);
 
         foreach (['relation_records', 'relation_records_history'] as $tabelle) {
-            foreach (FieldSealRows::plainRows($tabelle, $kanten, $limit) as $zeile) {
-                FieldSealRows::replaceText($tabelle, $zeile['id'], $zeile['version'], (string) FieldSeal::sealText($zeile['relation_id'], $zeile['text']));
+            $rows  = self::wanted($tabelle, false, max(0, $limit - $done));
+            $texte = FieldSealRows::textsOf($tabelle, array_column($rows, 'id'));
+
+            foreach ($rows as $zeile) {
+                $text = (string) ($texte[$zeile['id']] ?? '');
+                FieldSealRows::replaceText($tabelle, $zeile['id'], $zeile['version'], (string) FieldSeal::sealText($zeile['relation_id'], $text, $zeile['node_id']));
                 $done++;
             }
         }
 
-        foreach (self::plainJournalRows($kanten, $limit) as $zeile) {
-            FieldSealRows::replaceJournalStates($zeile['id'], FieldSeal::sealState($zeile['before_state']), FieldSeal::sealState($zeile['after_state']));
+        foreach (self::journalWanted(false, max(0, $limit - $done)) as [$zeile, $nodes]) {
+            FieldSealRows::replaceJournalStates($zeile['id'], self::sealStateAt($zeile['before_state'], $nodes), self::sealStateAt($zeile['after_state'], $nodes));
             $done++;
         }
 
+        if (! $unseal) {
+            return $done;
+        }
+
+        foreach (['relation_records', 'relation_records_history'] as $tabelle) {
+            $rows  = self::wanted($tabelle, true, max(0, $limit - $done));
+            $texte = FieldSealRows::textsOf($tabelle, array_column($rows, 'id'));
+
+            foreach ($rows as $zeile) {
+                try {
+                    FieldSealRows::replaceText($tabelle, $zeile['id'], $zeile['version'], $cipher->open((string) ($texte[$zeile['id']] ?? '')));
+                    $done++;
+                } catch (\Taxmod\Core\Exception\FieldDoesNotOpen) {
+                    // *What no key here opens stays as it is.*
+                }
+            }
+        }
+
+        foreach (self::journalWanted(true, max(0, $limit - $done)) as [$zeile, $nodes]) {
+            try {
+                FieldSealRows::replaceJournalStates(
+                    $zeile['id'],
+                    FieldSeal::stateIsNeedlesslySealed($zeile['before_state'], $nodes) ? FieldSeal::unsealState($zeile['before_state']) : $zeile['before_state'],
+                    FieldSeal::stateIsNeedlesslySealed($zeile['after_state'], $nodes) ? FieldSeal::unsealState($zeile['after_state']) : $zeile['after_state']
+                );
+                $done++;
+            } catch (\Taxmod\Core\Exception\FieldDoesNotOpen) {
+                // *As above.*
+            }
+        }
+
         return $done;
+    }
+
+    /**
+     * D-1578: the rows of a value table that have to change — plain and confidential at their node, or (`$sealed`) sealed
+     * and not confidential there. Paged by id, so rows that rightly stay as they are never block the ones behind them.
+     *
+     * @return list<array{id: int, version: ?int, relation_id: int, node_id: int}>
+     */
+    private static function wanted(string $tabelle, bool $sealed, int $limit): array
+    {
+        $kanten = $sealed ? self::edgesWithSealedValues() : array_keys(FieldSeal::confidentialRelations());
+        $aus    = [];
+        $nach   = 0;
+
+        while ($limit > 0 && $kanten !== []) {
+            $seite = FieldSealRows::rowsWithNode($tabelle, $kanten, $sealed, $nach, self::BATCH);
+
+            foreach ($seite as $zeile) {
+                if (FieldSeal::isConfidentialAt($zeile['relation_id'], $zeile['node_id']) !== $sealed) {
+                    $aus[] = $zeile;
+
+                    if (count($aus) >= $limit) {
+                        return $aus;
+                    }
+                }
+            }
+
+            if (count($seite) < self::BATCH) {
+                break;
+            }
+
+            $nach = $seite[array_key_last($seite)]['id'];
+        }
+
+        return $aus;
+    }
+
+    /**
+     * The chronicle rows that have to change, each with the nodes of the records it names (one read for all of them).
+     *
+     * @return list<array{0: array{id: int, before_state: ?string, after_state: ?string}, 1: array<int, int>}>
+     */
+    private static function journalWanted(bool $sealed, int $limit): array
+    {
+        if ($limit < 1) {
+            return [];
+        }
+
+        $kandidaten = $sealed
+            ? FieldSealRows::journalSealedRows(static fn (): bool => true, PHP_INT_MAX)
+            : FieldSealRows::journalRowsOn(array_keys(FieldSeal::confidentialRelations()), static fn (?string $before, ?string $after): bool => FieldSeal::stateIsPlain($before, self::ANY_NODE) || FieldSeal::stateIsPlain($after, self::ANY_NODE), PHP_INT_MAX);
+
+        $saetze = [];
+
+        foreach ($kandidaten as $zeile) {
+            foreach ([$zeile['before_state'], $zeile['after_state']] as $state) {
+                $parsed = \Taxmod\Core\Model\FrozenState::parse($state);
+                $record = $parsed === null ? null : FieldSeal::recordOf($parsed);
+
+                if ($record !== null) {
+                    $saetze[] = $record;
+                }
+            }
+        }
+
+        $nodes = FieldSealRows::nodesOfRecords($saetze);
+        $aus   = [];
+
+        foreach ($kandidaten as $zeile) {
+            $passt = $sealed
+                ? FieldSeal::stateIsNeedlesslySealed($zeile['before_state'], $nodes) || FieldSeal::stateIsNeedlesslySealed($zeile['after_state'], $nodes)
+                : FieldSeal::stateIsPlain($zeile['before_state'], $nodes) || FieldSeal::stateIsPlain($zeile['after_state'], $nodes);
+
+            if ($passt) {
+                $aus[] = [$zeile, $nodes];
+
+                if (count($aus) >= $limit) {
+                    break;
+                }
+            }
+        }
+
+        return $aus;
+    }
+
+    /**
+     * A state sealed where it is confidential for the node of the record it names.
+     *
+     * @param array<int, int> $nodes
+     */
+    private static function sealStateAt(?string $state, array $nodes): ?string
+    {
+        $parsed = \Taxmod\Core\Model\FrozenState::parse($state);
+        $record = $parsed === null ? null : FieldSeal::recordOf($parsed);
+
+        return FieldSeal::sealState($state, $record === null ? null : ($nodes[$record] ?? null));
+    }
+
+    /** @return list<int> the edges on which some live or history row is sealed */
+    private static function edgesWithSealedValues(): array
+    {
+        return FieldSealRows::sealedEdges();
     }
 
     /** D-1562: values sealed with a former key, sealed again with the current one — no act, as sealing is none. */
@@ -152,35 +291,34 @@ final class FieldSealJob
     }
 
     /**
-     * What is still plain on the confidential edges — the number the check reads.
+     * What is still plain although it is confidential for its record's node — the number the check reads.
      *
      * @return array{live: int, history: int, journal: int}
      */
     public static function plainLeft(): array
     {
-        $kanten = array_keys(FieldSeal::confidentialRelations());
-
-        if ($kanten === []) {
-            return ['live' => 0, 'history' => 0, 'journal' => 0];
-        }
-
         return [
-            'live'    => FieldSealRows::plainCount('relation_records', $kanten),
-            'history' => FieldSealRows::plainCount('relation_records_history', $kanten),
-            'journal' => count(self::plainJournalRows($kanten, PHP_INT_MAX)),
+            'live'    => count(self::wanted('relation_records', false, PHP_INT_MAX)),
+            'history' => count(self::wanted('relation_records_history', false, PHP_INT_MAX)),
+            'journal' => count(self::journalWanted(false, PHP_INT_MAX)),
         ];
     }
 
     /**
-     * @param list<int> $kanten
-     * @return list<array{id: int, before_state: ?string, after_state: ?string}>
+     * D-1578: what is sealed although it is not confidential for its record's node (an organisation's name after the switch).
+     *
+     * @return array{live: int, history: int, journal: int}
      */
-    private static function plainJournalRows(array $kanten, int $limit): array
+    public static function unsealLeft(): array
     {
-        return FieldSealRows::journalRowsOn(
-            $kanten,
-            static fn (?string $before, ?string $after): bool => FieldSeal::stateIsPlain($before) || FieldSeal::stateIsPlain($after),
-            $limit
-        );
+        if (FieldSeal::cipher() === null) {
+            return ['live' => 0, 'history' => 0, 'journal' => 0];
+        }
+
+        return [
+            'live'    => count(self::wanted('relation_records', true, PHP_INT_MAX)),
+            'history' => count(self::wanted('relation_records_history', true, PHP_INT_MAX)),
+            'journal' => count(self::journalWanted(true, PHP_INT_MAX)),
+        ];
     }
 }

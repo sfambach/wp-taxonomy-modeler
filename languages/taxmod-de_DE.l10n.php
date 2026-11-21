@@ -847,6 +847,7 @@ return [
         'Add subgroup' => 'Untergruppe anlegen',
         'Add a subgroup under this group' => 'Eine Untergruppe unter dieser Gruppe anlegen',
         'Properties' => 'Eigenschaften',
+        'Only an empty group can be parked: move its materials and subgroups away first' => 'Nur eine leere Gruppe kann in den Papierkorb: erst ihre Materialien und Untergruppen verschieben',
         'Rename' => 'Umbenennen',
         'Rename this node' => 'Diesen Knoten umbenennen',
         /* translators: %s: the name of the node. */

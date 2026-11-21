@@ -190,9 +190,12 @@ interface RecordRepository
      * gezählt, weil `RelationRecord` sie nicht trägt. Ohne diese Antwort wüsste der Kern die Nummer nicht,
      * die er ins Änderungsbuch schreiben muss — und genau daran lag es, dass er es nicht tat.*
      *
+     * `$nodeId`: der Knoten des Satzes, wo der Schreiber ihn ohnehin kennt — ob ein Text vertraulich ist, kann von ihm
+     * abhängen ([D-1578](../../../docs/NewConcept/90-decision-log.md)).
+     *
      * @return int Die Version der geschriebenen Zeile; bei einer neuen Zeile die erste.
      */
-    public function putValue(RelationRecord $value): int;
+    public function putValue(RelationRecord $value, ?int $nodeId = null): int;
 
     /**
      * Jede Wertzeile dieses Feldes in diesem Datensatz.

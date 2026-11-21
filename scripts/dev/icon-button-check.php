@@ -133,9 +133,11 @@ function controlsOf(string $html): array
             'tag'   => $node->nodeName,
             'class' => $node->getAttribute('class'),
             'face'  => $dashicon !== null ? 'dashicon' : ($glyph !== null ? 'glyph' : 'words'),
-            'aria'  => $dashicon instanceof DOMElement
+            // ⚠️ *Seit Live-Check 19 (Prüftor, PR-9 sichtbar geändert) sitzt der Name am Knopf, das Symbol ist stumm.*
+            'own'   => $node->getAttribute('aria-label'),
+            'aria'  => $node->getAttribute('aria-label') !== '' ? $node->getAttribute('aria-label') : ($dashicon instanceof DOMElement
                 ? $dashicon->getAttribute('aria-label')
-                : ($glyph instanceof DOMElement ? $glyph->getAttribute('aria-label') : ''),
+                : ($glyph instanceof DOMElement ? $glyph->getAttribute('aria-label') : '')),
             'words' => $words,
             'visible' => trim(preg_replace('/\s+/u', ' ', $sichtbar) ?? ''),
             'value' => $node->getAttribute('value'),
@@ -176,6 +178,7 @@ $icons   = 0;
 $naked   = [];
 $primary = [];
 $mute    = [];
+$faceNamed = [];
 
 foreach ($pages as $why => $id) {
     if ($id <= 0) {
@@ -221,6 +224,11 @@ foreach ($pages as $why => $id) {
         if (preg_match('/[\p{L}]/u', $named) !== 1) {
             $mute[] = $where . ' has no name a screen reader can read';
         }
+
+        // Prüftor zu Live-Check 19: a control that shows only a shape names itself — `aria-label` on the button, not on the shape inside.
+        if ($control['visible'] === '' && $control['face'] !== 'words' && $control['own'] === '') {
+            $faceNamed[] = $where;
+        }
     }
 }
 
@@ -245,6 +253,7 @@ check('controls were read off the drawn pages', $seen > 0, $seen . ' controls, '
 check('every icon-shaped control is borderless', $naked === [], $say($naked));
 check('no icon-shaped control is also the prominent one', $primary === [], $say($primary));
 check('every icon-shaped control keeps a readable name', $mute === [], $say($mute));
+check('every icon-only control carries its name on the button itself (Live-Check 19)', $faceNamed === [], $say($faceNamed));
 
 echo "\n== the diskette is written once ==\n";
 

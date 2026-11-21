@@ -1765,9 +1765,12 @@ final class ModelEditor
 
         $saetze = [];
 
+        $knotenDer = [];
+
         foreach ($this->records->ofNodes(array_values(array_unique($knoten))) as $liste) {
             foreach ($liste as $satz) {
-                $saetze[] = $satz->id;
+                $saetze[]             = $satz->id;
+                $knotenDer[$satz->id] = $satz->nodeId;
             }
         }
 
@@ -1778,7 +1781,8 @@ final class ModelEditor
         foreach ($this->records->valuesOfMany($saetze) as $werte) {
             foreach ($werte as $wert) {
                 if ($wert->relationId === $alteKante && $wert->id !== null) {
-                    $this->records->putValue(new RelationRecord($wert->recordId, $neueKante, $wert->locale, $wert->value, $wert->id, $wert->position));
+                    // D-1578: the node of the record, known from the read above — confidential may depend on it.
+                    $this->records->putValue(new RelationRecord($wert->recordId, $neueKante, $wert->locale, $wert->value, $wert->id, $wert->position), $knotenDer[$wert->recordId] ?? null);
                 }
             }
         }
@@ -1973,15 +1977,18 @@ final class ModelEditor
             [$alt, $neu, $saetze] = $this->mergePlan($ownerId, $relationId, $intoRelationId, $underNodeId, $first);
 
             if ($saetze !== [] && $this->records !== null) {
+                // D-1578: one read for the nodes of all records of this act, not one per value (CD-7).
+                $knotenDer = array_map(static fn (\Taxmod\Core\Model\NodeRecord $satz): int => $satz->nodeId, $this->records->byIds($saetze));
+
                 foreach ($this->records->valuesOfMany($saetze) as $werte) {
                     if ($first) {
-                        $this->mergeInFront($werte, $alt->id, $neu->id);
+                        $this->mergeInFront($werte, $alt->id, $neu->id, $knotenDer);
                         continue;
                     }
 
                     foreach ($werte as $wert) {
                         if ($wert->relationId === $alt->id && $wert->id !== null) {
-                            $this->records->putValue(new RelationRecord($wert->recordId, $neu->id, $wert->locale, $wert->value, $wert->id, $wert->position));
+                            $this->records->putValue(new RelationRecord($wert->recordId, $neu->id, $wert->locale, $wert->value, $wert->id, $wert->position), $knotenDer[$wert->recordId] ?? null);
                         }
                     }
                 }
@@ -2064,9 +2071,10 @@ final class ModelEditor
     /**
      * Ein Satz: die Werte des alten Felds an den Anfang des neuen, je Sprache; die des neuen rücken nach, ein doppelter fällt weg.
      *
-     * @param list<RelationRecord> $werte alle Werte des Satzes, nach Stelle geordnet
+     * @param list<RelationRecord> $werte     alle Werte des Satzes, nach Stelle geordnet
+     * @param array<int, int>      $knotenDer Satz-Id → Knoten (D-1578)
      */
-    private function mergeInFront(array $werte, int $altId, int $neuId): void
+    private function mergeInFront(array $werte, int $altId, int $neuId, array $knotenDer = []): void
     {
         $vorne  = [];
         $hinten = [];
@@ -2096,7 +2104,7 @@ final class ModelEditor
                 }
 
                 $gesehen[$roh] = true;
-                $this->records->putValue(new RelationRecord($wert->recordId, $neuId, $wert->locale, $wert->value, $wert->id, $stelle++));
+                $this->records->putValue(new RelationRecord($wert->recordId, $neuId, $wert->locale, $wert->value, $wert->id, $stelle++), $knotenDer[$wert->recordId] ?? null);
             }
         }
     }
