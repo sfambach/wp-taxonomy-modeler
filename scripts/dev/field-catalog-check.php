@@ -207,6 +207,47 @@ $say(($eintraege[(int) $refs['jahr']]['role'] ?? '') === 'data_element' && ($ein
 $say(($eintraege[(int) $refs['mass']]['role'] ?? '') === 'composite', 'a composite under Model stands in it too');
 $say(! isset($eintraege[(int) $refs['pos']]) && ! isset($eintraege[$ding]), 'ordinary nodes do not');
 
+echo "\n== a child data element only narrows its parent (D-1559) ==\n";
+
+$knotenRepo = new WpdbNodeRepository();
+$aufloesung = static fn (): \Taxmod\Core\Service\SettingsResolver => new \Taxmod\Core\Service\SettingsResolver(
+    new \Taxmod\WordPress\Persistence\WpdbSettingsRepository(),
+    $knotenRepo,
+    \Taxmod\Core\Renderer\ShippedRenderers::registry()
+);
+$einheitenListe = $knotenRepo->ofClass(\Taxmod\Core\Model\NodeClass\Unit::class);
+$wertId         = \Taxmod\WordPress\Persistence\UnitScaffold::unitValueId();
+
+if ($wertId === null || count($einheitenListe) < 2) {
+    $say(false, 'the model has the unit value and two units', (string) count($einheitenListe));
+} else {
+    [$e1, $e2] = [$einheitenListe[0]->id, $einheitenListe[1]->id];
+    $kinder    = $apply([
+        ['op' => 'create_node', 'ref' => 'groesse', 'name' => '__fc Größe', 'parent' => (string) $wertId, 'class' => 'UnitValue'],
+        ['op' => 'set_list', 'node' => '@groesse', 'attribute' => 'erlaubte_einheiten', 'members' => [(string) $e1]],
+        ['op' => 'create_node', 'ref' => 'bedeutung', 'name' => '__fc Bedeutung', 'parent' => '@groesse', 'class' => 'UnitValue'],
+        ['op' => 'create_node', 'ref' => 'weiter', 'name' => '__fc Weiter', 'parent' => '@groesse', 'class' => 'UnitValue'],
+        ['op' => 'set_list', 'node' => '@weiter', 'attribute' => 'erlaubte_einheiten', 'members' => [(string) $e1, (string) $e2]],
+    ]);
+    $bedeutung = $knotenRepo->byId((int) $kinder['bedeutung']);
+    $geerbt    = array_map(static fn ($g): int => (int) $g->reference, $aufloesung()->allowedUnitsOf($bedeutung));
+    $say($geerbt === [$e1], 'a child without a list of its own allows the units of its parent', wp_json_encode($geerbt));
+    $say($aufloesung()->unitsBeyondParent($knotenRepo->byId((int) $kinder['weiter'])) === [$e2], 'a child that allows more than its parent is seen');
+
+    // *The test children above widen on purpose; the scan runs over every other data element of the class.*
+    $test      = [(int) $kinder['groesse'], (int) $kinder['bedeutung'], (int) $kinder['weiter']];
+    $erweitert = [];
+    $einmal    = $aufloesung();
+
+    foreach ($knotenRepo->ofClass(\Taxmod\Core\Model\NodeClass\UnitValue::class) as $element) {
+        if (! in_array($element->id, $test, true) && $einmal->unitsBeyondParent($element) !== []) {
+            $erweitert[] = $element->id . ' ' . $element->name;
+        }
+    }
+
+    $say($erweitert === [], 'no data element allows more units than its parent', implode(', ', $erweitert));
+}
+
 echo "\n== relations to a base type never grow ==\n";
 
 // ⚠️ *The ceiling is the number of a fresh install (the seeded scaffold) and only ever lowered. Run against a copy of the live

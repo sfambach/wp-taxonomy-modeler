@@ -7379,7 +7379,7 @@ final class Rendering implements Presets, \Taxmod\Core\Port\FieldAddons
                 continue;
             }
 
-            $erlaubt = $aktive($this->resolver->listOf($ziel, \Taxmod\Core\Model\NodeClass\UnitValue::ERLAUBTE_EINHEITEN, $traeger));
+            $erlaubt = $aktive($this->resolver->allowedUnitsOf($ziel, $traeger));
 
             if ($erlaubt !== []) {
                 $aus[$feld->id] = $erlaubt;
@@ -7435,7 +7435,7 @@ final class Rendering implements Presets, \Taxmod\Core\Port\FieldAddons
                 continue;
             }
 
-            $vorgabe = $this->resolver->referenceAt($ziel, \Taxmod\Core\Model\NodeClass\UnitValue::VORGABE_PRAEFIX, $traeger);
+            $vorgabe = $this->resolver->defaultPrefixOf($ziel, $traeger);
 
             // *A unit without prefixes gets an empty list here, and a list that leaves the preset out wins over it.*
             if ($vorgabe === null || (isset($erlaubt[$feld->id]) && ! in_array((int) $vorgabe, $erlaubt[$feld->id], true))) {
