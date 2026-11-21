@@ -116,7 +116,7 @@ final class UnitScaffold
             return;
         }
 
-        $rate = $this->field($unitValue, 'kurs', 'decimal');
+        $rate = $this->field($unitValue, 'kurs', 'decimal', self::RATE_FIELD_OPTION);
         $this->editor->setMultiplicity($rate->fromNodeId, $rate->id, Multiplicity::ZeroToOne);
         $this->editor->hideField($rate->fromNodeId, $rate->id, true);
         update_option(self::RATE_FIELD_OPTION, $rate->id, true);
@@ -285,7 +285,7 @@ final class UnitScaffold
         // ⚠️ *And the value has a home without a trick:* [D-026](../../../docs/NewConcept/90-decision-log.md)
         // — *at model level there are no values, only defaults* — so each prefix's `default` **is**
         // its model-level value, which is what a default has always been.
-        $exponent = $this->field($prefixes, 'exponent', 'int');
+        $exponent = $this->field($prefixes, 'exponent', 'int', self::fieldOption('exponent'));
 
         // ⚠️ **Hier stand bis 2026-09-01 `persistent = false`, und es ist mit [D-538](../../../docs/NewConcept/90-decision-log.md)
         // ersatzlos gefallen.** *Der Eigentümer hat es selbst hergeleitet: «diese nicht persistenten
@@ -341,14 +341,8 @@ final class UnitScaffold
      * ⚠️ **The kind is never chosen** ([D-161](../../../docs/NewConcept/90-decision-log.md)): the
      * target sits in `Data Types`, so the relation is a composition and nobody said so.
      */
-    private function field(Node $owner, string $name, string $typeName): Relation
+    private function field(Node $owner, string $name, string $typeName, string $option): Relation
     {
-        foreach ($this->editor->fieldsOf($owner->id) as $relation) {
-            if ($relation->name === $name && $relation->fromNodeId === $owner->id) {
-                return $relation;
-            }
-        }
-
         $type = null;
 
         // ⚠️ **The literal above is read as a type, the node is then found by its id**
@@ -370,7 +364,7 @@ final class UnitScaffold
             throw new \RuntimeException("The data type «{$typeName}» is not there yet.");
         }
 
-        return $this->editor->addField($owner->id, $type->id, $name);
+        return $this->fieldTo($owner, $name, $type, $option);
     }
 
     /**
@@ -381,15 +375,64 @@ final class UnitScaffold
      * somebody already holds. *The kind itself is never passed either way — it is read off the
      * branch the target sits in ([D-161](../../../docs/NewConcept/90-decision-log.md)).*
      */
-    private function fieldTo(Node $owner, string $name, Node $target): Relation
+    private function fieldTo(Node $owner, string $name, Node $target, string $option): Relation
     {
-        foreach ($this->editor->fieldsOf($owner->id) as $relation) {
-            if ($relation->name === $name && $relation->fromNodeId === $owner->id) {
+        $feld = $this->ownField($owner, $name, $target, $option) ?? $this->editor->addField($owner->id, $target->id, $name);
+
+        update_option($option, $feld->id, true);
+
+        return $feld;
+    }
+
+    /**
+     * The gerüst's own field, found by the id it noted — the name only finds it the first time (D-510).
+     *
+     * ⚠️ *Live-Check 12: the owner's fields were renamed «Wert», «Präfix», «Einheit»; a run that looked for «wert» would have
+     * laid all three a second time. An install from before the note has no id yet, so it adopts the one own field on that
+     * target that no other note claims.*
+     */
+    private function ownField(Node $owner, string $name, Node $target, string $option): ?Relation
+    {
+        $eigene = array_values(array_filter(
+            $this->editor->fieldsOf($owner->id),
+            static fn (Relation $e): bool => $e->fromNodeId === $owner->id
+        ));
+        $gemerkt = (int) get_option($option, 0);
+
+        foreach ($eigene as $relation) {
+            if ($gemerkt !== 0 && $relation->id === $gemerkt) {
                 return $relation;
             }
         }
 
-        return $this->editor->addField($owner->id, $target->id, $name);
+        foreach ($eigene as $relation) {
+            if ($relation->name === $name) {
+                return $relation;
+            }
+        }
+
+        $vergeben = array_map(
+            static fn (string $andere): int => (int) get_option($andere, 0),
+            array_values(array_filter(self::fieldOptions(), static fn (string $andere): bool => $andere !== $option))
+        );
+        $frei = array_values(array_filter(
+            $eigene,
+            static fn (Relation $e): bool => $e->toNodeId === $target->id && ! in_array($e->id, $vergeben, true)
+        ));
+
+        return count($frei) === 1 ? $frei[0] : null;
+    }
+
+    /** The option that notes the id of one of the gerüst's fields. */
+    public static function fieldOption(string $name): string
+    {
+        return 'taxmod_unit_field_' . $name;
+    }
+
+    /** @return list<string> Every option that notes one of the gerüst's fields. */
+    private static function fieldOptions(): array
+    {
+        return [self::RATE_FIELD_OPTION, ...array_map(self::fieldOption(...), ['wert', 'prefix', 'einheit', 'exponent'])];
     }
 
     /**
@@ -450,10 +493,10 @@ final class UnitScaffold
         // Danach darf er heissen, wie er will, und stehen, wo er will.*
         update_option(self::UNIT_VALUE_OPTION, $unitValue->id, true);
 
-        $this->field($unitValue, 'wert', 'decimal');
+        $this->field($unitValue, 'wert', 'decimal', self::fieldOption('wert'));
 
-        $prefix = $this->fieldTo($unitValue, 'prefix', $prefixes);
-        $unit   = $this->fieldTo($unitValue, 'einheit', $baseUnits);
+        $prefix = $this->fieldTo($unitValue, 'prefix', $prefixes, self::fieldOption('prefix'));
+        $unit   = $this->fieldTo($unitValue, 'einheit', $baseUnits, self::fieldOption('einheit'));
 
         // ⚠️ *Die Multiplizität liegt an der Kante ([D-528](../../../docs/NewConcept/90-decision-log.md)).
         // Der Präfix ist optional, weil «10 Ohm» keinen hat.*

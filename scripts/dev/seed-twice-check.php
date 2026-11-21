@@ -213,6 +213,20 @@ $zurueckdrehen = static function () use ($wpdb): void {
 
 register_shutdown_function($zurueckdrehen);
 
+// ⚠️ *Live-Check 12: seine Felder am Einheitenwert heissen jetzt «Wert», «Präfix», «Einheit». Das Gerüst suchte am Namen und
+// hätte sie beim nächsten Lauf doppelt angelegt. Also umbenannt, bevor es zum zweiten Mal läuft — die Zählung unten fängt jede Doppelung.*
+$einheitenwert = UnitScaffold::unitValueId();
+$eigeneVorher  = 0;
+
+if ($einheitenwert !== null) {
+    foreach ($editor->fieldsOf($einheitenwert) as $kante) {
+        if ($kante->fromNodeId === $einheitenwert) {
+            $eigeneVorher++;
+            $editor->renameField($einheitenwert, $kante->id, '__umbenannt ' . $kante->name);
+        }
+    }
+}
+
 // ⚠️ **An `importOnce()` vorbei und mit Absicht.** *Die Sperre über die Fassungsnummer ist genau das,
 // was den Fehler im September **nicht** verhindert hat: ein Schemaschritt hebt die Fassung, und dann
 // läuft die Saat wieder — und muss dabei nichts tun. Geprüft wird also der Lauf, nicht die Sperre.*
@@ -250,6 +264,12 @@ if ($angelegt !== []) {
         echo "  hinweis  {$name}: " . implode(', ', array_slice($neu, 0, 8))
             . ' — unter diesem Namen nicht (mehr) im Modell' . "\n";
     }
+}
+
+if ($einheitenwert !== null) {
+    $eigeneNachher = count(array_filter($editor->fieldsOf($einheitenwert), static fn ($kante): bool => $kante->fromNodeId === $einheitenwert));
+
+    check('ein umbenanntes Feld am Einheitenwert wird nicht doppelt angelegt', $eigeneNachher === $eigeneVorher, "{$eigeneVorher} vorher, {$eigeneNachher} nachher");
 }
 
 echo "\n2 · Zurückdrehen und nachher zählen\n";
