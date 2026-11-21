@@ -41,6 +41,9 @@ final class FieldSeal
 
     private const VAULT_CONTEXT = 'taxmod-data-key';
 
+    /** The confidential edges, remembered between requests (a cache of the settings). */
+    public const RELATIONS_OPTION = 'taxmod_confidential_relations';
+
     /** Former keys, still read: an array key id → key text, for a change of key. */
     public const OLD_KEYS_CONSTANT = 'TAXMOD_DATA_KEYS_OLD';
 
@@ -99,7 +102,10 @@ final class FieldSeal
     }
 
     /**
-     * The edges that carry «Vertraulich» — one read a request, forgotten when a setting is written.
+     * The edges that carry «Vertraulich», kept in an autoloaded option and read again after a setting was written.
+     *
+     * ⚠️ *Remembered across requests because every save asks it: a query of its own per save raised the statement count of
+     * a five-field save (save-record-reads-check, CD-7). The option is a cache of the settings, never their source.*
      *
      * @return array<int, true>
      */
@@ -109,7 +115,14 @@ final class FieldSeal
             return self::$confidential;
         }
 
-        return self::$confidential = array_fill_keys(FieldSealRows::confidentialRelationIds(), true);
+        $kept = get_option(self::RELATIONS_OPTION, false);
+
+        if (! is_array($kept)) {
+            $kept = FieldSealRows::confidentialRelationIds();
+            update_option(self::RELATIONS_OPTION, $kept, true);
+        }
+
+        return self::$confidential = array_fill_keys(array_map(intval(...), $kept), true);
     }
 
     public static function isConfidential(int $relationId): bool
@@ -117,10 +130,14 @@ final class FieldSeal
         return isset(self::confidentialRelations()[$relationId]);
     }
 
-    /** After a setting was written: the confidential edges are read again. */
+    /** After a setting was written: the confidential edges are read again, here and in the next request. */
     public static function forget(): void
     {
         self::$confidential = null;
+
+        if (get_option(self::RELATIONS_OPTION, false) !== false) {
+            delete_option(self::RELATIONS_OPTION);
+        }
     }
 
     /** For a check that defines the key itself: the key is read again. */
