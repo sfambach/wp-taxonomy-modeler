@@ -28,6 +28,9 @@ use Taxmod\WordPress\Plugin;
  */
 final class RulesPage
 {
+    /** Four row squares and their gaps (Live-Check 7, 21.11.2026). */
+    private const ACTIONS_WIDTH = '10.5em';
+
     public const SLUG   = 'taxmod-regeln';
     public const ACTION = 'taxmod_rules';
 
@@ -37,7 +40,7 @@ final class RulesPage
     private const BULK_FORM = 'taxmod-rules-bulk';
 
     /**
-     * @param array<int, array{position?: int, roots?: array<int, list<int>>, hint?: string, one?: string}> $types type node → what its module says of it
+     * @param array<int, array{position?: int, roots?: array<int, list<int>>, hint?: string, one?: string, secondary?: list<int>}> $types type node → what its module says of it
      * @param array{kind: int, field: int, operator: int, value: int} $filterFields the filter's fields, «Art · Feld · Operator · Wert»
      */
     public function __construct(
@@ -129,10 +132,13 @@ final class RulesPage
         // ⚠️ *Live check 21.11. B2: eleven own columns ran the table off the page, most of them «—» in every row. A column no rule
         // fills stays out; the rule's own form still shows every field.*
         $own     = $rules === [] ? $own : array_filter($own, static fn (int $relation): bool => array_filter($words[$relation] ?? [], static fn (mixed $w): bool => (string) $w !== '') !== [], ARRAY_FILTER_USE_KEY);
-        $columns = [[__('No.', 'taxmod'), '4em'], [__('Rule', 'taxmod'), '14em'], [__('Node', 'taxmod'), ''], [__('Filters', 'taxmod'), '']];
+        $columns = [[__('No.', 'taxmod'), '4em'], [__('Rule', 'taxmod'), ''], [__('Node', 'taxmod'), ''], [__('Filters', 'taxmod'), '']];
 
-        foreach ($own as $name) {
-            $columns[] = [$name, ''];
+        // Live-Check 7: a type names the fields of its own that give way first where the list is narrow.
+        $secondary = array_map('intval', (array) ($this->types[$type]['secondary'] ?? []));
+
+        foreach ($own as $relation => $name) {
+            $columns[] = [$name, '', '', '', in_array($relation, $secondary, true)];
         }
 
         $removed = absint($_GET['entfernt'] ?? 0);
@@ -140,7 +146,8 @@ final class RulesPage
 
         return ListPage::page($types[$type], [], [['html' => $notice . ListPage::listHead($types[$type], count($rules), $hint)
             . ListPage::bulkBar(self::BULK_FORM, self::ACTION, ['remove' => __('Delete', 'taxmod')], '', '<div class="alignleft actions">' . $this->createButton($type) . '</div><input type="hidden" form="' . esc_attr(self::BULK_FORM) . '" name="typ" value="' . esc_attr((string) $type) . '">', false, route: self::ACTION)
-            . ListPage::table($columns, $this->rows($type, $rules, array_keys($own), $words))]], $this->version, $this->plugin, tabs: $tabs);
+            // Live-Check 7: four squares (up, down, open, delete) need no 21em; the rule's name shares the rest.
+            . ListPage::table($columns, $this->rows($type, $rules, array_keys($own), $words), '', false, self::ACTIONS_WIDTH)]], $this->version, $this->plugin, tabs: $tabs);
     }
 
     /** admin-post «Neue Regel», «Löschen» and ▲/▼: capability → nonce → validate → act (CD-5, D-1254). */

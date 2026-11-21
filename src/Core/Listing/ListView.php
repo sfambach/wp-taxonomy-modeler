@@ -48,6 +48,12 @@ final class ListView
         return array_values(array_filter($this->columns, static fn (ListColumn $c): bool => $c->fixed || ($start ? $c->default : in_array($c->key, $chosen, true))));
     }
 
+    /** Whether the user chose the columns himself; then a secondary column he kept stands at any width. */
+    public function chose(): bool
+    {
+        return $this->chosen !== null;
+    }
+
     /** @return array<string, string> the column filters that are set, for known columns that can be filtered only */
     public function filters(): array
     {
