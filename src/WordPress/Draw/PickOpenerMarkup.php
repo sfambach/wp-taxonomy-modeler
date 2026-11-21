@@ -20,7 +20,9 @@ final class PickOpenerMarkup
                 $o->face->word !== null => self::e($o->face->word),
                 default                 => '<span class="taxmod-nothing">—</span><span class="screen-reader-text">' . self::e($o->face->forReader) . '</span>',
             }
-            : IconMarkup::dashicon($o->face->symbol) . '<span class="screen-reader-text">' . self::e($o->face->label) . '</span>';
+            : IconMarkup::dashicon($o->face->symbol);
+        // ⚠️ *Ein Symbol-Öffner trägt seinen Namen am Knopf (Prüftor zu Live-Check 19); ein Öffner mit Wort heisst wie sein Wort.*
+        $named = $o->face instanceof CurrentChoice || $o->face->label === '' ? '' : ' aria-label="' . self::e($o->face->label) . '"';
 
         return '<button type="button" class="' . ($o->showsName ? 'button taxmod-dialog-open taxmod-pick-open' : 'button taxmod-icon-button taxmod-pick-open') . '"'
             . ' data-field="' . self::e($o->field) . '"'
@@ -28,7 +30,7 @@ final class PickOpenerMarkup
             . ' data-barred="' . implode(',', array_map('intval', $o->barred)) . '"'
             . ' data-open="' . implode(',', array_map('intval', $o->open)) . '"'
             . ($o->showsName ? ' data-names="1"' : '')
-            . ' title="' . self::e($o->title) . '">' . $face . '</button>'
+            . $named . ' title="' . self::e($o->title) . '">' . $face . '</button>'
             . '<input type="hidden" name="' . self::e($o->field) . '" value="' . ($o->initial === null ? '' : $o->initial) . '"'
             . ($o->form === '' ? '' : ' form="' . self::e($o->form) . '"') . '>';
     }

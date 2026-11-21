@@ -72,7 +72,10 @@ final class DialogMarkup
         // 2026-11-04: «bei einfacher auswahl ein ausgegrautes feld erwarten und recht daneben … das baum symbol das öffnet den dialog». Beide
         // beschriften den Schalter, also öffnet auch ein Klick ins Feld.*
         $baum = $tree === null ? '' : '<label class="button ' . ControlMarkup::ICON_ONLY . ' taxmod-pick-tree" for="' . $id . '"'
-            . ($tree === '' ? '' : ' title="' . Html::escape($tree) . '"') . '>' . IconMarkup::dashicon('networking', $tree) . '</label>';
+            . ($tree === '' ? '' : ' title="' . Html::escape($tree) . '" aria-label="' . Html::escape($tree) . '"') . '>' . IconMarkup::dashicon('networking') . '</label>';
+
+        // ⚠️ *Der Name des Öffners sitzt am Öffner, das Symbol darin ist stumm (Prüftor zu Live-Check 19).*
+        [$named, $opener] = str_contains($openerClass, ControlMarkup::ICON_ONLY) ? IconMarkup::liftName($opener) : ['', $opener];
 
         return '<span class="taxmod-chooser' . ($tree === null ? '' : ' taxmod-pick') . '">'
             . Html::tag('input', [
@@ -84,8 +87,8 @@ final class DialogMarkup
             // ⚠️ *Ein Öffner, der nur ein Symbol ist, trägt dessen Namen als Tooltip (D-847).*
             . '<label class="' . Html::escape($openerClass) . '" for="' . $id . '"'
             . ($openerTitle !== '' ? ' title="' . Html::escape($openerTitle) . '"'
-                : (str_contains($openerClass, ControlMarkup::ICON_ONLY) && preg_match('/aria-label="([^"]*)"/', $opener, $name) === 1 ? ' title="' . $name[1] . '"' : ''))
-            . '>' . $opener . '</label>'
+                : (str_contains($openerClass, ControlMarkup::ICON_ONLY) && preg_match('/aria-label="([^"]*)"/', $named, $name) === 1 ? ' title="' . $name[1] . '"' : ''))
+            . $named . '>' . $opener . '</label>'
             . $baum
             . '<span class="taxmod-dialog' . (trim(strip_tags($title !== '' ? $title : $head)) === '' ? ' ' . self::UNTITLED : '') . ($wide ? ' ' . self::WIDE : '') . '">'
             . '<span class="taxmod-dialog-shade"></span>'

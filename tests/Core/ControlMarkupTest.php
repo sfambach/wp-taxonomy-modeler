@@ -38,6 +38,27 @@ final class ControlMarkupTest extends TestCase
         $this->assertStringContainsString('dashicons-trash', $markup);
     }
 
+    /** Prüftor zu Live-Check 19: the name sits on the button a person operates, the shape inside is mute. */
+    #[Test]
+    public function an_icon_button_carries_its_name_on_the_button(): void
+    {
+        $markup = ControlMarkup::button(new Control('do', 'up', 'Up', icon: 'arrow-up-alt2'));
+
+        $this->assertMatchesRegularExpression('/<button[^>]* aria-label="Up"[^>]*>/', $markup);
+        $this->assertMatchesRegularExpression('/<span[^>]*dashicons-arrow-up-alt2"[^>]* aria-hidden="true"/', $markup);
+        $this->assertDoesNotMatchRegularExpression('/<span[^>]* aria-label=/', $markup);
+    }
+
+    /** The same for the opener of the shared choosing tree (Verschieben in a row). */
+    #[Test]
+    public function a_pick_opener_carries_its_name_on_the_button(): void
+    {
+        $markup = \Taxmod\WordPress\Draw\PickOpenerMarkup::of(new \Taxmod\Core\Description\PickOpener('target', '', null, null, [], [], 'Move it', \Taxmod\Core\Description\Icon::named('move', 'Move')));
+
+        $this->assertMatchesRegularExpression('/<button[^>]* aria-label="Move"[^>]*>/', $markup);
+        $this->assertStringNotContainsString('screen-reader-text', $markup);
+    }
+
     /**
      * ⚠️ *The measured fault: a glyph is icon-only in every way that matters to the layout, and only
      * the face cares which font drew it.*

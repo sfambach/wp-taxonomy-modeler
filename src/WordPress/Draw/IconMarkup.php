@@ -106,6 +106,21 @@ final class IconMarkup
      * `aria-hidden`, zweimal **gar nichts**. Das ist kein Geschmack, sondern der Unterschied
      * zwischen «Papierkorb» und «Grafik» im Screenreader.*
      */
+    /**
+     * Der Name eines Symbols zieht an das Element, das man bedient (Prüftor zu Live-Check 19): der Knopf trägt `aria-label`, das
+     * Symbol darin wird stumm. *Sonst nennt der Vorleser ein Bild in einem namenlosen Knopf.*
+     *
+     * @return array{0: string, 1: string} das Attribut für den Knopf (mit führendem Leerzeichen, oder leer) und das stumme Gesicht
+     */
+    public static function liftName(string $face): array
+    {
+        if (preg_match('/ aria-label="([^"]*)"/', $face, $name) !== 1) {
+            return ['', $face];
+        }
+
+        return [' aria-label="' . $name[1] . '"', preg_replace('/ aria-label="[^"]*"/', ' aria-hidden="true"', $face, 1) ?? $face];
+    }
+
     private static function naming(string $label): string
     {
         return $label === ''
