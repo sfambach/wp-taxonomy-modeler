@@ -3126,6 +3126,26 @@ final class RenderingTest extends TestCase
         self::assertSame(SimpleType::NodeRef, $this->rendering->typeAt($typ), 'a choice list stays a choice');
     }
 
+    /**
+     * D-1559: a child data element declares no fields; it draws those of its unit-value ancestors. Live check 7 (21.11.): «Stärke»
+     * was missing from the edit form.
+     */
+    #[Test]
+    public function a_child_data_element_draws_the_fields_it_inherits(): void
+    {
+        $platine = $this->thing('Platine');
+        $wertTyp = $this->editor->createNode('Einheitenwert', $this->branchRoot['compositions']->id, \Taxmod\Core\Model\NodeClass\UnitValue::class);
+        $wert    = $this->editor->addField($wertTyp->id, $this->type('Decimal')->id, 'wert');
+        $laenge  = $this->editor->createNode('Länge', $wertTyp->id, \Taxmod\Core\Model\NodeClass\UnitValue::class);
+        $staerke = $this->editor->createNode('Stärke', $laenge->id, \Taxmod\Core\Model\NodeClass\UnitValue::class);
+        $feld    = $this->editor->addField($platine->id, $staerke->id, 'staerke', RelationKind::Composition);
+        $this->neuZeichnen();
+
+        $markup = \Taxmod\WordPress\Draw\Markup::of($this->rendering->fieldsFor([$feld], [], Purpose::Edit, 'v')[0]->result);
+
+        self::assertStringContainsString('[' . $wert->id . ']', $markup, 'the inherited «wert» is an input of the part');
+    }
+
     /** D-1366: a composed field (D-888) speaks its parts in their own words, as the chooser does. */
     #[Test]
     public function a_composed_field_names_its_parts_by_their_own_choice(): void

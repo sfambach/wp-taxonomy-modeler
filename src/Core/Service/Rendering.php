@@ -8186,10 +8186,31 @@ final class Rendering implements Presets, \Taxmod\Core\Port\FieldAddons
             }
 
             $weiter = [];
+            // ⚠️ *Ein Kind-Datenelement (D-1559) erklärt keine eigenen Felder; es erbt wert/prefix/einheit von den Einheitenwert-Vorfahren.
+            // Ohne sie fehlte «Stärke» im Bearbeiten ganz (Live-Check 7, 21.11.). Nur die Einheitenwert-Kette, wie SettingsResolver.*
+            $erbt = $this->unitValueAncestorsOf(array_values(array_filter(array_map(static fn (int $id): ?Node => $knoten[$id] ?? null, $fragen))));
+            $vonVorfahren = [];
 
-            foreach ($this->relations->fieldRelationsOf($fragen) as $kante) {
-                $unterbau[$kante->fromNodeId][] = $kante;
-                $weiter[]                   = $kante->toNodeId;
+            foreach ($this->relations->fieldRelationsOf(array_values(array_unique(array_merge($fragen, ...array_values($erbt ?: [[]]))))) as $kante) {
+                if (in_array($kante->fromNodeId, $fragen, true)) {
+                    $unterbau[$kante->fromNodeId][] = $kante;
+                    $weiter[]                       = $kante->toNodeId;
+                }
+
+                $vonVorfahren[$kante->fromNodeId][] = $kante;
+            }
+
+            foreach ($erbt as $id => $vorfahren) {
+                $geerbt = [];
+
+                foreach ($vorfahren as $vorfahr) {
+                    foreach ($vonVorfahren[$vorfahr] ?? [] as $kante) {
+                        $geerbt[] = $kante;
+                        $weiter[] = $kante->toNodeId;
+                    }
+                }
+
+                $unterbau[$id] = [...$geerbt, ...($unterbau[$id] ?? [])];
             }
 
             // ⚠️ *Ein Besitzer ohne Kanten bekommt einen leeren Eintrag — sonst würde die nächste Runde
@@ -8202,6 +8223,41 @@ final class Rendering implements Presets, \Taxmod\Core\Port\FieldAddons
         }
 
         return $unterbau;
+    }
+
+    /**
+     * For each unit-value node among these, its unit-value ancestors from the top down (D-1559) — the chain whose fields it inherits.
+     * One read for all ancestors (`CD-7`).
+     *
+     * @param  list<Node>            $nodes
+     * @return array<int, list<int>> node id => ancestor ids; only nodes that have such ancestors
+     */
+    private function unitValueAncestorsOf(array $nodes): array
+    {
+        $ketten = [];
+
+        foreach ($nodes as $node) {
+            if ($node->klasse === \Taxmod\Core\Model\NodeClass\UnitValue::class) {
+                $ketten[$node->id] = array_values(array_filter($this->framework->inheritanceOwnersOf($node), static fn (int $id): bool => $id !== $node->id));
+            }
+        }
+
+        if ($ketten === []) {
+            return [];
+        }
+
+        $vorfahren = $this->gemerkteKnoten(array_values(array_unique(array_merge(...array_values($ketten)))));
+        $aus       = [];
+
+        foreach ($ketten as $id => $kette) {
+            $wert = array_values(array_filter($kette, static fn (int $a): bool => ($vorfahren[$a] ?? null)?->klasse === \Taxmod\Core\Model\NodeClass\UnitValue::class));
+
+            if ($wert !== []) {
+                $aus[$id] = $wert;
+            }
+        }
+
+        return $aus;
     }
 
     /**
