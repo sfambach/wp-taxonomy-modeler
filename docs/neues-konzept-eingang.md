@@ -1443,3 +1443,10 @@ Anlass: [INF-073](#inf-073--bestand-und-fertigung-vom-wareneingang-über-die-pla
 - **Beschluss dazu:** [D-1553](NewConcept/90-decision-log.md): «a data element … holds every setting of a value — type, units, bounds, renderer, check rules, help … Replaces … the help per field of D-1524.»
 - **Offen:** Bei einem Feld auf ein Datenelement *ist* der Zielknoten das Datenelement, der Rückfall liefert also dessen Hilfe. Das folgt aus D-1553. Nicht daraus folgt, was Felder bekommen, die Sätze wählen (Ziel ist ein Ast wie die Material-Wurzel, kein Datenelement): gar keine Hilfe, oder eine eigene?
 - **Nicht entschieden. Keine Annahme gebaut.**
+
+## INF-146 · Anzeigesprache der Admin-Formulare nach Benutzer (2026-11-21)
+
+- **Anlass:** Live-Check 4 (Prüftor 21.11.). Der Hilfetext «Text» (Knoten 1175) stand nach Akt 603821 deutsch unter de_DE, im Formular aber weiter englisch. Ursache: Die Admin-Formulare zeichnen in der Standardsprache (`taxmod_neutral_locale`, live `en_US`), nicht in der Sprache des Benutzers.
+- **Beschluss dazu:** [D-387](NewConcept/90-decision-log.md): «we declare `en_US` as neutral in the admin config»; [D-959](NewConcept/90-decision-log.md): «Die Texte stehen unter `en_US`, der Sprache, die er erklärt hat». Der Hilfetext wurde darum per Datenjob in en_US gestellt.
+- **Offen:** Anzeigesprache der Admin-Formulare nach Benutzer (`get_user_locale`) statt Standardsprache?
+- **Nicht entschieden. Nicht bauen.**
