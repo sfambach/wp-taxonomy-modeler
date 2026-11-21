@@ -13,7 +13,7 @@ namespace Taxmod\Core\Model\NodeClass;
  * ⚠️ *`summary_fields` und `mass_felder` wie bei {@see Category} und {@see Choice}: wer einen vorhandenen Knoten (Abmessung) auf
  * diese Klasse stellt, verliert sonst beide beim Klassenwechsel (D-733). `INFERRED` (Feldkatalog-Bau).*
  *
- * @see /mnt/project-files/taxmod-felder/konzept.md §6, §11
+ * @see docs/NewConcept/90-decision-log.md D-1553 (Feldkatalog); Herleitung konzept.md §6, §11 (Projektablage)
  */
 final class CompositeType implements NodeClass
 {

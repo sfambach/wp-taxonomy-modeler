@@ -23,7 +23,7 @@ use Taxmod\Core\Model\Node;
  * by composition (Konzept-Thread 21.11.2026 to PR #147: «Lager-Positionen … zählen nicht, bloß weil sie per Komposition gehalten
  * werden»).*
  *
- * @see /mnt/project-files/taxmod-felder/konzept.md §0, §10, §11
+ * @see docs/NewConcept/90-decision-log.md D-1553 (Feldkatalog); Herleitung konzept.md §0, §10, §11 (Projektablage)
  */
 final class FieldCatalogue
 {

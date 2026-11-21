@@ -9,7 +9,7 @@ namespace Taxmod\Core\Model;
  * ⚠️ *Derived from the tree, never stored: where a node hangs and what its relations are says it, so there is no second
  * place that could disagree (CLAUDE.md «Duplicating a fact»).*
  *
- * @see /mnt/project-files/taxmod-felder/konzept.md §0, §10, §11
+ * @see docs/NewConcept/90-decision-log.md D-1553 (Feldkatalog); Herleitung konzept.md §0, §10, §11 (Projektablage)
  */
 enum CatalogueRole: string
 {

@@ -15,7 +15,7 @@ use Taxmod\Core\Service\FieldCatalogue;
  * ⚠️ *The unit value counts as a base type: it is seeded and generic like Integer, and «Länge» hangs below it as «Jahr»
  * hangs below Integer (konzept.md §10). `INFERRED` (Feldkatalog build), named in the PR.*
  *
- * @see /mnt/project-files/taxmod-felder/konzept.md §10
+ * @see docs/NewConcept/90-decision-log.md D-1553 (Feldkatalog); Herleitung konzept.md §10 (Projektablage)
  */
 final class CatalogueBase
 {

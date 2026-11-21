@@ -604,7 +604,7 @@ final class ModelAbilities
         $settings  = (new Persistence\WpdbSettingsRepository())->plainValuesByCarrier();
         $uses      = array_count_values(array_map(static fn (\Taxmod\Core\Model\Relation $r): int => $r->toNodeId, $relations));
         // D-1553: what each target is to the Feldkatalog.
-        $catalogue = Persistence\CatalogueBase::catalogue(new Persistence\SeededTypeNodes(new Persistence\WpdbNodeRepository(), $framework));
+        $roles     = Persistence\CatalogueBase::catalogue(new Persistence\SeededTypeNodes(new Persistence\WpdbNodeRepository(), $framework));
         $rows      = [];
         $byId      = [];
 
@@ -628,7 +628,7 @@ final class ModelAbilities
                 'settings'        => $own,
                 // *What similar-fields compares: the field's own settings over those of its target node.*
                 'compared'        => $own + ($settings['node'][$r->toNodeId] ?? []),
-                'target_role'     => isset($nodes[$r->toNodeId]) ? $catalogue->roleOf($nodes[$r->toNodeId])->value : CatalogueRole::Outside->value,
+                'target_role'     => isset($nodes[$r->toNodeId]) ? $roles->roleOf($nodes[$r->toNodeId])->value : CatalogueRole::Outside->value,
             ];
         }
 

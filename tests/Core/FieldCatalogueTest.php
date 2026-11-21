@@ -15,7 +15,7 @@ use Taxmod\Core\Service\FieldCatalogue;
  * under its type … Composite data types (dimension, unit value, address …) are catalogue entries whose parts point at data
  * elements»; and what creating one first shows ([D-1555](../../docs/NewConcept/90-decision-log.md)).
  *
- * @see /mnt/project-files/taxmod-felder/konzept.md §0
+ * @see docs/NewConcept/90-decision-log.md D-1553 (Feldkatalog); Herleitung konzept.md §0 (Projektablage)
  */
 final class FieldCatalogueTest extends TestCase
 {
