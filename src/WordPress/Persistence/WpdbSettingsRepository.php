@@ -204,6 +204,51 @@ final class WpdbSettingsRepository implements SettingsRepository
         return array_map($this->hydrate(...), $rows);
     }
 
+    /**
+     * The settings counted by attribute and carrier — a field (use site) when the row names a relation, else the settings
+     * object or the node that carries it; the measure of {@see \Taxmod\Core\Service\SettingsUsage}. Read only.
+     *
+     * @return list<array{attribute: string, carrier: string, active: bool, count: int}>
+     */
+    public function usageGroups(): array
+    {
+        $rows = Query::rows('Einstellungszeilen je Attribut und Träger zählen', 'SELECT attribut, CASE WHEN relation_id IS NOT NULL THEN \'field\' WHEN settings_object_id IS NOT NULL THEN \'object\' ELSE \'node\' END AS carrier, aktiv, COUNT(*) AS n FROM '
+            . Schema::table('settings_value') . ' GROUP BY attribut, carrier, aktiv ORDER BY attribut');
+
+        return array_map(static fn (array $row): array => ['attribute' => (string) $row['attribut'], 'carrier' => (string) $row['carrier'], 'active' => (int) $row['aktiv'] === 1, 'count' => (int) $row['n']], $rows);
+    }
+
+    /**
+     * The rows of one attribute that stand at a field (use site): which field, at which node, with which value.
+     *
+     * @return list<array{relation: int, node: int, object: int, value: string, active: bool}>
+     */
+    public function atFieldsNamed(string $attribut, int $limit, int $offset): array
+    {
+        global $wpdb;
+
+        $rows = Query::rows('Einstellungszeilen eines Attributs an Feldern lesen', $wpdb->prepare(
+            'SELECT relation_id, node_id, settings_object_id, aktiv, wert_int, wert_decimal, wert_text, wert_knoten_id, wert_settings_object_id, wert_kante_id FROM '
+            . Schema::table('settings_value') . ' WHERE attribut = %s AND relation_id IS NOT NULL ORDER BY relation_id, id LIMIT %d OFFSET %d',
+            $attribut,
+            $limit,
+            $offset
+        ));
+
+        return array_map(static function (array $row): array {
+            $value = '';
+
+            foreach (['wert_text', 'wert_int', 'wert_decimal', 'wert_knoten_id', 'wert_settings_object_id', 'wert_kante_id'] as $column) {
+                if ($row[$column] !== null) {
+                    $value = ($column === 'wert_text' || $column === 'wert_int' || $column === 'wert_decimal' ? '' : substr($column, 5) . ':') . (string) $row[$column];
+                    break;
+                }
+            }
+
+            return ['relation' => (int) $row['relation_id'], 'node' => (int) ($row['node_id'] ?? 0), 'object' => (int) ($row['settings_object_id'] ?? 0), 'value' => $value, 'active' => (int) $row['aktiv'] === 1];
+        }, $rows);
+    }
+
     public function forgetValue(int $id): ?int
     {
         global $wpdb;
