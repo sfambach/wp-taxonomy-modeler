@@ -6,6 +6,7 @@ use Taxmod\WordPress\Draw\HintMarkup;
 use Taxmod\Core\Listing\ListColumn;
 use Taxmod\WordPress\Draw\DialogMarkup;
 use Taxmod\Core\Listing\ListView;
+use Taxmod\Core\Listing\PageSize;
 use Taxmod\WordPress\Plugin;
 
 /**
@@ -40,6 +41,18 @@ final class ListPage
 
     /** The query value that asks a list waiting for a search to show everything, page by page (D-1147). */
     public const SHOW_ALL = 'all';
+
+    /** Entries per list page: the query value of the choice on the page, the user meta of the user setting, the site option. */
+    public const PER_PAGE_QUERY  = 'per_page';
+    public const PER_PAGE_META   = 'taxmod_list_per_page';
+    public const PER_PAGE_OPTION = 'taxmod_list_per_page';
+
+    /** User meta: list id => the size last chosen on that list (D-1545 F1); the admin-ajax action that keeps it. */
+    public const PER_PAGE_CHOSEN_META = 'taxmod_list_per_page_chosen';
+    public const PER_PAGE_ACTION      = 'taxmod_list_per_page';
+
+    /** The query value of the page a list shows. */
+    public const PAGE_QUERY = 'paged';
 
     /** User meta: list id => the non-fixed column keys the user chose. */
     private const COLUMNS_META = 'taxmod_list_columns';
@@ -375,6 +388,168 @@ final class ListPage
         }
 
         return $html . '<br class="clear"></div>';
+    }
+
+    /**
+     * How many entries one page of the list `$listId` shows (D-1545): the choice on the page — asked now or kept from before —,
+     * else the user's setting, else the site's.
+     */
+    public static function perPage(string $listId): int
+    {
+        $user   = (int) get_user_meta(get_current_user_id(), self::PER_PAGE_META, true);
+        $chosen = self::asked(self::PER_PAGE_QUERY) ?? (self::chosenSizes()[$listId] ?? null);
+
+        return PageSize::resolve($chosen, $user === 0 ? null : $user, self::sitePerPage());
+    }
+
+    /** @return array<string, int> list id => size chosen on that list by the current user */
+    private static function chosenSizes(): array
+    {
+        $kept = get_user_meta(get_current_user_id(), self::PER_PAGE_CHOSEN_META, true);
+
+        return is_array($kept) ? array_map('intval', array_filter($kept, 'is_numeric')) : [];
+    }
+
+    /** admin-ajax: keeps the size chosen on a list for the current user (D-1545 F1). Capability → nonce → validate → act. */
+    public static function saveChosenSize(): void
+    {
+        if (! current_user_can('read')) {
+            wp_send_json_error(['message' => __('Not allowed.', 'taxmod')], 403);
+        }
+
+        check_ajax_referer(self::PER_PAGE_ACTION);
+
+        $list = sanitize_key((string) wp_unslash($_POST['list'] ?? ''));
+        $size = absint($_POST['size'] ?? 0);
+
+        if ($list === '' || ! PageSize::offered($size)) {
+            wp_send_json_error(['message' => __('No list or size named.', 'taxmod')], 400);
+        }
+
+        update_user_meta(get_current_user_id(), self::PER_PAGE_CHOSEN_META, [$list => $size] + self::chosenSizes());
+        wp_send_json_success();
+    }
+
+    /** Forgets the size chosen on every list (Benutzereinstellungen, with the column choice). */
+    public static function resetChosenSizes(): void
+    {
+        delete_user_meta(get_current_user_id(), self::PER_PAGE_CHOSEN_META);
+    }
+
+    /** The site's setting for entries per list page (Einstellungen). */
+    public static function sitePerPage(): int
+    {
+        return PageSize::resolve(null, null, (int) get_option(self::PER_PAGE_OPTION, PageSize::DEFAULT));
+    }
+
+    /** The page of a list the address asks for, at least 1; {@see ListView::page()} makes it fit the rows. */
+    public static function pageAsked(): int
+    {
+        return max(1, (int) self::asked(self::PAGE_QUERY));
+    }
+
+    /**
+     * One page of a list's rows, cut after search, filters and order ({@see ListView::apply()}), and the page part of the list's bar
+     * for {@see self::bulkBar()} or {@see self::listBar()}: how many entries a page shows and the page links.
+     *
+     * @template T
+     * @param string                                  $listId names the list, so the size chosen on it is kept for it alone
+     * @param list<T>                                 $rows   every kept row, in the shown order
+     * @param callable(array<string, string>): string $url    the list's address with these query values changed
+     * @return array{rows: list<T>, total: int, complete: bool, pages: string}
+     */
+    public static function paged(string $listId, array $rows, callable $url): array
+    {
+        $perPage = self::perPage($listId);
+        $total   = count($rows);
+
+        return [
+            'rows'     => ListView::page($rows, self::pageAsked(), $perPage),
+            'total'    => $total,
+            'complete' => ListView::onePage($total, $perPage),
+            'pages'    => self::pages($listId, $total, self::pageAsked(), $perPage, $url),
+        ];
+    }
+
+    /**
+     * The page part of a list's bar, right beside the count: the choice of entries per page and, with more than one page, the
+     * links «« ‹ 2 of 7 › »». Both are links or a choice the list script follows without loading the page (D-1408).
+     *
+     * @param callable(array<string, string>): string $url the list's address with these query values changed
+     */
+    public static function pages(string $listId, int $total, int $page, int $perPage, callable $url): string
+    {
+        $pages   = (int) ceil(max(1, $total) / max(1, $perPage));
+        $page    = ListView::clampPage($page, $total, $perPage);
+        $options = '';
+        // A page link keeps the size chosen on the page; without one the settings speak again.
+        $chosen  = (string) (self::asked(self::PER_PAGE_QUERY) ?? '');
+
+        foreach (PageSize::SIZES as $size) {
+            $options .= '<option value="' . esc_attr($url([self::PER_PAGE_QUERY => (string) $size, self::PAGE_QUERY => ''])) . '" data-taxmod-size="' . esc_attr((string) $size) . '"' . selected($size, $perPage, false) . '>' . esc_html((string) $size) . '</option>';
+        }
+
+        $keep = add_query_arg(['action' => self::PER_PAGE_ACTION, '_ajax_nonce' => wp_create_nonce(self::PER_PAGE_ACTION)], admin_url('admin-ajax.php'));
+        $html = '<label class="taxmod-list-per-page">' . esc_html__('Per page', 'taxmod') . ' <select class="taxmod-list-per-page-choice" data-taxmod-list="' . esc_attr(sanitize_key($listId))
+            . '" data-taxmod-keep="' . esc_url($keep) . '">' . $options . '</select></label>';
+
+        if ($pages > 1) {
+            $link  = static fn (int $to, string $text, string $label): string => $to < 1 || $to > $pages || $to === $page
+                ? '<span class="tablenav-pages-navspan button disabled" aria-hidden="true">' . $text . '</span>'
+                : '<a class="button" href="' . esc_url($url([self::PAGE_QUERY => $to === 1 ? '' : (string) $to, self::PER_PAGE_QUERY => $chosen])) . '"><span class="screen-reader-text">' . esc_html($label) . '</span><span aria-hidden="true">' . $text . '</span></a>';
+            $html .= ' <span class="pagination-links">' . $link(1, '«', __('First page', 'taxmod')) . ' ' . $link($page - 1, '‹', __('Previous page', 'taxmod'))
+                . ' <span class="paging-input">' . esc_html(sprintf(/* translators: 1: page, 2: pages */ __('%1$d of %2$d', 'taxmod'), $page, $pages)) . '</span> '
+                . $link($page + 1, '›', __('Next page', 'taxmod')) . ' ' . $link($pages, '»', __('Last page', 'taxmod')) . '</span>';
+        }
+
+        wp_enqueue_script(Plugin::LIST_HEAD_SCRIPT);
+
+        return $html;
+    }
+
+    /**
+     * The line «Entries per list page» in Benutzereinstellungen (the filter `taxmod_user_settings`, D-1502): empty follows the
+     * site's setting; the choice on a list wins over it.
+     *
+     * @return list<array{label: string, control: string, save: callable}>
+     */
+    public static function userSetting(mixed $lines): array
+    {
+        $lines   = is_array($lines) ? array_values($lines) : [];
+        $own     = (int) get_user_meta(get_current_user_id(), self::PER_PAGE_META, true);
+        $options = [];
+
+        foreach (PageSize::SIZES as $size) {
+            $options[(string) $size] = (string) $size;
+        }
+
+        $lines[] = [
+            'label'   => __('Entries per list page', 'taxmod'),
+            'control' => \Taxmod\WordPress\Draw\SelectMarkup::of(self::PER_PAGE_META, $options, PageSize::offered($own) ? (string) $own : null, true,
+                nothingWord: sprintf(/* translators: %d: entries per page of the site's setting */ __('As in the settings (%d)', 'taxmod'), self::sitePerPage()))
+                . '<p class="description">' . esc_html__('A size chosen on a list is kept for that list and wins over this; changing this setting forgets those choices.', 'taxmod') . '</p>',
+            // The settings page has checked capability and nonce for its own form (CD-5).
+            'save'    => static function () use ($own): void {
+                $size = absint($_POST[self::PER_PAGE_META] ?? 0);
+                $size = PageSize::offered($size) ? $size : 0;
+
+                // A new own setting means every list again: what was chosen on single lists would otherwise still win.
+                if ($size !== (PageSize::offered($own) ? $own : 0)) {
+                    self::resetChosenSizes();
+                }
+
+                update_user_meta(get_current_user_id(), self::PER_PAGE_META, $size === 0 ? '' : $size);
+            },
+        ];
+
+        return $lines;
+    }
+
+    private static function asked(string $key): ?int
+    {
+        $value = isset($_GET[$key]) ? absint(wp_unslash((string) $_GET[$key])) : 0;
+
+        return $value === 0 ? null : $value;
     }
 
     /** The button that shows or hides the filter row. */
@@ -788,7 +963,7 @@ final class ListPage
      *                                                     the dialog opens at once and its own form counts its rows (D-1403)
      * @param string $search from {@see self::searchBox()}: the list's search, on the right of the same row (D-1462)
      */
-    public static function bulkBar(string $formId, string $nonceAction, array $actions, string $count, string $filters = '', bool $expandable = true, array $asking = [], string $search = ''): string
+    public static function bulkBar(string $formId, string $nonceAction, array $actions, string $count, string $filters = '', bool $expandable = true, array $asking = [], string $search = '', string $pages = ''): string
     {
         // His word 2026-11-06: «-- , drucken ... und was wir noch für aktionen haben in das selekt und dann bulk ation asuführen
         // button (nimmt nur selektierte einträge» — every action of the list stands in the one choice (D-1202).
@@ -814,7 +989,7 @@ final class ListPage
             . '<label class="screen-reader-text" for="' . esc_attr($formId) . '-action">' . esc_html__('Select bulk action') . '</label>'
             . '<select name="action" id="' . esc_attr($formId) . '-action">' . $options . '</select> '
             . get_submit_button(__('Apply'), 'action', '', false) . '</form>'
-            . ($dialogs === '' ? '' : '<div class="taxmod-bulk-asks">' . $dialogs . '</div>'), $count, $filters, $expandable, $search);
+            . ($dialogs === '' ? '' : '<div class="taxmod-bulk-asks">' . $dialogs . '</div>'), $count, $filters, $expandable, $search, $pages);
     }
 
     /**
@@ -828,13 +1003,13 @@ final class ListPage
      * @param string $buttons the page's own buttons («Neuer Arbeitsplatz»), first in the same row — D-1526: one row, never a
      *                        toolbar above the bar; a list whose count stands in {@see self::listHead()} passes `$count` ''
      */
-    public static function listBar(string $count, string $filters = '', string $search = '', bool $expandable = false, string $buttons = ''): string
+    public static function listBar(string $count, string $filters = '', string $search = '', bool $expandable = false, string $buttons = '', string $pages = ''): string
     {
-        return self::barRow($buttons === '' ? '' : '<div class="alignleft actions taxmod-list-buttons">' . $buttons . '</div>', $count, $filters, $expandable, $search);
+        return self::barRow($buttons === '' ? '' : '<div class="alignleft actions taxmod-list-buttons">' . $buttons . '</div>', $count, $filters, $expandable, $search, $pages);
     }
 
     /** The one row of {@see self::bulkBar()} and {@see self::listBar()}: `$start` first, then filters, fold icons, search, count. */
-    private static function barRow(string $start, string $count, string $filters, bool $expandable, string $search): string
+    private static function barRow(string $start, string $count, string $filters, bool $expandable, string $search, string $pages = ''): string
     {
         return '<div class="tablenav top taxmod-list-bar">' . $start
             . $filters
@@ -842,7 +1017,8 @@ final class ListPage
             . '<button type="button" class="button" onclick="' . esc_attr(self::toggleAll(false)) . '">' . self::icon('arrow-down-alt2', __('Expand all', 'taxmod')) . '</button> '
             . '<button type="button" class="button" onclick="' . esc_attr(self::toggleAll(true)) . '">' . self::icon('arrow-up-alt2', __('Collapse all', 'taxmod')) . '</button></div>')
             . $search
-            . ($count === '' ? '' : '<div class="tablenav-pages one-page"><span class="displaying-num">' . esc_html($count) . '</span></div>') . '<br class="clear"></div>';
+            . ($count === '' && $pages === '' ? '' : '<div class="tablenav-pages taxmod-list-pages' . ($pages === '' || ! str_contains($pages, 'pagination-links') ? ' one-page' : '') . '">'
+            . ($count === '' ? '' : '<span class="displaying-num">' . esc_html($count) . '</span>') . ($pages === '' ? '' : ' ' . $pages) . '</div>') . '<br class="clear"></div>';
     }
 
     /**

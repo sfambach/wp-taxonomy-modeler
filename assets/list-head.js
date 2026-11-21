@@ -845,4 +845,49 @@
 		var source = event.target.dataset ? event.target.dataset.source || '' : '';
 		start( event.target, 'details-' + source + ':' );
 	} );
+
+	// Pages of a list (ListPage::pages): a page link or another size asks the server for that page and puts it in place (D-1408).
+	function showPage( url ) {
+		if ( window.taxmodShow ) {
+			window.taxmodShow( url );
+		} else {
+			window.location.href = url;
+		}
+	}
+
+	document.addEventListener( 'click', function ( event ) {
+		var link = event.target instanceof Element ? event.target.closest( '.taxmod-list-pages .pagination-links a[href]' ) : null;
+
+		if ( ! link || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey ) {
+			return;
+		}
+
+		event.preventDefault();
+		showPage( link.href );
+	} );
+
+	document.addEventListener( 'change', function ( event ) {
+		var choice = event.target;
+
+		if ( ! ( choice instanceof HTMLSelectElement ) || ! choice.classList.contains( 'taxmod-list-per-page-choice' ) || ! choice.value ) {
+			return;
+		}
+
+		// D-1545 F1: the choice is kept for this list before the page shows it; a failed keep still shows it.
+		var size = choice.options[ choice.selectedIndex ].getAttribute( 'data-taxmod-size' ) || '';
+		var keep = choice.getAttribute( 'data-taxmod-keep' );
+		var url  = choice.value;
+
+		if ( ! keep || ! window.fetch ) {
+			showPage( url );
+
+			return;
+		}
+
+		window.fetch( keep, { method: 'POST', credentials: 'same-origin', body: new URLSearchParams( { list: choice.getAttribute( 'data-taxmod-list' ) || '', size: size } ) } )
+			.catch( function () {} )
+			.then( function () {
+				showPage( url );
+			} );
+	} );
 }() );

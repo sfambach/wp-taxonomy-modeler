@@ -227,6 +227,7 @@ final class SettingsScreen
             . $this->trashRow()
             . $this->listImagesRow()
             . $this->recordsPerPageRow()
+            . $this->listPerPageRow()
             . $this->treeClickRow()
             . $this->autosaveRow()
             . $this->sizeRow(self::ICON_SIZE, __('Icon size', 'taxmod'), self::defaultIconSize(), __('Every icon of Taxmod and its modules: the tree, the buttons, the lists.', 'taxmod'))
@@ -417,6 +418,22 @@ final class SettingsScreen
             __('Default language', 'taxmod'),
             \Taxmod\WordPress\Draw\SelectMarkup::of('neutral_locale', $offered, self::neutralLocale(), false),
             __('A text written in this language counts as valid everywhere, and is stored without a language of its own. Other languages are stored beside it and win where they exist.', 'taxmod')
+        );
+    }
+
+    /** How many entries one page of a list shows, for everyone; the user's own setting and the choice on the page beat it. */
+    private function listPerPageRow(): string
+    {
+        $options = [];
+
+        foreach (\Taxmod\Core\Listing\PageSize::SIZES as $size) {
+            $options[$size] = (string) $size;
+        }
+
+        return $this->row(
+            __('Entries per list page', 'taxmod'),
+            \Taxmod\WordPress\Draw\SelectMarkup::of(ListPage::PER_PAGE_OPTION, $options, (string) ListPage::sitePerPage(), false),
+            __('How many entries a list shows at once; the rest are a page away. Each user may choose otherwise in the user settings, and the choice on the list wins over both.', 'taxmod')
         );
     }
 
@@ -714,6 +731,12 @@ final class SettingsScreen
 
         if (in_array($jeSeite, self::PAGE_SIZES, true)) {
             update_option(self::RECORDS_PER_PAGE, $jeSeite, true);
+        }
+
+        $proListe = isset($_POST[ListPage::PER_PAGE_OPTION]) ? absint($_POST[ListPage::PER_PAGE_OPTION]) : 0;
+
+        if (\Taxmod\Core\Listing\PageSize::offered($proListe)) {
+            update_option(ListPage::PER_PAGE_OPTION, $proListe, true);
         }
 
         $baumKlick = isset($_POST['tree_click']) ? sanitize_key(wp_unslash((string) $_POST['tree_click'])) : '';
