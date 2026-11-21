@@ -64,7 +64,7 @@ vermutlich im Fliesstext und sollte eine eigene Zeile bekommen.
 | **CD4** | Type everything that can be typed: properties, parameters, returns. mixed needs a reason in a comment. | [CLAUDE.md:65](../../CLAUDE.md) | 1 |
 | **CD5** | At the boundary, in this order, every time: capability check → nonce → validate → sanitize → act → escape on output. No exceptions, not even for ad… | [CLAUDE.md:66](../../CLAUDE.md) | 33 |
 | **CD6** | Custom tables: $wpdb->prefix . 'taxmod_<name>', created via dbDelta() on activation, guarded by a stored schema version option so upgrades are dete… | [CLAUDE.md:67](../../CLAUDE.md) | 21 |
-| **CD7** | No N+1. No SQL inside a loop, no recursive function that queries per level. Tree traversal is solved once, in one place, and every caller uses it. | [CLAUDE.md:68](../../CLAUDE.md) | 225 |
+| **CD7** | No N+1. No SQL inside a loop, no recursive function that queries per level. Tree traversal is solved once, in one place, and every caller uses it. | [CLAUDE.md:68](../../CLAUDE.md) | 227 |
 | **CD8** | Presentation code returns strings. No echo inside renderers, loops, shortcodes or hooks. Use ob_start() / ob_get_clean() only when a third-party AP… | [CLAUDE.md:69](../../CLAUDE.md) | 16 |
 | **CD9** | Names say what the thing is. Rename when the word lies. No abbreviations that need a lookup, and no data / info / manager / helper as a whole name. | [CLAUDE.md:70](../../CLAUDE.md) | 29 |
 | **CD10** | Errors: exceptions inside the core, translated to WP_Error at the boundary. Never a bare false to signal failure. Never silence an exception withou… | [CLAUDE.md:71](../../CLAUDE.md) | 8 |
@@ -106,7 +106,7 @@ vermutlich im Fliesstext und sollte eine eigene Zeile bekommen.
 
 | Regel | Was sie sagt | Steht in | Zitiert |
 |---|---|---|---|
-| **C1** | Model contains Bauteil (Passiv, Halbleiter, Elektromechanik, Sonstige), Bauteilliste, Kontakt, Platine, Bauteillisten Position. | [01-standard-tree.md:88](01-standard-tree.md) | 15 |
+| **C1** | Model contains Bauteil (Passiv, Halbleiter, Elektromechanik, Sonstige), Bauteilliste, Kontakt, Platine, Bauteillisten Position. | [01-standard-tree.md:88](01-standard-tree.md) | 16 |
 | **C2** | Implementation holds Bauteile, BOM, Lieferanten — actual instances. | [01-standard-tree.md:89](01-standard-tree.md) | 24 |
 | **C3** | Konstanten also holds Bauformen and Bauteil Monatge Typen (sic). | [01-standard-tree.md:90](01-standard-tree.md) | 7 |
 | **C4** | The file's own notes list four known live inconsistencies, including a typo and a soft-trashed node. | [01-standard-tree.md:91](01-standard-tree.md) | 10 |
@@ -403,7 +403,7 @@ vermutlich im Fliesstext und sollte eine eigene Zeile bekommen.
 | Regel | Was sie sagt | Steht in | Zitiert |
 |---|---|---|---|
 | **B1** | Relationstypen is a branch of the tree — relation kinds stored as nodes. | [01-standard-tree.md:55](01-standard-tree.md) | 4 |
-| **B2** | Seven kinds, not three: plus has_type, defaultvalue_from, calc, ref_scope. | [01-standard-tree.md:56](01-standard-tree.md) | 5 |
+| **B2** | Seven kinds, not three: plus has_type, defaultvalue_from, calc, ref_scope. | [01-standard-tree.md:56](01-standard-tree.md) | 9 |
 | **B3** | Kilogramm listed as a base unit with prefix. | [01-standard-tree.md:57](01-standard-tree.md) | 5 |
 | **B4** | Praefix and Kuerzel on parent and on every child. | [01-standard-tree.md:58](01-standard-tree.md) | 2 |
 | **B5** | Simple Datatypes contains display_node_name. | [01-standard-tree.md:59](01-standard-tree.md) | 3 |
