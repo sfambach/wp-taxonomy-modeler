@@ -116,33 +116,19 @@ final class KeyValues
             return self::plain($rows);
         }
 
-        $number = (string) $numbers[0]->value->decimal;
-        $folded = [];
         $others = [];
 
         foreach ($rows as $row) {
             $value = $row->value;
 
-            if ($row === $numbers[0]) {
-                continue;
-            }
-
-            if ($value->reference !== null && $value->referenceSpace === ReferenceSpace::Node && isset($this->conversions[$value->reference])) {
-                $folded[] = $this->conversions[$value->reference];
-
+            if ($row === $numbers[0] || ($value->reference !== null && $value->referenceSpace === ReferenceSpace::Node && isset($this->conversions[$value->reference]))) {
                 continue;
             }
 
             $others[] = $row->relationId . "\x1D" . $row->locale . "\x1D" . json_encode($value->rawValue());
         }
 
-        // A prefix has no offset and goes first; a unit with an offset (°C) works on the prefixed number.
-        usort($folded, static fn (array $a, array $b): int => (self::isZero($a['offset']) ? 0 : 1) <=> (self::isZero($b['offset']) ? 0 : 1));
-
-        foreach ($folded as $conversion) {
-            $number = self::add(self::multiply($number, $conversion['factor']), $conversion['offset']);
-        }
-
+        $number = Amounts::folded((string) $numbers[0]->value->decimal, Amounts::conversionsOf($rows, $this->conversions));
         $others[] = $numbers[0]->relationId . "\x1D" . 'number:' . self::normal($number);
         sort($others);
 
@@ -188,11 +174,6 @@ final class KeyValues
         $text   = $part === '' ? $whole : $whole . '.' . $part;
 
         return $negative && $text !== '0' ? '-' . $text : $text;
-    }
-
-    private static function isZero(string $decimal): bool
-    {
-        return self::normal($decimal) === '0';
     }
 
     public static function multiply(string $a, string $b): string

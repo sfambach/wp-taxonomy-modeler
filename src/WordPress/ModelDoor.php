@@ -667,20 +667,24 @@ final class ModelDoor
             }
         }
 
-        $nodes = $ids === [] ? [] : (new Persistence\WpdbNodeRepository())->byIds(array_keys($ids));
+        return $this->conversionsOfNodes(array_keys($ids));
+    }
+
+    /**
+     * The conversions (factor, offset) of these nodes; a node without one is absent.
+     *
+     * @param list<int> $ids
+     * @return array<int, array{factor: string, offset: string}>
+     */
+    private function conversionsOfNodes(array $ids): array
+    {
+        $nodes = $ids === [] ? [] : (new Persistence\WpdbNodeRepository())->byIds($ids);
 
         if ($nodes === []) {
             return [];
         }
 
-        $resolver = new \Taxmod\Core\Service\SettingsResolver(
-            new Persistence\WpdbSettingsRepository(),
-            new Persistence\WpdbNodeRepository(),
-            \Taxmod\Core\Renderer\ShippedRenderers::registry(),
-            \Taxmod\Core\Converter\ShippedConverters::registry(),
-            \Taxmod\Core\Addon\ShippedAddons::registry(),
-            new Persistence\WpdbRelationRepository()
-        );
+        $resolver = $this->resolver();
         $resolver->preload(array_values($nodes));
         $out = [];
 
@@ -697,6 +701,161 @@ final class ModelDoor
         }
 
         return $out;
+    }
+
+    private function resolver(): \Taxmod\Core\Service\SettingsResolver
+    {
+        return new \Taxmod\Core\Service\SettingsResolver(
+            new Persistence\WpdbSettingsRepository(),
+            new Persistence\WpdbNodeRepository(),
+            \Taxmod\Core\Renderer\ShippedRenderers::registry(),
+            \Taxmod\Core\Converter\ShippedConverters::registry(),
+            \Taxmod\Core\Addon\ShippedAddons::registry(),
+            new Persistence\WpdbRelationRepository()
+        );
+    }
+
+    /**
+     * Which of these fields hold a unit value — a module reads and writes those through {@see self::amountsOf()} and
+     * {@see self::putAmount()}, the others as the number they were (Feldkatalog 9/10/12). One read for the fields, one for their targets.
+     *
+     * @param list<int> $fields
+     * @return list<int> in the order asked
+     */
+    public function amountFields(array $fields): array
+    {
+        $relations = $fields === [] ? [] : (new Persistence\WpdbRelationRepository())->byIds(array_map('intval', $fields));
+        $targets   = [];
+
+        foreach ($relations as $relation) {
+            $targets[$relation->toNodeId] = true;
+        }
+
+        $nodes = $targets === [] ? [] : (new Persistence\WpdbNodeRepository())->byIds(array_keys($targets));
+        $out   = [];
+
+        foreach ($relations as $relation) {
+            if (($nodes[$relation->toNodeId] ?? null)?->klasse === \Taxmod\Core\Model\NodeClass\UnitValue::class) {
+                $out[(int) $relation->id] = true;
+            }
+        }
+
+        return array_values(array_filter(array_map('intval', $fields), static fn (int $field): bool => isset($out[$field])));
+    }
+
+    /**
+     * The numbers of these unit-value fields in their base unit — 62 mm as 0.062, a prefix and a unit with a conversion folded in
+     * as D-1540 compares them. Only a unit value answers; an old number or an empty field is absent. One read for the values, one for
+     * the parts, one for the conversions they name (CD-7).
+     *
+     * @param list<int> $records
+     * @param list<int> $fields
+     * @return array<int, array<int, float>> record id → field id → number in the base unit
+     */
+    public function amountsOf(array $records, array $fields): array
+    {
+        if ($records === [] || $fields === []) {
+            return [];
+        }
+
+        $repository = new WpdbRecordRepository();
+        $rows       = $repository->valuesOfMany(array_values(array_unique(array_map('intval', $records))));
+        $wanted     = array_flip(array_map('intval', $fields));
+        $parts      = [];
+
+        foreach ($rows as $values) {
+            foreach ($values as $value) {
+                if (isset($wanted[$value->relationId]) && $value->value->reference !== null && $value->value->referenceSpace === \Taxmod\Core\Model\ReferenceSpace::Record) {
+                    $parts[$value->value->reference] = true;
+                }
+            }
+        }
+
+        $partRows = $parts === [] ? [] : $repository->valuesOfMany(array_keys($parts));
+
+        return (new \Taxmod\Core\Service\Amounts($rows, $partRows, $this->conversionsIn($partRows)))->of(array_keys($wanted));
+    }
+
+    /**
+     * Write a number in its base unit into a unit-value field, as one change with an undo (D-1410). The unit is the one unit the
+     * field allows without a conversion (Meter, dpi); the prefix stays empty.
+     *
+     * ⚠️ *INFERRED (Feldkatalog 21.11.): refused for a field that still holds a plain number — only the module knows that number's
+     * old scale — and when the field allows no such unit or more than one; nothing is guessed.*
+     *
+     * @return int the change number, for `undo`
+     */
+    public function putAmount(int $record, int $field, float $base): int
+    {
+        if ($this->amountFields([$field]) === []) {
+            throw ModelDoorRefused::because(sprintf('Field %d holds no unit value.', $field));
+        }
+
+        $relation = (new Persistence\WpdbRelationRepository())->byId($field) ?? throw ModelDoorRefused::because(sprintf('Field %d is unknown.', $field));
+        $element  = (new Persistence\WpdbNodeRepository())->byId($relation->toNodeId);
+        $allowed  = [];
+
+        foreach ($this->resolver()->allowedUnitsOf($element, $relation) as $entry) {
+            if ($entry->aktiv && $entry->reference !== null) {
+                $allowed[] = (int) $entry->reference;
+            }
+        }
+
+        $baseUnits = array_values(array_diff($allowed, array_keys($this->conversionsOfNodes($allowed))));
+
+        if (count($baseUnits) !== 1) {
+            throw ModelDoorRefused::because(sprintf('Field %d allows %d units without a conversion; one is needed.', $field, count($baseUnits)));
+        }
+
+        [$numberField, $unitField, $prefixField] = $this->unitValueFields();
+        // A held part is rewritten in place ("0"), its prefix emptied; only a field without one gets a new part.
+        $held = ($this->rawValuesOf([$record])[$record][$field] ?? []) !== [];
+        $part = [$numberField => \Taxmod\Core\Service\KeyValues::normal(number_format($base, 10, '.', '')), $unitField => (string) $baseUnits[0]];
+
+        if ($held && $prefixField !== 0) {
+            $part[$prefixField] = '';
+        }
+
+        $answer = $this->write([['op' => 'set_values', 'record' => (string) $record, 'values' => [$field => [($held ? '0' : 'neu') => $part]]]]);
+
+        return (int) ($answer['act'] ?? 0);
+    }
+
+    /**
+     * The number and the unit field of the unit value, by what they point at — the decimal type and the base units — since the
+     * option that notes a scaffold field is written only when the scaffold runs.
+     *
+     * @return array{0: int, 1: int, 2: int} number field, unit field, prefix field (0 when there is none)
+     */
+    private function unitValueFields(): array
+    {
+        $unitValue = (int) Persistence\UnitScaffold::unitValueId();
+        $units     = (int) get_option(Persistence\UnitScaffold::NODE_OPTION_PREFIX . 'base_units', 0);
+        $decimal   = (new Persistence\WpdbNodeRepository())->byImplementations([\Taxmod\Core\Model\Type\DecimalType::class])[\Taxmod\Core\Model\Type\DecimalType::class] ?? null;
+        $prefixes  = (int) get_option(Persistence\UnitScaffold::NODE_OPTION_PREFIX . 'prefixes', 0);
+        $number    = 0;
+        $unit      = 0;
+        $prefix    = 0;
+
+        foreach ((new Persistence\WpdbRelationRepository())->fieldRelationsOf([$unitValue]) as $relation) {
+            if ($relation->fromNodeId !== $unitValue || $relation->isSetting()) {
+                continue;
+            }
+
+            if ($decimal !== null && $relation->toNodeId === $decimal->id && $number === 0) {
+                $number = (int) $relation->id;
+            } elseif ($relation->toNodeId === $units && $unit === 0) {
+                $unit = (int) $relation->id;
+            } elseif ($relation->toNodeId === $prefixes && $prefix === 0) {
+                $prefix = (int) $relation->id;
+            }
+        }
+
+        if ($number === 0 || $unit === 0) {
+            throw ModelDoorRefused::because('The unit value has no number or no unit field.');
+        }
+
+        return [$number, $unit, $prefix];
     }
 
     /**
