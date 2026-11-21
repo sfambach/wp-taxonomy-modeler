@@ -218,6 +218,15 @@ $records = (new ModelDoor())->records($ref['k']);
 check('the module door reads the name plain', ($records[$p][$ref['name']] ?? []) === ['Erika Musterfrau'], wp_json_encode($records[$p] ?? null));
 check('the module door reads the place plain', ($records[$p][$ref['ort']] ?? []) === ['Musterstadt']);
 
+// *Live 21.11.2026: an admin list read the key for the first time inside the stream of rawValuesOfNode, where the connection
+// takes no other statement — the key counted as missing and every value read «🔒». As in a fresh request: key forgotten, the
+// option not in the cache.*
+FieldSeal::forgetKey();
+wp_cache_delete(FieldSeal::KEY_OPTION, 'options');
+wp_cache_delete('alloptions', 'options');
+$fresh = (new ModelDoor())->records($ref['k']);
+check('an admin list reads plain text when the key is first read in a fresh request', ($fresh[$p][$ref['name']] ?? []) === ['Erika Musterfrau'], wp_json_encode($fresh[$p] ?? null));
+
 $node   = wp_get_ability('taxmod/read-node')->execute(['node' => $ref['k']]);
 check('read-node answers plain text to the administrator (E1)', str_contains((string) wp_json_encode($node), 'Erika Musterfrau'));
 
