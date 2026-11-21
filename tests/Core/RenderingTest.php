@@ -3174,6 +3174,38 @@ final class RenderingTest extends TestCase
         self::assertStringNotContainsString('[' . $einstellung->id . ']', $markup, 'a setting is no input of the part');
     }
 
+    /** Live-Check 48255: a unit value inside a part is shown as its name, not as its fields joined by a comma. */
+    #[Test]
+    public function a_unit_value_inside_a_part_is_shown_as_its_name(): void
+    {
+        $einheiten = $this->editor->createNode('Base units', $this->branchRoot['constants']->id);
+        $polig     = $this->editor->createNode('polig', $einheiten->id, \Taxmod\Core\Model\NodeClass\Unit::class);
+        $wertTyp   = $this->editor->createNode('Einheitenwert', $this->branchRoot['compositions']->id, \Taxmod\Core\Model\NodeClass\UnitValue::class);
+        $wert      = $this->editor->addField($wertTyp->id, $this->type('Decimal')->id, 'wert');
+        $einheit   = $this->editor->addField($wertTyp->id, $einheiten->id, 'einheit', RelationKind::Aggregation);
+        $polzahl   = $this->editor->createNode('Polzahl', $wertTyp->id, \Taxmod\Core\Model\NodeClass\UnitValue::class);
+        $ende      = $this->thing('Steckseite');
+        $pole      = $this->editor->addField($ende->id, $polzahl->id, 'polzahl', RelationKind::Composition);
+        $revision  = $this->thing('Revision');
+        $anschluss = $this->editor->addField($revision->id, $ende->id, 'anschluss', RelationKind::Composition);
+
+        $zahl = $this->records->add(new NodeRecord(0, $polzahl->id, 1, '2026-11-21 23:00:00', RecordType::User));
+        $this->records->putValue(RelationRecord::direct($zahl, $wert->id, TypedValue::ofDecimal('15')));
+        $this->records->putValue(RelationRecord::direct($zahl, $einheit->id, TypedValue::ofReference($polig->id)));
+        $teil = $this->records->add(new NodeRecord(0, $ende->id, 1, '2026-11-21 23:00:00', RecordType::User));
+        $this->records->putValue(RelationRecord::direct($teil, $pole->id, TypedValue::ofRecordReference($zahl)));
+        $satz = $this->records->add(new NodeRecord(0, $revision->id, 1, '2026-11-21 23:00:00', RecordType::User));
+        $this->records->putValue(RelationRecord::direct($satz, $anschluss->id, TypedValue::ofRecordReference($teil)));
+        $this->neuZeichnen();
+
+        $felder = $this->editor->fieldsOf($revision->id);
+        $werte  = [$anschluss->id => TypedValue::ofRecordReference($teil)];
+        $html   = \Taxmod\WordPress\Draw\Markup::of($this->rendering->nodeAsForm($revision, $felder, $werte, Purpose::Display, '', '', \Taxmod\Core\Renderer\Level::FrontEnd, false, '', $this->rendering->partsOfRecord($satz, $felder), recordId: $satz));
+
+        self::assertStringNotContainsString('>wert<', $html, 'the unit value is not drawn as its fields');
+        self::assertStringNotContainsString('15, ', $html, 'nor joined by a comma');
+    }
+
     /** D-1366: a composed field (D-888) speaks its parts in their own words, as the chooser does. */
     #[Test]
     public function a_composed_field_names_its_parts_by_their_own_choice(): void

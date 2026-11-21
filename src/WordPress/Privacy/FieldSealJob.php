@@ -45,6 +45,7 @@ final class FieldSealJob
     /** One batch over the three tables — values of a former key resealed (D-1562), plain values sealed; answers how many rows. */
     public static function runBatch(int $limit = self::BATCH): int
     {
+        FieldSeal::ready();
         $cipher = FieldSeal::cipher();
 
         if ($cipher === null) {

@@ -34,6 +34,7 @@ foreach ([
     // Live-Check 13: a clipped switch (`position:absolute`) without a frame widened the whole page past the list's scroll box.
     'a chooser gives its switch no frame'                    => str_contains($css, ".taxmod-chooser {\n    display: inline-block;\n    max-width: 100%;\n    /* Live-Check 13") && str_contains($css, "    position: relative;\n}"),
     'a toggle gives its input no frame'                      => str_contains($css, "    cursor: pointer;\n    position: relative;\n}"),
+    'a long word in a cell widens the table past its box'     => str_contains($page, ".taxmod-list > tbody > tr > td{hyphens:auto;overflow-wrap:anywhere}"),
 ] as $what => $green) {
     if (! $green) {
         echo "FAIL {$what}\n";

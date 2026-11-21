@@ -3453,7 +3453,9 @@ details.taxmod-record-section > summary {
     white-space: nowrap;
 }
 
-.taxmod-quantity-value {
+/* A quantity whose input another renderer drew (the record form) is its first input, so no page has to rewrite that markup. */
+.taxmod-quantity-value,
+.taxmod-quantity > input:not([type="hidden"]):first-of-type {
     width: 6em;
     text-align: right;
 }
