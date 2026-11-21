@@ -117,6 +117,15 @@ $door->putAmount($leer, $f, 0.03);
 $amounts = $door->amountsOf([$leer], [$f]);
 check('a field without a part gets one', abs(($amounts[$leer][$f] ?? -1) - 0.03) < 1e-12, json_encode($amounts));
 
+echo "\n== 3. One save, one undo ==\n";
+$bracket = ModelDoor::inAct(static function () use ($door, $record, $leer, $f, $n): array {
+    return [$door->putAmount($record, $f, 0.07), $door->putAmount($leer, $f, 0.08), (int) ($door->write([['op' => 'set_values', 'record' => (string) $record, 'values' => [(string) $n => '70']]])['act'] ?? 0)];
+});
+check('amounts written in a bracket join the caller\'s act', array_unique($bracket['result']) === [(int) $bracket['act']], json_encode($bracket));
+$door->undo((int) $bracket['act']);
+$amounts = $door->amountsOf([$record, $leer], [$f]);
+check('one undo takes all of them back', abs(($amounts[$record][$f] ?? -1) - 0.062) < 1e-12 && abs(($amounts[$leer][$f] ?? -1) - 0.03) < 1e-12, json_encode($amounts));
+
 $refused = static function (callable $write): bool {
     try {
         $write();

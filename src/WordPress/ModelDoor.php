@@ -778,7 +778,8 @@ final class ModelDoor
 
     /**
      * Write a number in its base unit into a unit-value field, as one change with an undo (D-1410). The unit is the one unit the
-     * field allows without a conversion (Meter, dpi); the prefix stays empty.
+     * field allows without a conversion (Meter, dpi); the prefix stays empty. Inside {@see self::inAct()} it joins the caller's act, so
+     * a save of width, height and roll is one undo (Prüftor 21.11.); outside it is an act of its own.
      *
      * ⚠️ *INFERRED (Feldkatalog 21.11.): refused for a field that still holds a plain number — only the module knows that number's
      * old scale — and when the field allows no such unit or more than one; nothing is guessed.*
