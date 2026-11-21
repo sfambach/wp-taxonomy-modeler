@@ -1426,3 +1426,10 @@ Anlass: [INF-073](#inf-073--bestand-und-fertigung-vom-wareneingang-über-die-pla
 
 - **Anlass:** Übernahme der heutigen Etiketten-Vorwahlen in Druckregeln ([D-1552](NewConcept/90-decision-log.md), [INF-137](#inf-137--vorwahl-rückfall-druck-weg-nach-übernahme-2026-11-21)). Zuordnung vom Prüftor 21.11. freigegeben: Gruppe → Knoten der Regel; Bauform → Filter Art «Feld»; Platzart → Filter Art «Bestand», Feld Platzart; Etikett und Exemplare bleiben Felder der Regel.
 - **Erledigt (Prüftor 21.11.):** Die Druckregel hat ihr eigenes Feld «Wofür» (149000110566, live geprüft per read_node: Ergebnisfeld der Druckregel). «für» wird ohne Umdeutung dorthin übernommen, mit demselben Wert. Die Lese-Ability `taxmod-stock/rule-proposals` (Lager 0.64.195, Etiketten 0.0.39) liefert dafür Operationen. Nur ohne dieses Feld bliebe eine Vorwahl aufgelistet.
+
+## INF-143 · «Länge nur mm/cm/m»: erlaubte Präfixe hängen an der Einheit (2026-11-21)
+
+- **Anlass:** Feldkatalog Schritt 4 ([D-1553](NewConcept/90-decision-log.md)). Stefan 21.11. 11:26: «Für Länge, Breite, Höhe hatten wir ja gesagt, machen wir ein Grundelement, das Millimeter, Zentimeter, Meter, also kein Präfix, zulässt.»
+- **Heute:** `erlaubte_praefixe` hängt an der Einheit (Meter), nicht am Datenelement. Das neue Element «Länge» kann deshalb die Einheiten (Meter) und den Vorgabe-Präfix (milli) tragen, aber nicht «nur mm/cm/m». Der Vergleich über den Präfix-Exponenten ([D-1555](NewConcept/90-decision-log.md)) muss bleiben.
+- **Offen:** erlaubte Präfixe am Datenelement, oder mm/cm/m als feste Einheiten? Bis dahin: «Länge» mit Vorgabe milli, die Präfixwahl bleibt.
+- **Nicht entschieden. Keine Annahme gebaut.**
