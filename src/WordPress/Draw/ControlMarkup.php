@@ -59,6 +59,13 @@ final class ControlMarkup
             return self::dialogButton($control, $usable);
         }
 
+        // ⚠️ *Eines mit Wahlbaum öffnet den gemeinsamen Baum; `admin.js` schickt nach «OK» den versteckten Akt gleich hinter dem Feld ab (D-1574).*
+        if ($control->picks !== null) {
+            return ! $usable ? '' : PickOpenerMarkup::of($control->picks)
+                . '<button type="submit" class="taxmod-pick-submit" hidden name="' . Html::escape($control->name) . '" value="' . Html::escape($control->value) . '"'
+                . self::address($control) . ($control->form === '' ? '' : ' form="' . Html::escape($control->form) . '"') . '>' . Html::escape($control->label) . '</button>';
+        }
+
         // ⚠️ **«Icon-only» is about the *shape*, not about which font drew it.** Measured on the real
         // page after the first version of this: the save button lost `taxmod-icon-button` and would
         // have got its box back among 405 flat neighbours — *because a glyph button is icon-only in
