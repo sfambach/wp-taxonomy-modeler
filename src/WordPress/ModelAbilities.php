@@ -1152,9 +1152,9 @@ final class ModelAbilities
 
         // ⚠️ *No copy per change list any more (D-1407): a full copy took half a minute live; the nightly one stands, and the
         // answer names it.*
-        $nacht     = ! $onlyData && ! empty($input['backup']) ? \Taxmod\WordPress\Persistence\DailyBackup::latest() : null;
+        $nacht     = ! $probe && ! $onlyData && ! empty($input['backup']) ? \Taxmod\WordPress\Persistence\DailyBackup::latest() : null;
         $sicherung = $nacht['file'] ?? null;
-        $warnung   = ! $onlyData && ! empty($input['backup']) ? \Taxmod\WordPress\Persistence\DailyBackup::warning($nacht) : null;
+        $warnung   = ! $probe && ! $onlyData && ! empty($input['backup']) ? \Taxmod\WordPress\Persistence\DailyBackup::warning($nacht) : null;
         $ergebnis  = [];
         $changelog = ($this->changelog)();
 
@@ -1166,7 +1166,9 @@ final class ModelAbilities
         $erwartet = RecordStamp::fromList(is_array($input['expect'] ?? null) ? array_values(array_filter($input['expect'], 'is_array')) : []);
 
         try {
-            Transaction::whole('taxmod_apply', function () use ($erwartet, $changes, $onlyData, $probe, &$refs, &$ergebnis): void {
+            // ⚠️ *A plain closure, not `fn`: an arrow function would take $refs and $ergebnis by value, and the run would fill copies.*
+            $lauf = function () use ($erwartet, $changes, $onlyData, $probe, &$refs, &$ergebnis): void {
+                Transaction::whole('taxmod_apply', function () use ($erwartet, $changes, $onlyData, $probe, &$refs, &$ergebnis): void {
                 // ⚠️ *First, inside the transaction, so the rows stay held to the commit (D-1148).*
                 $this->screen()->entries()->claim($erwartet);
 
@@ -1194,18 +1196,21 @@ final class ModelAbilities
                 if ($probe) {
                     throw new ProbeRolledBack();
                 }
-            });
+                });
+            };
+            // D-1561: a dry run is heard by no module — what it wrote is rolled back, so nobody may act on it.
+            $probe ? \Taxmod\Core\Event\SharedListeners::silenced($lauf) : $lauf();
 
             // *The number of this act, for its undo (D-1410); null when nothing was journaled.*
             $akt = $changelog->currentAct();
-        } catch (ProbeRolledBack) {
-            return $this->probeAnswer(true, $ergebnis, $refs, null);
         } catch (\RuntimeException $e) {
             if (! $probe) {
                 throw $e;
             }
 
-            return $this->probeAnswer(false, $ergebnis, $refs, $e->getMessage());
+            $this->forgetProbe();
+
+            return $this->probeAnswer($e instanceof ProbeRolledBack, $ergebnis, $refs, $e instanceof ProbeRolledBack ? null : $e->getMessage());
         } finally {
             $changelog->endAct();
             $this->onlyRecords = false;
@@ -1233,6 +1238,23 @@ final class ModelAbilities
         return (! empty($input['brief'])
             ? ['count' => count($ergebnis), 'act' => $akt, 'refs' => $refs, 'backup' => $sicherung, 'backup_made' => $nacht === null ? null : false, 'backup_at' => $nacht['at'] ?? null, 'backup_warning' => $warnung, 'versions' => $versionen]
             : ['applied' => $ergebnis, 'act' => $akt, 'refs' => $refs, 'backup' => $sicherung, 'backup_made' => $nacht === null ? null : false, 'backup_at' => $nacht['at'] ?? null, 'backup_warning' => $warnung, 'versions' => $versionen]) + $extra;
+    }
+
+    /**
+     * D-1561: after a rolled-back dry run nothing it wrote may still be remembered — not the act's pending rows (else the closing act
+     * would journal them), not the reads of this request, not the object cache (options and transients it touched).
+     */
+    private function forgetProbe(): void
+    {
+        Persistence\ActStamp::discard();
+        Persistence\Query::forget();
+        \Taxmod\WordPress\Privacy\FieldSeal::forget();
+
+        if (wp_using_ext_object_cache()) {
+            wp_cache_flush();
+        } else {
+            wp_cache_flush_runtime();
+        }
     }
 
     /**

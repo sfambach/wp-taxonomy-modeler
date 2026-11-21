@@ -79,9 +79,19 @@ $pruefe($liste((int) $ref['r'], (int) $ref['t']) === ['media:3'], 'the dry run w
 // was refused; now the whole list runs and is rolled back — the answer says whether it fits and where it would be refused.
 $knotenName = static fn (): string => (string) (new \Taxmod\WordPress\Persistence\WpdbNodeRepository())->find((int) $ref['n'])?->name;
 $nameVorher = $knotenName();
+// D-1561: no module hears a dry run, and its act journals nothing once rolled back.
+$gehoert = 0;
+\Taxmod\Core\Event\SharedListeners::provider()->listen(\Taxmod\Core\Event\ModelChanged::class, static function () use (&$gehoert): void {
+    ++$gehoert;
+});
+$journal    = static fn (): int => (int) $wpdb->get_var('SELECT COUNT(*) FROM ' . \Taxmod\WordPress\Persistence\Schema::table('changelog'));
+$journalVor = $journal();
 $probe      = $apply->execute(['dry_run' => true, 'changes' => [['op' => 'rename_node', 'node' => $ref['n'], 'name' => '__probe x'], ['op' => 'create_node', 'ref' => 'neu', 'name' => '__probe neu', 'parent' => $ref['n']]]]);
 $pruefe(is_array($probe) && ($probe['fits'] ?? null) === true && ($probe['written'] ?? null) === false && count($probe['applied'] ?? []) === 2 && isset($probe['refs']['neu']), 'a dry run of other ops runs the whole list and says it fits — ' . wp_json_encode($probe));
 $pruefe($knotenName() === $nameVorher && (new \Taxmod\WordPress\Persistence\WpdbNodeRepository())->find((int) ($probe['refs']['neu'] ?? 0)) === null, '… and wrote nothing');
+$pruefe($gehoert === 0, 'no module heard the dry run (' . $gehoert . ')');
+$pruefe($journal() === $journalVor, 'the dry run left no row in the journal (' . $journalVor . ' → ' . $journal() . ')');
+$pruefe(! array_key_exists('backup', is_array($probe) ? $probe : []) || $probe['backup'] === null, 'the dry run names and makes no backup');
 $abgelehnt = $apply->execute(['dry_run' => true, 'changes' => [['op' => 'rename_node', 'node' => $ref['n'], 'name' => '__probe y'], ['op' => 'rename_node', 'node' => '999999999', 'name' => 'z']]]);
 $pruefe(is_array($abgelehnt) && ($abgelehnt['fits'] ?? null) === false && str_contains((string) ($abgelehnt['refused'] ?? ''), 'Change 1'), 'a dry run that would be refused names the change — ' . wp_json_encode($abgelehnt));
 
