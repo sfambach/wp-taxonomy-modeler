@@ -3400,3 +3400,16 @@ details.taxmod-record-section > summary {
     margin: 0;
     font-size: 1.3em;
 }
+
+/* Entries per list page beside the count (ListPage::pages): the word before its choice, on one line. */
+.taxmod-list-pages .taxmod-list-per-page {
+	display: inline-flex;
+	align-items: center;
+	gap: 4px;
+	margin: 0 6px;
+}
+
+.taxmod-list-pages .taxmod-list-per-page select {
+	float: none;
+	margin: 0;
+}

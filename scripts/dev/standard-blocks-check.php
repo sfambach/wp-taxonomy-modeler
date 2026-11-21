@@ -42,7 +42,7 @@
 
 /** Counted 2026-11-20 on main; only ever lowered. Each entry: a fixed word list, not a choice of records. */
 const SELECT_CEILINGS = [
-    'wp-taxonomy-modeler/src/WordPress/Admin/SettingsScreen.php'      => 5, // fixed word lists: modes, intervals, languages
+    'wp-taxonomy-modeler/src/WordPress/Admin/SettingsScreen.php'      => 6, // fixed word lists: modes, intervals, languages, entries per list page
     'wp-taxonomy-modeler/src/WordPress/Admin/NodesScreen.php'         => 7, // fixed word lists: kinds, multiplicities, renderers
     'wp-taxonomy-modeler/src/WordPress/Plugin.php'                    => 1, // to be checked
     'wp-taxonomy-modeler/src/WordPress/Import/FetchInterval.php'      => 1, // fixed word list: intervals

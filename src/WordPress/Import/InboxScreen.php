@@ -101,11 +101,11 @@ final class InboxScreen
         // «in der inbox soll die darstellung auch wie in ebay shipping sein sammelaktion wie sie in wp überlich sien» — one
         // WordPress list table, a row per order, bulk actions above it. The bulk form stands alone, because each row's details
         // hold a form of their own and forms do not nest; each row's checkbox joins it through `form=`.*
-        $html .= ListPage::bulkBar(self::BULK_FORM, self::DISCARD_SELECTED, [self::TAKE_SELECTED => __('Take', 'taxmod'), self::DISCARD_SELECTED => __('Discard', 'taxmod')], sprintf(
+        $count = sprintf(
             /* translators: %d: number of orders */
             _n('%d order', '%d orders', count($groups), 'taxmod'),
             count($groups)
-        ));
+        );
         $body = '';
 
         // ⚠️ *Sein Wunsch vom 2026-10-22: «das sind alles nachrichten zur gleichen bestellung hier ist die reihenfolge wichtig
@@ -136,7 +136,12 @@ final class InboxScreen
             $verdicts[$index] = $intake->decide(self::leadSource($rows), $proposal, $existing instanceof ExistingOrder ? $existing : null);
         }
 
-        foreach (InboxBundles::of($described) as $box) {
+        // Only one page of boxes is drawn; drawing a box is what costs (Stefan 2026-11-21: «seiten weise»).
+        $paged = ListPage::paged(InboxBundles::of($described), static fn (array $change): string => add_query_arg(array_filter($change + ['page' => self::PAGE], static fn (string $value): bool => $value !== ''), admin_url('admin.php')));
+        $html .= ListPage::bulkBar(self::BULK_FORM, self::DISCARD_SELECTED, [self::TAKE_SELECTED => __('Take', 'taxmod'), self::DISCARD_SELECTED => __('Discard', 'taxmod')], $count,
+            pages: $paged['pages']);
+
+        foreach ($paged['rows'] as $box) {
             if (count($box) === 1) {
                 $rows = $groups[$box[0]];
                 [$details, $buttons] = $this->group($rows, $model, $intake, true);
@@ -182,7 +187,7 @@ final class InboxScreen
             );
         }
 
-        return $html . ListPage::table([[__('Order', 'taxmod'), '16em'], [__('Received', 'taxmod'), '9em'], [__('Result', 'taxmod')]], $body);
+        return $html . ListPage::table([[__('Order', 'taxmod'), '16em'], [__('Received', 'taxmod'), '9em'], [__('Result', 'taxmod')]], $body, '', $paged['complete']);
     }
 
     /**

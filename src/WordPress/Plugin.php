@@ -181,6 +181,8 @@ final class Plugin
         \Taxmod\WordPress\Printing\ScannerTab::boot($plugin->screen(...));
         // D-1160: the label reads the fields its layout names from the record itself.
         $labelValues = static fn (int $record, array $fields): array => $plugin->screen()->labelValues($record, $fields);
+        // The line «Entries per list page» in the Benutzereinstellungen the stock draws (D-1502).
+        add_filter('taxmod_user_settings', \Taxmod\WordPress\Admin\ListPage::userSetting(...));
         // D-1295: the labels module asks the same words through the door (D-1292).
         add_filter(self::LABEL_VALUES_FILTER, static fn (mixed $answer, int $record, array $fields): array => $labelValues($record, array_values(array_map('strval', $fields))), 10, 3);
         // D-1208: a module's door asks which fields are «Variante von» and «Je Variante», from the one resolver.

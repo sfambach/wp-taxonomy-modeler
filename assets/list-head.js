@@ -845,4 +845,30 @@
 		var source = event.target.dataset ? event.target.dataset.source || '' : '';
 		start( event.target, 'details-' + source + ':' );
 	} );
+
+	// Pages of a list (ListPage::pages): a page link or another size asks the server for that page and puts it in place (D-1408).
+	function showPage( url ) {
+		if ( window.taxmodShow ) {
+			window.taxmodShow( url );
+		} else {
+			window.location.href = url;
+		}
+	}
+
+	document.addEventListener( 'click', function ( event ) {
+		var link = event.target instanceof Element ? event.target.closest( '.taxmod-list-pages .pagination-links a[href]' ) : null;
+
+		if ( ! link || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey ) {
+			return;
+		}
+
+		event.preventDefault();
+		showPage( link.href );
+	} );
+
+	document.addEventListener( 'change', function ( event ) {
+		if ( event.target instanceof HTMLSelectElement && event.target.classList.contains( 'taxmod-list-per-page-choice' ) && event.target.value ) {
+			showPage( event.target.value );
+		}
+	} );
 }() );
