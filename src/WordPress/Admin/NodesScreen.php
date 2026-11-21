@@ -8424,7 +8424,7 @@ final class NodesScreen
         $id   = absint($this->circumstance(self::SCOPE) ?? '0');
         $node = $id === 0 ? null : $this->editor->find($id);
 
-        if ($node === null) {
+        if ($node === null || $node->id === $this->framework->trash()->id) {
             return null;
         }
 

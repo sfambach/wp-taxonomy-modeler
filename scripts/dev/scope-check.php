@@ -20,6 +20,20 @@ require dirname(__DIR__, 2) . '/vendor/autoload.php';
 
 wp_set_current_user(1);
 
+// ⚠️ *Gepuffert wie `act-failure`: sonst sind die Kopfzeilen gesendet und `ListPage::fail()` zeigt seine Fehlerseite statt umzuleiten.
+// Und ein Abbruch mittendrin (wp_die, ein Fehler) zählt als FAIL, nicht als stilles Ende mit 0.*
+ob_start();
+$finished = false;
+register_shutdown_function(static function () use (&$finished): void {
+    if (! $finished) {
+        echo "\nscope-check: FAIL — abgebrochen, bevor alle Zusagen geprüft waren\n";
+        while (ob_get_level() > 0) {
+            ob_end_flush();
+        }
+        exit(1);
+    }
+});
+
 use Taxmod\Core\Model\Branch;
 use Taxmod\Core\Service\ModelEditor;
 use Taxmod\WordPress\Persistence\{SeededFrameworkNodes, WpdbChangelog, WpdbNodeRepository, WpdbRelationRepository};
@@ -93,24 +107,23 @@ $post   = static function (string $do, int $id, int $target = 0) use ($plugin, $
     $_POST    = wp_slash(['action' => $aktion, 'id' => (string) $id, 'do' => $do, 'target' => (string) $target, 'taxmod_scope' => (string) $ast->id,
         '_taxmod_nonce' => wp_create_nonce($aktion . '_' . $id)]);
     $_REQUEST = $_POST;
-    ob_start();
     try {
         $plugin->screen()->handlePost();
     } catch (ScopeStop) {
     }
-    ob_end_clean();
-    parse_str((string) parse_url($went, PHP_URL_QUERY), $teile);
 
-    return rawurldecode((string) ($teile['taxmod_message'] ?? ''));
+    return $went === '' ? '' : \Taxmod\WordPress\Admin\ListPage::messages();
 };
 $parent = static fn (int $id): ?int => $editor->find($id)?->parentId();
 
-$say($post('move', $kind->id, $daneben->id) === __('A node cannot be moved out of the branch this page shows.', 'taxmod') && $parent($kind->id) === $ast->id,
+$say(str_contains($post('move', $kind->id, $daneben->id), __('A node cannot be moved out of the branch this page shows.', 'taxmod')) && $parent($kind->id) === $ast->id,
     'ein Verschieben aus dem Ast heraus wird abgelehnt und das Kind bleibt');
-$say($post('rename', $daneben->id) === __('This node lies outside the branch this page shows.', 'taxmod'), 'ein Akt an einem Knoten neben dem Ast wird abgelehnt');
-$say($post('trash', $ast->id) === __('This page shows one branch only; do this in the whole model tree.', 'taxmod') && $editor->find($ast->id) !== null
+$say(str_contains($post('rename', $daneben->id), __('This node lies outside the branch this page shows.', 'taxmod')), 'ein Akt an einem Knoten neben dem Ast wird abgelehnt');
+$say(str_contains($post('trash', $ast->id), __('This page shows one branch only; do this in the whole model tree.', 'taxmod')) && $editor->find($ast->id) !== null
     && ! in_array($fw->trash()->id, $editor->find($ast->id)->ancestorIds(), true), 'den Ast selbst parkt man hier nicht');
 $_POST = $_REQUEST = [];
 
 echo $failed === 0 ? "\nscope-check: ok\n" : "\nscope-check: {$failed} FAIL\n";
+$finished = true;
+ob_end_flush();
 exit($failed === 0 ? 0 : 1);
