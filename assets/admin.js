@@ -4134,3 +4134,22 @@
 		} );
 	} ).observe( document.documentElement, { childList: true, subtree: true } );
 }() );
+
+/**
+ * «Zurück» in a dialog whose action is risky (ListPage::DIALOG_BACK) closes it the way «Abbrechen» does: through the dialog's ✕,
+ * so what the dialog had changed is put back by the one place that does it (D-804).
+ */
+( function () {
+	'use strict';
+
+	document.addEventListener( 'click', function ( event ) {
+		var back = event.target && event.target.closest ? event.target.closest( '.taxmod-dialog-back' ) : null;
+		var panel = back ? back.closest( '.taxmod-dialog-panel' ) : null;
+		var close = panel ? panel.querySelector( '.taxmod-dialog-close.taxmod-dialog-cancel' ) : null;
+
+		if ( close ) {
+			event.preventDefault();
+			close.click();
+		}
+	} );
+}() );

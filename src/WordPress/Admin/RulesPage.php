@@ -121,6 +121,10 @@ final class RulesPage
         }
 
         $own     = $this->ownFields($type);
+        $words   = $rules === [] ? [] : $this->model->fieldWords(array_keys($rules), array_keys($own));
+        // ⚠️ *Live check 21.11. B2: eleven own columns ran the table off the page, most of them «—» in every row. A column no rule
+        // fills stays out; the rule's own form still shows every field.*
+        $own     = $rules === [] ? $own : array_filter($own, static fn (int $relation): bool => array_filter($words[$relation] ?? [], static fn (mixed $w): bool => (string) $w !== '') !== [], ARRAY_FILTER_USE_KEY);
         $columns = [[__('No.', 'taxmod'), '4em'], [__('Rule', 'taxmod'), '14em'], [__('Node', 'taxmod'), ''], [__('Filters', 'taxmod'), '']];
 
         foreach ($own as $name) {
@@ -132,7 +136,7 @@ final class RulesPage
 
         return ListPage::page($types[$type], [], [['html' => $notice . ListPage::listHead($types[$type], count($rules), $hint)
             . ListPage::bulkBar(self::BULK_FORM, self::ACTION, ['remove' => __('Delete', 'taxmod')], '', '<div class="alignleft actions">' . $this->createButton($type) . '</div><input type="hidden" form="' . esc_attr(self::BULK_FORM) . '" name="typ" value="' . esc_attr((string) $type) . '">', false, route: self::ACTION)
-            . ListPage::table($columns, $this->rows($type, $rules, array_keys($own)))]], $this->version, $this->plugin, tabs: $tabs);
+            . ListPage::table($columns, $this->rows($type, $rules, array_keys($own), $words))]], $this->version, $this->plugin, tabs: $tabs);
     }
 
     /** admin-post «Neue Regel» and «Löschen»: capability → nonce → validate → act (CD-5, D-1254). */
@@ -262,15 +266,15 @@ final class RulesPage
     /**
      * @param array<int, array{position: int, word: string, node: int, node_word: string, filters: string}> $rules
      * @param list<int> $own
+     * @param array<int, array<int, string>> $words field → rule → word
      */
-    private function rows(int $type, array $rules, array $own): string
+    private function rows(int $type, array $rules, array $own, array $words): string
     {
         if ($rules === []) {
             return '<tr class="no-items"><td class="colspanchange" colspan="' . (6 + count($own)) . '">' . esc_html__('No rule yet.', 'taxmod') . '</td></tr>';
         }
 
-        $words = $this->model->fieldWords(array_keys($rules), $own);
-        $body  = '';
+        $body = '';
 
         foreach ($rules as $id => $rule) {
             $url   = self::url($type, ['satz' => $id]);
