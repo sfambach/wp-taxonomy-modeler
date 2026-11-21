@@ -57,6 +57,8 @@ $say    = static function (bool $ok, string $what) use (&$failed): void {
 
 $ast     = $editor->createNode('__sc Ast', $fw->rootOf(Branch::Model)->id);
 $kind    = $editor->createNode('__sc Kind', $ast->id);
+// ⚠️ *Ein zweites Kind, damit «Kind» in beiden Bäumen eine Zeile nach sich hat — sonst liefe sein Ausschnitt im Ast bis ans Seitenende.*
+$editor->createNode('__sc Kind 2', $ast->id);
 $daneben = $editor->createNode('__sc Daneben', $fw->rootOf(Branch::Model)->id);
 
 $r      = new ReflectionClass(\Taxmod\WordPress\Plugin::class);
@@ -93,8 +95,9 @@ $knoepfe    = static function (string $html, int $id): array {
 
     return array_values(array_unique($icons[1]));
 };
-$imAst = $knoepfe($html, $kind->id);
-$say($imAst !== [] && $imAst === $knoepfe($ganzerBaum, $kind->id), 'die Zeile trägt im Ast dieselben Symbole wie im ganzen Baum (' . implode(' ', $imAst) . ')');
+$imAst  = $knoepfe($html, $kind->id);
+$imBaum = $knoepfe($ganzerBaum, $kind->id);
+$say($imAst !== [] && $imAst === $imBaum, 'die Zeile trägt im Ast dieselben Symbole wie im ganzen Baum (Ast: ' . implode(' ', $imAst) . ' · Baum: ' . implode(' ', $imBaum) . ')');
 $say(in_array('edit', $imAst, true) && in_array('move', $imAst, true), 'Umbenennen und Verschieben stehen in der Zeile');
 $say(str_contains($html, esc_attr__('Add a subgroup under this group', 'taxmod')) && ! str_contains($ganzerBaum, esc_attr__('Add a subgroup under this group', 'taxmod'))
     && str_contains($ganzerBaum, esc_attr__('Add a child under this node', 'taxmod')), 'das «+» heisst im Ast «Untergruppe anlegen», im ganzen Baum «Kind anlegen»');
