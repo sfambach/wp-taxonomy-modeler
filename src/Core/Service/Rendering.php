@@ -8051,11 +8051,27 @@ final class Rendering implements Presets, \Taxmod\Core\Port\FieldAddons
             return [];
         }
 
+        // ⚠️ *Geerbte Felder zählen mit: ein Kind-Datenelement wie «Polzahl» (D-1559) erklärt keine eigenen, es erbt wert/prefix/einheit
+        // von «Einheitenwert». Die Vererbung endet an der Astwurzel (inheritanceOwnersOf).*
+        $besitzer = [];
+
+        foreach ($this->gemerkteKnoten(array_values(array_unique($gefragt))) as $ziel) {
+            $besitzer[$ziel->id] = $this->framework->inheritanceOwnersOf($ziel);
+        }
+
+        $erklaerend = [];
+
+        foreach ($besitzer === [] ? [] : $this->relations->fieldRelationsOf(array_values(array_unique(array_merge(...array_values($besitzer))))) as $feld) {
+            if (! $feld->isSetting()) {
+                $erklaerend[$feld->fromNodeId] = true;
+            }
+        }
+
         $mitFeldern = [];
 
-        foreach ($this->relations->fieldRelationsOf(array_values(array_unique($gefragt))) as $feld) {
-            if (! $feld->isSetting()) {
-                $mitFeldern[$feld->fromNodeId] = true;
+        foreach ($besitzer as $zielId => $reihe) {
+            if (array_filter($reihe, static fn (int $id): bool => isset($erklaerend[$id])) !== []) {
+                $mitFeldern[$zielId] = true;
             }
         }
 
