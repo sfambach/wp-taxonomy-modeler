@@ -75,6 +75,9 @@ final class Plugin
     /** The group property that orders bills of materials (D-1341), declared by the modeller itself. */
     public const BOM_RANK = 'bom_rank';
 
+    /** D-1571: a group property — the records of the node show an optional field only once it holds a value; «+» adds one. */
+    public const FORM_COMPACT = 'form_compact';
+
     /** `apply_filters(NODE_CHOOSER_FILTER, '', ['name', 'root', 'exclude' => [], 'unpickable' => [], 'preselected', 'form', 'inline', 'pick_url'])`: the node chooser dialog for a module's page (D-1075); with `inline` the tree stands on the page and a click opens `pick_url`, `{id}` for the node (D-1175). */
     public const NODE_CHOOSER_FILTER = 'taxmod_node_chooser';
 
@@ -212,7 +215,9 @@ final class Plugin
         ), 10, 2);
         // D-1291: a module's door asks the words of fields, from the one renderer — «0,044 €», never its own number format.
         // D-1341: the rank that orders bills of materials is a group property like a module's, declared here once.
-        add_filter(self::NODE_PROPERTIES_FILTER, static fn (mixed $declared): array => (is_array($declared) ? $declared : []) + [self::BOM_RANK => ['label' => __('Rank in bills of materials', 'taxmod'), 'type' => \Taxmod\Core\Model\Setting\NodeProperties::NUMBER]]);
+        add_filter(self::NODE_PROPERTIES_FILTER, static fn (mixed $declared): array => (is_array($declared) ? $declared : []) + [self::BOM_RANK => ['label' => __('Rank in bills of materials', 'taxmod'), 'type' => \Taxmod\Core\Model\Setting\NodeProperties::NUMBER],
+            // D-1571: the rule form row by row — set as data at a node, never by a node's name in code.
+            self::FORM_COMPACT => ['label' => __('Compact form: optional fields only once filled, «+» adds one', 'taxmod'), 'type' => \Taxmod\Core\Model\Setting\NodeProperties::YES_NO]]);
         add_filter(self::FIELD_WORDS_FILTER, static fn (array $answer, array $records, array $relations): array => $plugin->screen()->fieldTexts(
             array_values(array_map('intval', $records)),
             array_values((new WpdbRelationRepository())->byIds(array_map('intval', $relations)))

@@ -105,5 +105,17 @@ if ($relation === null) {
     check('a filter\'s operator shows «gleich» when empty — alone it makes no new row', $rendering->shownWhenEmpty([$relation]) === [$operator => Taxmod\Core\Rules\RuleBook::EQUALS]);
 }
 
+// D-1571: the compact form — a group property, an empty optional field waits hidden for «+», a filled one carries ✕.
+check('«compact form» is a group property', isset(Taxmod\WordPress\ModelDoor::properties()[Taxmod\WordPress\Plugin::FORM_COMPACT]));
+$shown = new Taxmod\Core\Description\ShownValue('x');
+$html  = Taxmod\WordPress\Draw\Markup::of(new Taxmod\Core\Description\FormView([
+    ['name' => 'Name', 'field' => $shown, 'hint' => ''],
+    ['name' => 'Etikett', 'field' => $shown, 'hint' => '', 'relation' => 571, 'addable' => false],
+    ['name' => 'Drucker', 'field' => $shown, 'hint' => '', 'relation' => 572, 'addable' => true],
+], ['add' => '+ Festlegung', 'remove' => 'Entfernen', 'choose' => '— wählen —']));
+check('an empty optional field is drawn hidden, a filled one shows', str_contains($html, 'data-taxmod-optional="572" hidden') && str_contains($html, 'data-taxmod-optional="571">'));
+check('«+ Festlegung» is the standard choice with the standard «+», ✕ the trash icon', str_contains($html, 'taxmod-field-choice') && str_contains($html, 'taxmod-field-add') && str_contains($html, 'dashicons-plus-alt2') && substr_count($html, 'taxmod-field-remove') === 2);
+check('a required field has no ✕', ! str_contains(explode('data-taxmod-optional', $html)[0], 'taxmod-field-remove'));
+
 echo "\n$ok OK, $bad FAIL\n";
 exit($bad === 0 ? 0 : 1);

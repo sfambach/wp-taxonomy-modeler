@@ -511,9 +511,42 @@ final class NodesScreen
                     $this->rendering->editContainerFor($knoten),
                     $this->rendering->partsOfRecord($recordId, $felder),
                     formId: $formId,
-                    recordId: $recordId
+                    recordId: $recordId,
+                    addable: $this->compactFields($knoten, $shown, $held),
+                    addWords: ['add' => __('+ Setting', 'taxmod'), 'remove' => __('Remove this setting', 'taxmod'), 'choose' => __('— choose —', 'taxmod')],
                 ))
             . '</div>' . RecordPick::words();
+    }
+
+    /**
+     * D-1571: where the node's group property «compact form» is on, its optional fields with a simple value or a choice — relation
+     * id → true while empty, false once filled. Required fields, settings and fields with parts of their own always show.
+     *
+     * @param list<Relation>              $shown
+     * @param array<int, TypedValue>      $held
+     * @return array<int, bool>
+     */
+    private function compactFields(Node $node, array $shown, array $held): array
+    {
+        if (! isset(\Taxmod\WordPress\ModelDoor::properties()[\Taxmod\WordPress\Plugin::FORM_COMPACT])
+            || ((new \Taxmod\WordPress\ModelDoor())->propertiesOf([$node->id], \Taxmod\WordPress\Plugin::FORM_COMPACT)[$node->id] ?? false) !== true) {
+            return [];
+        }
+
+        $types = $this->rendering->typesFor($shown);
+        $out   = [];
+
+        foreach ($shown as $relation) {
+            $plain = isset($types[$relation->id]) || $relation->kind === RelationKind::Aggregation;
+
+            if ($relation->multiplicity->requiresOne() || $relation->isSetting() || ! $plain || $relation->multiplicity->allowsMany()) {
+                continue;
+            }
+
+            $out[$relation->id] = ! isset($held[$relation->id]) || $held[$relation->id]->isNothing();
+        }
+
+        return $out;
     }
 
     /**
