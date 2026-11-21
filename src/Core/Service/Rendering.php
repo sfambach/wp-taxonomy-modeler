@@ -2403,7 +2403,7 @@ final class Rendering implements Presets, \Taxmod\Core\Port\FieldAddons
                     // ⚠️ *Auch ein Auswahlfeld bietet nur die erlaubten an (D-783): in «Abmessung» stand an der Einheit `choice`, und es bot
                     // die Gruppen «With prefix / Without prefix» statt «m» an — sein Befund: «das auswahlfeld wird nicht richtig gerendert» (D-1140).*
                     ? (($renderer instanceof ChooserRenderer || ($renderer instanceof ChoiceRenderer && isset($allowedChoices[$relation->id]))
-                        ? $this->chooserMarkup($this->gemerkterKnoten($relation->toNodeId), $renderer, $context->settings, $value, $context->fieldName, $formId, $locale, $level, $allowedChoices[$relation->id] ?? null, $relation->multiplicity->requiresOne(), $this->wurzelnAt[$relation->id] ?? [])
+                        ? $this->chooserMarkup($this->gemerkterKnoten($relation->toNodeId), $renderer, $context->settings, $value, $context->fieldName, $formId, $locale, $level, $allowedChoices[$relation->id] ?? null, $relation->multiplicity->requiresOne(), $this->wurzelnAt[$relation->id] ?? [], $editable && ! $relation->multiplicity->requiresOne() && ! $relation->multiplicity->allowsMany())
                         : null) ?? $renderer->render($relation, $context))
                     : $this->chosenAndItsFields($relation, $type, $renderer, $context, $tiefer['result'])),
                 // Carried for the **layout**: R75 puts read-only values first, as context rather
@@ -6544,7 +6544,7 @@ final class Rendering implements Presets, \Taxmod\Core\Port\FieldAddons
      * @param array<string, ResolvedSetting> $settings Die aufgelösten Angaben der Stelle — darunter `dialog` und `display_size` des Wählers.
      */
     /** @param list<int> $wurzeln the roots the choice offers (D-1546); empty is the whole target */
-    private function chooserMarkup(?Node $target, Renderer $renderer, array $settings, TypedValue $value, string $fieldName, string $formId, string $locale, Level $level, ?array $erlaubt = null, bool $required = false, array $wurzeln = []): ?RenderResult
+    private function chooserMarkup(?Node $target, Renderer $renderer, array $settings, TypedValue $value, string $fieldName, string $formId, string $locale, Level $level, ?array $erlaubt = null, bool $required = false, array $wurzeln = [], bool $clearable = false): ?RenderResult
     {
         if ($target === null || ! ($renderer instanceof ChooserRenderer || ($renderer instanceof ChoiceRenderer && $erlaubt !== null))) {
             return null;
@@ -6637,7 +6637,7 @@ final class Rendering implements Presets, \Taxmod\Core\Port\FieldAddons
         // fehlt die Beschriftung in der Rolle, bleibt der Name.
         $gewaehlterName = $gewaehlt === null ? null : $this->gemerkterWahlName($gewaehlt, $settings, $target, $locale);
 
-        return $this->nodeChooser(
+        $wahl = $this->nodeChooser(
             $target,
             $fieldName,
             $target,
@@ -6655,6 +6655,23 @@ final class Rendering implements Presets, \Taxmod\Core\Port\FieldAddons
             $settings,
             $wurzeln
         );
+
+        // ⚠️ *Live 21.11. 16:47, sein Befund an «Bauform»: «bauform kann nicht mehr gelöscht werden». Eine Knotenwahl im Dialog (D-1543) hatte
+        // keinen Mülleimer, die Satzwahl daneben schon (D-851, D-1138). Gleiche Funktion, gleicher Baustein (D-1511 Regel 3): ein Feld, das leer
+        // bleiben darf, bekommt dieselbe Hülle mit Mülleimer; er wählt den leeren Knopf, gespeichert wird mit der Seite.*
+        $dialog = $wahl->piece;
+
+        if (! $clearable || ! $dialog instanceof \Taxmod\Core\Description\DialogBox || $fieldName === '') {
+            return $wahl;
+        }
+
+        return RenderResult::described(\Taxmod\Core\Description\RecordPicker::aroundNodeDialog(
+            $dialog,
+            $gewaehlt !== null,
+            (string) ($this->dialogWords['clear'] ?? ''),
+            $fieldName,
+            $formId
+        ), ...$wahl->usedRelations);
     }
 
     /**

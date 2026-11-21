@@ -33,6 +33,15 @@ final class RecordPicker implements Describes
     }
 
     /**
+     * A node choice in a dialog that may stay empty, in the same shell as the record choice: the bin clears it (D-851, D-1511 rule 3).
+     * The name and form carry the empty radio the bin checks — the node tree has none of its own.
+     */
+    public static function aroundNodeDialog(DialogBox $dialog, bool $taken, string $clearWord, string $name, string $form): self
+    {
+        return new self($dialog, $taken, null, '', $clearWord, $name, $form);
+    }
+
+    /**
      * ⚠️ *The tree beside the search carries no tree: the script fetches nodes and records when it is pressed (D-1011).*
      *
      * @param array<string, string> $words open, clear, search, tree
