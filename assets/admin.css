@@ -2026,6 +2026,58 @@ ol.taxmod-switch-cascade .taxmod-list-remove,
  * ⚠️ It is deliberately **not** called `notice`: wp-admin relocates every
  * `.notice` to just under the h1 with its own script, which would put it back
  * into the flow and undo all of this. */
+/* D-1560: the page is working — a bar under the admin bar and the waiting cursor, from the one state live.js sets at body. */
+body[data-taxmod-busy],
+body[data-taxmod-busy] a,
+body[data-taxmod-busy] button,
+body[data-taxmod-busy] label {
+    cursor: progress;
+}
+
+body[data-taxmod-busy]::before {
+    content: attr(data-taxmod-busy-word);
+    position: fixed;
+    z-index: 100000;
+    top: var(--wp-admin--admin-bar--height, 32px);
+    left: 50%;
+    transform: translateX(-50%);
+    padding: 4px 14px;
+    border-radius: 0 0 4px 4px;
+    background: #2271b1;
+    color: #fff;
+    font-size: 13px;
+    line-height: 1.5;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.25);
+    pointer-events: none;
+}
+
+body[data-taxmod-busy]::after {
+    content: "";
+    position: fixed;
+    z-index: 100000;
+    top: var(--wp-admin--admin-bar--height, 32px);
+    left: 0;
+    width: 100%;
+    height: 3px;
+    background: linear-gradient(90deg, transparent, #2271b1 50%, transparent);
+    background-size: 40% 100%;
+    background-repeat: no-repeat;
+    animation: taxmod-busy 1.1s linear infinite;
+    pointer-events: none;
+}
+
+@keyframes taxmod-busy {
+    from { background-position: -40% 0; }
+    to   { background-position: 140% 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    body[data-taxmod-busy]::after {
+        animation: none;
+        background: #2271b1;
+    }
+}
+
 .taxmod-toast {
     position: fixed;
     z-index: 100002;

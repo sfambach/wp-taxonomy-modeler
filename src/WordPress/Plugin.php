@@ -50,7 +50,7 @@ use Taxmod\WordPress\Persistence\WpdbRelationRepository;
  */
 final class Plugin
 {
-    public const VERSION     = '0.2.208';
+    public const VERSION     = '0.2.209';
 
     /** `apply_filters(RECORD_EDITOR_FILTER, '', $recordId, $returnTo, $toolbar, $roots)`: the record's edit form for a module's page (D-1025); `$toolbar` = the module's own button groups (escaped HTML), placed after «Save» in the one toolbar (D-1308); `$roots` = relation id → the roots its choice offers, from the module's structure setting (D-1546). */
     public const RECORD_EDITOR_FILTER = 'taxmod_record_editor';
@@ -807,6 +807,11 @@ final class Plugin
             (string) (@filemtime($this->path('assets/live.js')) ?: self::VERSION),
             true
         );
+        // D-1560: the words of the bar that says the page is working.
+        wp_add_inline_script(self::LIVE_SCRIPT, 'window.taxmodLiveWords=' . wp_json_encode([
+            'loading' => __('Loading …', 'taxmod'),
+            'saving'  => __('Saving …', 'taxmod'),
+        ]) . ';', 'before');
         wp_add_inline_script('taxmod-messages', 'window.taxmodMessageWords=' . wp_json_encode([
             'none'   => __('No messages yet.', 'taxmod'),
             'recent' => __('Recent messages', 'taxmod'),

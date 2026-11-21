@@ -612,6 +612,8 @@
 				setTimeout( function () {
 					unlock( form, elsewhere );
 				}, 8000 );
+			} else if ( ( form.getAttribute( 'target' ) || '' ) === '' ) {
+				leaving();
 			}
 
 			return;
@@ -635,6 +637,73 @@
 				form.submit();
 			}
 		} );
+	} );
+
+	/**
+	 * D-1560: the page says that it is working. His words 2026-11-21: «dann ist mir nicht ganz klar, wann er da was lädt …
+	 * vielleicht müsste man dem Benutzer dann ein Feedback geben, dass er gerade lädt», «das Gleiche ist mit Speichern».
+	 *
+	 * ```mermaid
+	 * flowchart LR
+	 *   A["form aria-busy (D-1434)"] --> S["said(): one state at body"]
+	 *   B["follower aria-busy (D-1551)"] --> S
+	 *   C["a Taxmod link or GET form leaves the page"] --> S
+	 *   S --> D["data-taxmod-busy = saving | loading → bar and cursor (admin.css)"]
+	 * ```
+	 *
+	 * Nothing new is remembered for forms and followers: the state is read from the `aria-busy` they carry already. Only a
+	 * page on its way out has no element to carry it, so that one is a flag — taken back when the page comes out of the
+	 * browser's cache, and after a while in case the answer was a download and the page stays. A view that is fetched
+	 * instead of loaded ({@see go}) raises the same flag and takes it back when its answer is in place.
+	 */
+	var away  = false;
+	var awayTimer = 0;
+	var words = window.taxmodLiveWords || {};
+
+	function said() {
+		var body   = document.body;
+		var saving = false;
+		var busy   = away;
+
+		if ( ! body ) {
+			return;
+		}
+
+		document.querySelectorAll( '[aria-busy="true"]' ).forEach( function ( one ) {
+			busy   = true;
+			saving = saving || ( one.tagName === 'FORM' && ( one.getAttribute( 'method' ) || 'get' ).toLowerCase() === 'post' );
+		} );
+
+		if ( ! busy ) {
+			body.removeAttribute( 'data-taxmod-busy' );
+			body.removeAttribute( 'data-taxmod-busy-word' );
+
+			return;
+		}
+
+		body.setAttribute( 'data-taxmod-busy', saving ? 'saving' : 'loading' );
+		body.setAttribute( 'data-taxmod-busy-word', ( saving ? words.saving : words.loading ) || '' );
+	}
+
+	function leaving() {
+		away = true;
+		said();
+		window.clearTimeout( awayTimer );
+		awayTimer = window.setTimeout( function () {
+			away = false;
+			said();
+		}, 30000 );
+	}
+
+	if ( window.MutationObserver ) {
+		new MutationObserver( said ).observe( document.documentElement, { attributes: true, attributeFilter: [ 'aria-busy' ], subtree: true } );
+	}
+
+	window.addEventListener( 'pageshow', function ( event ) {
+		if ( event.persisted ) {
+			away = false;
+			said();
+		}
 	} );
 
 	// D-1408: a save in a dialog (also in the page a view dialog shows) leaves the page behind it out of date until it closes.
@@ -746,6 +815,10 @@
 		}
 
 		navigating = new AbortController();
+		// D-1560: a view fetched instead of loaded says so the same way.
+		window.clearTimeout( awayTimer );
+		away = true;
+		said();
 
 		var init = { credentials: 'same-origin', signal: navigating.signal };
 
@@ -763,6 +836,8 @@
 			} )
 			.then( function ( html ) {
 				navigating = null;
+				away = false;
+				said();
 
 				if ( ! part ) {
 					window.history.pushState( { taxmod: true }, '', url );
@@ -822,6 +897,26 @@
 		}
 
 		go( found.url.toString(), fold );
+	} );
+
+	// *A link to a Taxmod page that loads the page: registered after the one above, so a link answered without a page load (go) is seen as prevented.*
+	window.addEventListener( 'click', function ( event ) {
+		var link = event.target && event.target.closest ? event.target.closest( 'a[href]' ) : null;
+
+		if ( ! link || event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey
+			|| ( link.getAttribute( 'target' ) || '' ) !== '' || link.hasAttribute( 'download' ) ) {
+			return;
+		}
+
+		var to = new URL( link.href, window.location.href );
+
+		// *Only the jump within this page (`#…`) stays; a Taxmod page is one whose address names `page=taxmod…`.*
+		if ( to.origin !== window.location.origin || ! /^taxmod/.test( to.searchParams.get( 'page' ) || '' )
+			|| ( to.pathname === window.location.pathname && to.search === window.location.search && to.hash !== '' ) ) {
+			return;
+		}
+
+		leaving();
 	} );
 
 	// *Back and forward through entries this block made: the page for that address, put in place.*
