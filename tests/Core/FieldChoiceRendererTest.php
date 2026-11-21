@@ -4,7 +4,9 @@ namespace Taxmod\Tests\Core;
 
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
+use Taxmod\Core\Description\Choosing;
 use Taxmod\Core\Model\Node;
+use Taxmod\Core\Model\ResolvedSetting;
 use Taxmod\Core\Model\TypedValue;
 use Taxmod\Core\Renderer\FieldChoiceRenderer;
 use Taxmod\Core\Renderer\Level;
@@ -39,5 +41,21 @@ final class FieldChoiceRendererTest extends TestCase
         self::assertStringContainsString('Bauform', $this->drawn(Purpose::Display, TypedValue::ofInt(40), ['40' => 'Bauform']));
         self::assertStringContainsString('#99', $this->drawn(Purpose::Display, TypedValue::ofInt(99), ['40' => 'Bauform']));
         self::assertStringContainsString('#99', $this->drawn(Purpose::Edit, TypedValue::ofInt(99), []), 'a stored field stays in the choice');
+    }
+
+    #[Test]
+    public function names_the_node_field_whose_choice_refills_it_d1550(): void
+    {
+        $setting = new ResolvedSetting(FieldChoiceRenderer::NODE_FIELD, TypedValue::ofInt(575), 1, true);
+        $piece   = (new FieldChoiceRenderer())->render(
+            Node::create(1, 'Feld', null),
+            new RenderContext(purpose: Purpose::Edit, value: TypedValue::ofInt(40), level: Level::Admin, fieldName: 'f[7]',
+                settings: [FieldChoiceRenderer::NODE_FIELD => $setting], surroundings: new Surroundings(options: ['40' => 'Bauform'])),
+        )->piece();
+
+        self::assertInstanceOf(Choosing::class, $piece);
+        self::assertSame(575, $piece->fieldsOf);
+        self::assertSame(575, $piece->toArray()['fields_of']);
+        self::assertArrayNotHasKey('fields_of', Choosing::offer('x', ['1' => 'a'])->toArray(), 'an ordinary choice refills nothing');
     }
 }

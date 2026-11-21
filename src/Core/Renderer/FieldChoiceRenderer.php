@@ -65,6 +65,8 @@ final class FieldChoiceRenderer extends RendererNode
             $context->surroundings->mayBeNothing,
             $context->surroundings->formId,
             editable: $context->editable,
+            // D-1550, his word 21.11. 08:28 «wenn ich jetzt am Knoten ausgewählt habe, dann müsste ja eigentlich ein Event geschickt werden».
+            fieldsOf: ($context->settings[self::NODE_FIELD] ?? null)?->value->int ?? 0,
         ));
     }
 }
