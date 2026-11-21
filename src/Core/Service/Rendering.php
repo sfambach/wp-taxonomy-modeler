@@ -8717,8 +8717,8 @@ final class Rendering implements Presets, \Taxmod\Core\Port\FieldAddons
             $dieseFelder = $teil === null
                 ? ($aufgeloest === 0
                     ? $innen
-                    : $this->fieldsOfChosen(['nodeId' => $aufgeloest], $relation->toNodeId, $innen))
-                : $this->fieldsOfChosen($teil, $relation->toNodeId, $innen);
+                    : $this->fieldsOfChosen(['nodeId' => $aufgeloest], $relation->toNodeId, $innen, $nurEchte))
+                : $this->fieldsOfChosen($teil, $relation->toNodeId, $innen, $nurEchte);
 
             // ⚠️ **Ohne Teil kommen die Werte aus dem Einstellungssatz des Knotens** — sein Fund am
             // 2026-09-10 an `Prefixes`: `label_role` gespeichert, die Zeile darunter zeigte «leer». *Seit
@@ -8951,7 +8951,7 @@ final class Rendering implements Presets, \Taxmod\Core\Port\FieldAddons
      * @return list<Relation>
      */
 
-    private function fieldsOfChosen(array $teil, int $targetId, array $innen): array
+    private function fieldsOfChosen(array $teil, int $targetId, array $innen, bool $nurEchte = false): array
     {
         $gewaehlt = $teil['nodeId'] ?? 0;
 
@@ -8967,7 +8967,10 @@ final class Rendering implements Presets, \Taxmod\Core\Port\FieldAddons
 
         $eigene = array_values(array_filter(
             $this->relations->fieldRelationsOf($this->framework->inheritanceOwnersOf($knoten)),
-            static fn (Relation $e): bool => ! $e->hide
+            // ⚠️ *Dieselbe Trennung wie für {@see self::partBelow()}s `$innen`: unter einem Feld gehören die Einstellungen des Teils nicht in
+            // die Maske. Live-Check 10 (21.11.): ein Teil, der noch unter «Einheitenwert» angelegt war, während sein Feld schon auf ein
+            // Kind-Datenelement zeigt (D-1559), zeigte «position» und «hidden» als Felder.*
+            static fn (Relation $e): bool => ! $e->hide && ($nurEchte === false || ! $e->isSetting())
         ));
 
         return $eigene === [] ? $innen : $eigene;
