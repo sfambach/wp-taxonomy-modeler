@@ -235,18 +235,52 @@ final class WpdbSettingsRepository implements SettingsRepository
             $offset
         ));
 
-        return array_map(static function (array $row): array {
-            $value = '';
+        return array_map(static fn (array $row): array => ['relation' => (int) $row['relation_id'], 'node' => (int) ($row['node_id'] ?? 0), 'object' => (int) ($row['settings_object_id'] ?? 0), 'value' => self::shownValue($row), 'active' => (int) $row['aktiv'] === 1], $rows);
+    }
 
-            foreach (['wert_text', 'wert_int', 'wert_decimal', 'wert_knoten_id', 'wert_settings_object_id', 'wert_kante_id'] as $column) {
-                if ($row[$column] !== null) {
-                    $value = ($column === 'wert_text' || $column === 'wert_int' || $column === 'wert_decimal' ? '' : substr($column, 5) . ':') . (string) $row[$column];
-                    break;
-                }
+    /**
+     * The plain active settings at every field (use site) and at every node, in one read — what the field list shows as a field's
+     * own settings and what the similar-fields search compares (konzept.md §8 M-b, M-c). Rows inside a settings object are left out.
+     *
+     * @return array{field: array<int, array<string, string>>, node: array<int, array<string, string>>} carrier id => attribute => value; a list setting joins its members with «,»
+     */
+    public function plainValuesByCarrier(): array
+    {
+        $rows = Query::rows('Einstellungen an Feldern und Knoten lesen', 'SELECT node_id, relation_id, attribut, wert_int, wert_decimal, wert_text, wert_knoten_id, wert_settings_object_id, wert_kante_id FROM '
+            . Schema::table('settings_value') . ' WHERE aktiv = 1 AND settings_object_id IS NULL ORDER BY relation_id, node_id, attribut, position, id');
+
+        $aus = ['field' => [], 'node' => []];
+
+        foreach ($rows as $row) {
+            [$traeger, $id] = $row['relation_id'] !== null ? ['field', (int) $row['relation_id']] : ['node', (int) ($row['node_id'] ?? 0)];
+            $wert           = self::shownValue($row);
+            $vorher         = $aus[$traeger][$id][(string) $row['attribut']] ?? null;
+
+            $aus[$traeger][$id][(string) $row['attribut']] = $vorher === null ? $wert : $vorher . ',' . $wert;
+        }
+
+        return $aus;
+    }
+
+    /**
+     * One stored value as text: a number or text as it is, a reference with its space in front (`knoten:12`, `kante:7`).
+     *
+     * @param array<string, mixed> $row `mixed`: a database row, its columns null or scalar
+     */
+    private static function shownValue(array $row): string
+    {
+        foreach (['wert_text', 'wert_int', 'wert_decimal', 'wert_knoten_id', 'wert_settings_object_id', 'wert_kante_id'] as $column) {
+            if ($row[$column] !== null && $column === 'wert_decimal' && str_contains((string) $row[$column], '.')) {
+                // decimal(65,30) reads back with thirty places; 2.500… is «2.5».
+                return rtrim(rtrim((string) $row[$column], '0'), '.');
             }
 
-            return ['relation' => (int) $row['relation_id'], 'node' => (int) ($row['node_id'] ?? 0), 'object' => (int) ($row['settings_object_id'] ?? 0), 'value' => $value, 'active' => (int) $row['aktiv'] === 1];
-        }, $rows);
+            if ($row[$column] !== null) {
+                return ($column === 'wert_text' || $column === 'wert_int' || $column === 'wert_decimal' ? '' : substr($column, 5) . ':') . (string) $row[$column];
+            }
+        }
+
+        return '';
     }
 
     public function forgetValue(int $id): ?int

@@ -415,6 +415,26 @@ final class WpdbRecordRepository implements RecordRepository
         return $aus;
     }
 
+    /**
+     * How many value rows and how many records each field holds, every field in one read — the «Zahl der Werte» of the field
+     * list (konzept.md §8 M-b). Read only.
+     *
+     * @return array<int, array{values: int, records: int}> relation id => counts; a field without values is missing
+     */
+    public function valueCountsByField(): array
+    {
+        $rows = Query::rows('Werte je Feld zaehlen', 'SELECT relation_id, COUNT(*) AS werte, COUNT(DISTINCT node_record_id) AS saetze FROM '
+            . Schema::table('relation_records') . ' GROUP BY relation_id');
+
+        $aus = [];
+
+        foreach ($rows as $r) {
+            $aus[(int) $r['relation_id']] = ['values' => (int) $r['werte'], 'records' => (int) $r['saetze']];
+        }
+
+        return $aus;
+    }
+
     public function referrersOfMany(array $recordIds): array
     {
         global $wpdb;

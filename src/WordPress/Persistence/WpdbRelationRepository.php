@@ -410,6 +410,24 @@ final class WpdbRelationRepository implements RelationRepository
         return array_map($this->hydrate(...), $rows ?: []);
     }
 
+    /**
+     * Every live field of every node in one read, by owner and order — the field list of the Feldkatalog migration
+     * (konzept.md §8 M-b), so a caller does not read node after node. Parked fields stand in the shadow table and not here (D-619).
+     *
+     * @return list<Relation>
+     */
+    public function everyFieldRelation(): array
+    {
+        global $wpdb;
+
+        $rows = Query::rows('Alle Feldkanten lesen', $wpdb->prepare(
+            'SELECT ' . self::COLUMNS . self::fromRelations() . 'ORDER BY r.from_node_id ASC, r.sort_order ASC, r.id ASC',
+            $this->nameArgs()
+        ));
+
+        return array_map($this->hydrate(...), $rows ?: []);
+    }
+
     public function fieldRelationsTo(array $targetIds): array
     {
         global $wpdb;
