@@ -112,4 +112,23 @@ final class FieldCipherTest extends TestCase
         $this->expectException(FieldDoesNotOpen::class);
         new FieldCipher(['K 1' => self::key('a')]);
     }
+
+    #[Test]
+    public function a_change_of_key_reseals_with_the_new_one_and_still_opens_the_old(): void
+    {
+        $old      = (new FieldCipher(['k1' => self::key('a')]))->seal('Musterstadt');
+        $both     = new FieldCipher(['k2' => self::key('b'), 'k1' => self::key('a')]);
+        $resealed = $both->reseal($old);
+
+        self::assertSame('k2', $both->sealingKeyId());
+        self::assertSame('k1', FieldCipher::keyIdOf($old));
+        self::assertSame('k2', FieldCipher::keyIdOf($resealed));
+        self::assertNull(FieldCipher::keyIdOf('plain'));
+        self::assertTrue($both->needsResealing($old));
+        self::assertFalse($both->needsResealing($resealed));
+        self::assertSame('Musterstadt', $both->open($old));
+        self::assertSame('Musterstadt', (new FieldCipher(['k2' => self::key('b')]))->open($resealed));
+        self::assertSame($resealed, $both->reseal($resealed));
+        self::assertSame('plain', $both->reseal('plain'));
+    }
 }

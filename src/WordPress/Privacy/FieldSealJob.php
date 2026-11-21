@@ -34,19 +34,29 @@ final class FieldSealJob
         }
 
         $done = self::runBatch();
+
+        if ($done === 0) {
+            FieldSeal::noteSealedWith(self::sealedWithRetired(), time());
+        }
+
         set_transient(self::THROTTLE, 1, $done >= self::BATCH ? 1 : 5 * MINUTE_IN_SECONDS);
     }
 
-    /** One batch over the three tables; answers how many rows it sealed. */
+    /** One batch over the three tables — values of a former key resealed (D-1562), plain values sealed; answers how many rows. */
     public static function runBatch(int $limit = self::BATCH): int
     {
-        $kanten = array_keys(FieldSeal::confidentialRelations());
+        $cipher = FieldSeal::cipher();
 
-        if ($kanten === [] || FieldSeal::cipher() === null) {
+        if ($cipher === null) {
             return 0;
         }
 
-        $done = 0;
+        $done   = self::resealBatch($cipher, $limit);
+        $kanten = array_keys(FieldSeal::confidentialRelations());
+
+        if ($kanten === []) {
+            return $done;
+        }
 
         foreach (['relation_records', 'relation_records_history'] as $tabelle) {
             foreach (FieldSealRows::plainRows($tabelle, $kanten, $limit) as $zeile) {
@@ -61,6 +71,83 @@ final class FieldSealJob
         }
 
         return $done;
+    }
+
+    /** D-1562: values sealed with a former key, sealed again with the current one — no act, as sealing is none. */
+    private static function resealBatch(\Taxmod\Core\Privacy\FieldCipher $cipher, int $limit): int
+    {
+        $done  = 0;
+        $keyId = $cipher->sealingKeyId();
+
+        foreach (['relation_records', 'relation_records_history'] as $tabelle) {
+            foreach (FieldSealRows::sealedOtherRows($tabelle, $keyId, $limit) as $zeile) {
+                try {
+                    FieldSealRows::replaceText($tabelle, $zeile['id'], $zeile['version'], $cipher->reseal($zeile['text']));
+                    $done++;
+                } catch (\Taxmod\Core\Exception\FieldDoesNotOpen) {
+                    // *A value no key here opens (a key deleted, a foreign copy) stays as it is and reads as the lock.*
+                }
+            }
+        }
+
+        $journal = FieldSealRows::journalSealedRows(
+            static fn (?string $before, ?string $after): bool => FieldSeal::stateNeedsResealing($before) || FieldSeal::stateNeedsResealing($after),
+            $limit
+        );
+
+        foreach ($journal as $zeile) {
+            try {
+                FieldSealRows::replaceJournalStates($zeile['id'], FieldSeal::resealState($zeile['before_state']), FieldSeal::resealState($zeile['after_state']));
+                $done++;
+            } catch (\Taxmod\Core\Exception\FieldDoesNotOpen) {
+                // *As above: what does not open is left.*
+            }
+        }
+
+        return $done;
+    }
+
+    /**
+     * D-1562: what is still sealed with a former key — live, history, chronicle.
+     *
+     * @return array{live: int, history: int, journal: int}
+     */
+    public static function resealLeft(): array
+    {
+        $cipher = FieldSeal::cipher();
+
+        if ($cipher === null) {
+            return ['live' => 0, 'history' => 0, 'journal' => 0];
+        }
+
+        $keyId = $cipher->sealingKeyId();
+
+        return [
+            'live'    => FieldSealRows::sealedCount('relation_records', $keyId),
+            'history' => FieldSealRows::sealedCount('relation_records_history', $keyId),
+            'journal' => count(FieldSealRows::journalSealedRows(
+                static fn (?string $before, ?string $after): bool => FieldSeal::stateNeedsResealing($before) || FieldSeal::stateNeedsResealing($after),
+                PHP_INT_MAX
+            )),
+        ];
+    }
+
+    /**
+     * Per former key of the tab: how many values are still sealed with it (live, history, chronicle together).
+     *
+     * @return array<string, int>
+     */
+    public static function sealedWithRetired(): array
+    {
+        $aus = [];
+
+        foreach (array_keys(FieldSeal::retired()) as $keyId) {
+            $aus[$keyId] = FieldSealRows::sealedCount('relation_records', $keyId, true)
+                + FieldSealRows::sealedCount('relation_records_history', $keyId, true)
+                + FieldSealRows::journalSealedWithCount($keyId);
+        }
+
+        return $aus;
     }
 
     /**

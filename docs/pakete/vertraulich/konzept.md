@@ -73,18 +73,42 @@ flowchart LR
 - **Stefan bewahrt eine Kopie außerhalb des Servers auf.** Werden die Salts geändert, öffnet sich die Option nicht mehr —
   dann trägt er den Schlüssel aus dem Passwortmanager neu ein, die Daten bleiben lesbar. Ohne Kopie sind sie weg, auch
   aus der Sicherung.
-- `TAXMOD_DATA_KEY` in `wp-config.php` geht vor (wie bei D-951). Schlüsselwechsel: `TAXMOD_DATA_KEY_ID` (Vorgabe `k1`)
-  für den neuen, `TAXMOD_DATA_KEYS_OLD` (`['k1' => '…']`) für die alten, die nur noch lesen.
+- `TAXMOD_DATA_KEY` in `wp-config.php` geht vor (wie bei D-951); dort auch `TAXMOD_DATA_KEY_ID` (Vorgabe `k1`) und
+  `TAXMOD_DATA_KEYS_OLD` (`['k1' => '…']`) für alte Schlüssel, die nur noch lesen.
 - Fehlt der Schlüssel, wird ein vertrauliches Feld **nicht geschrieben** (Fehlermeldung, nie still Klartext), ein
   versiegelter Wert liest sich als «🔒», und «🔒» als Wert wird abgewiesen. Administratoren sehen einen Hinweis mit Link
   zum Reiter.
+
+## Schlüsselwechsel (D-1562)
+
+```mermaid
+flowchart LR
+  N["Reiter: neuer Schlüssel + «Kopie aufbewahrt» + «jetzt wechseln»"] --> A[("alter Schlüssel → alte Schlüssel\nversiegelt mit dem Tresor")]
+  N --> K[("neuer Schlüssel, Kennung k2, k3 …")]
+  K --> J["FieldSealJob / taxmod/field-seal: umschlüsseln"]
+  J -->|nichts mehr am alten| W["8 Tage warten"] --> L["von Hand löschen, mit Haken"]
+```
+
+- Stefan 21.11. 12:35: «kann man den schlüssel ändern ?», «mit altem schlüssel neuer schlüssel».
+- Der Reiter zeigt, wenn ein Schlüssel in Gebrauch ist, **«Schlüssel wechseln»**: frischer Vorschlag, Feld, Haken «Kopie
+  aufbewahrt» und Haken «Ja, den Schlüssel jetzt wechseln». Ohne beide Haken, mit dem bisherigen Schlüssel oder mit einem
+  Schlüssel, der nicht 64 Hex-Ziffern hat, ändert sich nichts.
+- Der bisherige Schlüssel wird **alter Schlüssel**: versiegelt gespeichert (Option `taxmod_data_keys_old`, Tresor D-951),
+  weiter zum Öffnen benutzt. Der neue versiegelt ab sofort, unter der nächsten freien Kennung (`taxmod_data_key_id`).
+- `FieldSealJob` schlüsselt in denselben Häppchen um — live, Schatten, Chronik; wie das Versiegeln ohne Akt und ohne
+  Undo. `taxmod/field-seal` zählt (`resealing_left`, je alter Schlüssel `sealed_with_old_keys`) und stößt einen Lauf an.
+- **Ein alter Schlüssel wird nie von selbst gelöscht.** Die Nachtsicherungen (D-1407, sieben) enthalten noch Werte mit
+  ihm; wer eine zurückspielt, braucht ihn. Löschen geht erst **acht Tage**, nachdem nichts mehr mit ihm versiegelt ist,
+  und nur von Hand mit Haken; der Reiter zeigt, ab wann. Taucht wieder etwas mit ihm auf (alte Sicherung zurückgespielt),
+  beginnen die acht Tage neu.
 
 ## Altbestand
 
 `FieldSealJob` versiegelt, was ein Feld hielt, bevor es vertraulich wurde — live, im Schatten und in der Chronik — in
 Häppchen zu 500 Zeilen, angestoßen von `admin_init` höchstens alle fünf Minuten (sofort wieder, solange Arbeit übrig
 ist). *INFERRED: Das Versiegeln ändert die Speicherform, nicht den Wert — darum kein Akt, keine neue Version, keine
-Schattenzeile; ein Undo darf nie Klartext zurückbringen.*
+Schattenzeile; ein Undo darf nie Klartext zurückbringen.* Die Ability **`taxmod/field-seal`** zählt zuerst (`dry_run`,
+Vorgabe) und versiegelt auf Wunsch ein Häppchen (höchstens 5000) — auch ohne Warten auf `admin_init`.
 
 ## Umfang
 
