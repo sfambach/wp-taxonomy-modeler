@@ -953,6 +953,12 @@ final class EdgeDrawer implements Drawer
             $merkmale['title'] = $wahl->hint;
         }
 
+        // D-1550: a field choice refills itself when the node it reads from is chosen anew — no save needed in between.
+        if ($wahl->fieldsOf > 0) {
+            $merkmale['data-taxmod-fields-of']  = (string) $wahl->fieldsOf;
+            $merkmale['data-taxmod-fields-url'] = add_query_arg(['action' => \Taxmod\WordPress\Admin\NodesScreen::NODE_FIELDS_ACTION, 'nonce' => wp_create_nonce(\Taxmod\WordPress\Admin\NodesScreen::NODE_FIELDS_ACTION)], admin_url('admin-ajax.php'));
+        }
+
         if ($wahl->purpose !== ChoicePurpose::Colour) {
             return SelectMarkup::select($wahl, $merkmale);
         }
