@@ -52,7 +52,7 @@ final class Plugin
 {
     public const VERSION     = '0.2.200';
 
-    /** `apply_filters(RECORD_EDITOR_FILTER, '', $recordId, $returnTo, $toolbar)`: the record's edit form for a module's page (D-1025); `$toolbar` = the module's own button groups (escaped HTML), placed after «Save» in the one toolbar (D-1308). */
+    /** `apply_filters(RECORD_EDITOR_FILTER, '', $recordId, $returnTo, $toolbar, $roots)`: the record's edit form for a module's page (D-1025); `$toolbar` = the module's own button groups (escaped HTML), placed after «Save» in the one toolbar (D-1308); `$roots` = relation id → the roots its choice offers, from the module's structure setting (D-1546). */
     public const RECORD_EDITOR_FILTER = 'taxmod_record_editor';
 
     /** `apply_filters(CLAIMED_FIELDS_FILTER, [], $recordId, $nodeId)`: relation id → ['label' => button text, 'url' => the module's dialog] — fields a module changes only through its own dialog; the record editor shows them read-only with that button — none when 'url' is empty — and its save leaves them alone (D-1334). */
@@ -215,15 +215,15 @@ final class Plugin
         add_action('admin_enqueue_scripts', $plugin->registerListHead(...));
 
         // ⚠️ *Ein Satz zum Bearbeiten auf der Seite eines Moduls (D-1025): das Modul fragt den Filter, nicht die Klassen.*
-        add_filter(self::RECORD_EDITOR_FILTER, static function (mixed $html, int $recordId = 0, string $returnTo = '', array $toolbar = []) use ($plugin): string {
+        add_filter(self::RECORD_EDITOR_FILTER, static function (mixed $html, int $recordId = 0, string $returnTo = '', array $toolbar = [], array $roots = []) use ($plugin): string {
             if ($recordId <= 0 || ! current_user_can(self::CAPABILITY)) {
                 return is_string($html) ? $html : '';
             }
 
             $plugin->enqueueStyle();
 
-            return $plugin->screen()->recordEditor($recordId, $returnTo, array_values(array_filter($toolbar, static fn (mixed $group): bool => is_string($group) || is_array($group))));
-        }, 10, 4);
+            return $plugin->screen()->recordEditor($recordId, $returnTo, array_values(array_filter($toolbar, static fn (mixed $group): bool => is_string($group) || is_array($group))), $roots);
+        }, 10, 5);
 
         // D-1250: a module's form uses the modeller's own field controls and reads them back the same way.
         add_filter(self::FIELD_CONTROLS_FILTER, static function (mixed $controls, int $node = 0, array $relations = [], string $prefix = '', string $formId = '', int $record = 0, array $values = [], array $roots = []) use ($plugin): array {
@@ -233,7 +233,7 @@ final class Plugin
 
             $plugin->enqueueStyle();
 
-            return $plugin->screen()->fieldControls($node, array_map('absint', $relations), $prefix, $formId, $record, $values, array_map('absint', $roots));
+            return $plugin->screen()->fieldControls($node, array_map('absint', $relations), $prefix, $formId, $record, $values, $roots);
         }, 10, 8);
         add_filter(self::TYPED_VALUES_FILTER, static fn (mixed $values, int $node = 0, array $submitted = []): array => $node <= 0
             ? (is_array($values) ? $values : [])
