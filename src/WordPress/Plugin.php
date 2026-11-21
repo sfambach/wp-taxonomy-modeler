@@ -50,7 +50,7 @@ use Taxmod\WordPress\Persistence\WpdbRelationRepository;
  */
 final class Plugin
 {
-    public const VERSION     = '0.2.205';
+    public const VERSION     = '0.2.206';
 
     /** `apply_filters(RECORD_EDITOR_FILTER, '', $recordId, $returnTo, $toolbar, $roots)`: the record's edit form for a module's page (D-1025); `$toolbar` = the module's own button groups (escaped HTML), placed after «Save» in the one toolbar (D-1308); `$roots` = relation id → the roots its choice offers, from the module's structure setting (D-1546). */
     public const RECORD_EDITOR_FILTER = 'taxmod_record_editor';
@@ -104,6 +104,9 @@ final class Plugin
     /** D-1291: answers `ModelDoor` the words of fields of records, as the screen shows them (a price with its unit). */
     public const FIELD_WORDS_FILTER = 'taxmod_field_words';
 
+    /** D-1558: the words of rule filters, {@see \Taxmod\Core\Service\Rendering::filterWords()}. */
+    public const FILTER_WORDS_FILTER = 'taxmod_filter_words';
+
     /** D-1295: answers `ModelDoor` the words of one record for the fields a label names (D-1160, D-1222). */
     public const LABEL_VALUES_FILTER = 'taxmod_label_values';
 
@@ -137,6 +140,22 @@ final class Plugin
 
     private function __construct(private readonly string $file)
     {
+    }
+
+    /**
+     * The rule book's operators in the words a person reads (D-1552) — code, so the software's strings (AR-2).
+     *
+     * @return array<string, string> operator → word
+     */
+    public static function operatorWords(): array
+    {
+        return [
+            \Taxmod\Core\Rules\RuleBook::EQUALS     => __('equals', 'taxmod'),
+            \Taxmod\Core\Rules\RuleBook::NOT_EQUALS => __('does not equal', 'taxmod'),
+            \Taxmod\Core\Rules\RuleBook::GREATER    => __('greater than', 'taxmod'),
+            \Taxmod\Core\Rules\RuleBook::LESS       => __('less than', 'taxmod'),
+            \Taxmod\Core\Rules\RuleBook::CONTAINS   => __('contains', 'taxmod'),
+        ];
     }
 
     /** D-1498: `do_action(LISTEN_ACTION, ListenerProvider)` — where modules subscribe to the core's events. */
@@ -177,6 +196,7 @@ final class Plugin
         \Taxmod\WordPress\Printing\PrintRest::boot();
         \Taxmod\WordPress\Printing\PrintJobsScreen::boot();
         \Taxmod\WordPress\Admin\ChangesScreen::boot();
+        \Taxmod\WordPress\Admin\RulesPage::boot();
         // D-1206: the scanner's test page, a tab of the Configuration.
         \Taxmod\WordPress\Printing\ScannerTab::boot($plugin->screen(...));
         // D-1160: the label reads the fields its layout names from the record itself.
@@ -196,6 +216,7 @@ final class Plugin
             array_values(array_map('intval', $records)),
             array_values((new WpdbRelationRepository())->byIds(array_map('intval', $relations)))
         ), 10, 3);
+        add_filter(self::FILTER_WORDS_FILTER, static fn (array $answer, array $filters): array => $plugin->screen()->filterWords($filters), 10, 2);
         add_action('admin_init', \Taxmod\WordPress\Printing\PrintJobSchema::upgrade(...));
         // D-1514: what a field held before it became confidential is sealed in batches; without the data key a warning says how.
         add_action('admin_init', [\Taxmod\WordPress\Privacy\FieldSealJob::class, 'onAdmin'], 20);
@@ -371,6 +392,7 @@ final class Plugin
         add_action('wp_ajax_' . ListPage::PER_PAGE_ACTION, [ListPage::class, 'saveChosenSize']);
         // D-1550: a field choice asks for the fields of the node just chosen.
         add_action('wp_ajax_' . \Taxmod\WordPress\Admin\NodesScreen::NODE_FIELDS_ACTION, static fn () => $plugin->screen()->nodeFields());
+        add_action('wp_ajax_' . \Taxmod\WordPress\Admin\NodesScreen::FIELD_VALUES_ACTION, static fn () => $plugin->screen()->fieldValues());
         // D-1413: the link dialog's search on taxmod pages finds unpublished posts too, by title, and names their state.
         \Taxmod\WordPress\Admin\LinkSearch::wire();
 
@@ -1157,6 +1179,8 @@ final class Plugin
         // ⚠️ *Jeder Dialog bekommt «OK» und «Abbrechen» — die Worte kommen von hier, weil der Kern keine macht (D-804, `AR-2`).*
         // ⚠️ *Und ganze Knotenbäume öffnen den einen Auswahlbaum, den diese Seite zeichnet (D-815) — nur hier, weil nur hier einer steht.*
         $rendering = $this->rendering($labels)->withDialogWords(__('OK', 'taxmod'), __('Cancel', 'taxmod'), __('Show the tree', 'taxmod'), __('Choose a file from the media library', 'taxmod'), __('Remove this choice', 'taxmod'), __('Choose a link — also to your own pages and posts', 'taxmod'), __('Search all records — type at least two letters', 'taxmod'), __('Open the chosen record in a new tab to complete it', 'taxmod'), /* translators: %s: what the dialog chooses, e.g. a field (D-1436) */ __('Choose: %s', 'taxmod'))->withSharedPicker()
+            // D-1552: the rule book's operators are code; their words are the software's.
+            ->withOperatorWords(self::operatorWords())
             // ⚠️ *Und gleiche Satzdialoge stehen einmal als Vorlage (D-866) — die Seite gibt sie am Ende aus.*
             ->withSharedRecordBodies(new \Taxmod\Core\Renderer\SharedBodies())
             // ⚠️ *Die Worte der Zusatzfunktionen (D-845) — der Kern kennt nur ihre Schlüssel (`AR-2`).*

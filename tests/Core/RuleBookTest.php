@@ -42,4 +42,33 @@ final class RuleBookTest extends TestCase
         self::assertNull((new RuleBook([['id' => 1, 'position' => 0, 'conditions' => [1 => 7]]]))->first([]), 'a key left out knows nothing');
         self::assertNull((new RuleBook([]))->first([1 => [7]]));
     }
+
+    /** D-1552: one case per operator. */
+    public function testEachOperator(): void
+    {
+        $rule = static fn (string $op, string $value): RuleBook => new RuleBook([['id' => 1, 'position' => 0, 'conditions' => [], 'filters' => [['field' => 9, 'value' => $value, 'operator' => $op]]]]);
+
+        self::assertSame(1, $rule(RuleBook::EQUALS, 'gebraucht')->first([], [9 => ['gebraucht']]));
+        self::assertSame(1, $rule(RuleBook::NOT_EQUALS, 'neu')->first([], [9 => ['gebraucht']]));
+        self::assertNull($rule(RuleBook::NOT_EQUALS, 'neu')->first([], [9 => ['neu']]));
+        self::assertNull($rule(RuleBook::NOT_EQUALS, 'neu')->first([], []), '«ungleich» needs the field');
+        self::assertSame(1, $rule(RuleBook::GREATER, '10')->first([], [9 => ['10.5']]));
+        self::assertNull($rule(RuleBook::GREATER, '10')->first([], [9 => ['10.00']]), 'equal is not greater');
+        self::assertNull($rule(RuleBook::GREATER, '10')->first([], [9 => ['9']]));
+        self::assertSame(1, $rule(RuleBook::LESS, '1,5')->first([], [9 => ['-3']]));
+        self::assertNull($rule(RuleBook::LESS, '1.5')->first([], [9 => ['2']]));
+        self::assertNull($rule(RuleBook::GREATER, '1')->first([], [9 => ['5 V']]), 'a value with a unit never holds yet (D-1555)');
+        self::assertSame(1, $rule(RuleBook::CONTAINS, 'smd')->first([], [9 => ['0805 SMD']]), '«enthält» ignores case');
+        self::assertNull($rule(RuleBook::CONTAINS, 'tht')->first([], [9 => ['0805 SMD']]));
+        self::assertNull($rule('at_least', '1')->first([], [9 => ['5']]), 'an operator not built never holds');
+    }
+
+    public function testDecimalsCompareWithoutFloats(): void
+    {
+        self::assertSame(0, RuleBook::compareDecimal('0.1', '0.10'));
+        self::assertSame(1, RuleBook::compareDecimal('100000000000000000001', '100000000000000000000'), 'past float precision');
+        self::assertSame(-1, RuleBook::compareDecimal('-2', '-1'));
+        self::assertSame(0, RuleBook::compareDecimal('-0', '0'));
+        self::assertNull(RuleBook::compareDecimal('abc', '1'));
+    }
 }

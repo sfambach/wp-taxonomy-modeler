@@ -1447,7 +1447,11 @@ final class ModelAbilities
                 // ⚠️ *Gebaut, weil «name_as_link_text» und «with_label» an den Quellen sonst nur in der Maske zu setzen waren (D-999).*
                 $nodeId = $this->node($at('node'))->id;
 
-                $screen->setSetting($nodeId, sanitize_key((string) ($change['attribute'] ?? '')), (string) ($change['value'] ?? ''), isset($change['field']) ? $at('field') : null);
+                // D-1552: a value naming a node or field made in the same act («@ref») is that id, as everywhere else in a change.
+                $value = (string) ($change['value'] ?? '');
+                $value = str_starts_with($value, '@') ? (string) $at('value') : $value;
+
+                $screen->setSetting($nodeId, sanitize_key((string) ($change['attribute'] ?? '')), $value, isset($change['field']) ? $at('field') : null);
 
                 return $nodeId;
 

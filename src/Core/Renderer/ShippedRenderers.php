@@ -78,6 +78,8 @@ final class ShippedRenderers
         $registry->add(new ColorChoiceRenderer());
         // D-1541: the field of a rule filter, from the fields of the node chosen in the record — offered, never the default.
         $registry->add(new FieldChoiceRenderer());
+        $registry->add(new FieldValueRenderer());
+        $registry->add(new OperatorChoiceRenderer());
 
         // ⚠️ **The first structural renderer** — chosen for what a subject **is** rather than for
         // what it holds, which is why it declares no type at all (D-098). Until it existed, a node
