@@ -1393,3 +1393,13 @@ Anlass: [INF-073](#inf-073--bestand-und-fertigung-vom-wareneingang-über-die-pla
   - **Zusammengesetzt** ist ein Knoten der neuen Klasse «Zusammengesetzter Datentyp», nicht jeder per Komposition gehaltene Knoten (Konzept-Thread 21.11. mit Stefans Wort 07:16 «eine neue Klasse … zusammengesetzter Datentyp»). Die Klasse erlaubt als Kinder nur sich selbst und trägt `summary_fields`/`mass_felder` wie Kategorie, damit ein Klassenwechsel nichts verliert ([D-733](NewConcept/90-decision-log.md)).
   - Rolle (Grundtyp · Datenelement · zusammengesetzt) wird abgeleitet, nicht gespeichert.
 - **Offen:** ob «Abmessung» und weitere bestehende Knoten die Klasse bekommen und in den Ast «Data Types» wandern — späterer Datenjob mit dry_run und undo_act, Stefan entscheidet je Knoten.
+
+## INF-137 · Vorwahl-Rückfall Druck, weg nach Übernahme (2026-11-21)
+
+- **Anlass:** Bau von [D-1558](NewConcept/90-decision-log.md) (PRs #149, Lager #64, Etiketten #25). «Vorwahlen übernehmen» und «Gruppen übernehmen» sind weg; live gibt es 0 Druckregeln, darum wählt der Druckdialog bis zur Übernahme weiter nach der alten Vorwahl (Bauform, Gruppe, Platzart). Zwei Mechanismen nebeneinander sind ein Übergang, kein Zustand (Prüftor 21.11.).
+- **Weg:** Lager 0.64.193 mit einer Lese-Ability, die die offenen Vorschläge als `apply`-Ops liefert; der Datenjob geht über die Queue (dry_run, undo_act); danach fällt der Rückfall im Etikettenmodul weg.
+
+## INF-138 · Spaltenfolge der Regel-Filter (2026-11-21)
+
+- **Anlass:** Bau von [D-1552](NewConcept/90-decision-log.md). Die Filterzeile zeigt die Felder in der Reihenfolge, in der sie angelegt wurden: Feld · Wert · Operator · Art. D-1552 sagt Art · Feld · Operator · Wert; ein Op zum Umsortieren der Felder eines Knotens gibt es nicht.
+- **Weg:** kommt mit dem Ordnen der Formulare im Feldkatalog ([D-1556](NewConcept/90-decision-log.md), Datenjob). Die Liste der Regelseite zeigt die Filter schon in der Reihenfolge von D-1552.

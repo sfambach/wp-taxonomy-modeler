@@ -962,8 +962,10 @@ final class ListPage
      *                                                     `$formId`): chosen and run, the dialog opens for the rows ticked; with `true` third
      *                                                     the dialog opens at once and its own form counts its rows (D-1403)
      * @param string $search from {@see self::searchBox()}: the list's search, on the right of the same row (D-1462)
+     * @param string $route  the admin-post handler the bar posts to (D-1558): admin-post routes on «action», so the choice then
+     *                       travels as «bulk» and the handler's name stands in «action»; empty keeps the choice in «action»
      */
-    public static function bulkBar(string $formId, string $nonceAction, array $actions, string $count, string $filters = '', bool $expandable = true, array $asking = [], string $search = '', string $pages = ''): string
+    public static function bulkBar(string $formId, string $nonceAction, array $actions, string $count, string $filters = '', bool $expandable = true, array $asking = [], string $search = '', string $pages = '', string $route = ''): string
     {
         // His word 2026-11-06: «-- , drucken ... und was wir noch für aktionen haben in das selekt und dann bulk ation asuführen
         // button (nimmt nur selektierte einträge» — every action of the list stands in the one choice (D-1202).
@@ -987,7 +989,8 @@ final class ListPage
         return self::barRow('<form method="post" id="' . esc_attr($formId) . '" action="' . esc_url(admin_url('admin-post.php')) . '" class="alignleft actions bulkactions" onsubmit="' . esc_attr(self::confirmBulk($formId)) . '">'
             . wp_nonce_field($nonceAction, '_wpnonce', true, false)
             . '<label class="screen-reader-text" for="' . esc_attr($formId) . '-action">' . esc_html__('Select bulk action') . '</label>'
-            . '<select name="action" id="' . esc_attr($formId) . '-action">' . $options . '</select> '
+            . '<select name="' . ($route === '' ? 'action' : 'bulk') . '" id="' . esc_attr($formId) . '-action">' . $options . '</select> '
+            . ($route === '' ? '' : '<input type="hidden" name="action" value="' . esc_attr($route) . '">')
             . get_submit_button(__('Apply'), 'action', '', false) . '</form>'
             . ($dialogs === '' ? '' : '<div class="taxmod-bulk-asks">' . $dialogs . '</div>'), $count, $filters, $expandable, $search, $pages);
     }

@@ -3900,7 +3900,7 @@
  *
  * ```mermaid
  * flowchart LR
- *   K["taxmod:chosen …[knoten]"] --> F["fetch taxmod_node_fields"] --> S["refill select[data-taxmod-fields-of=knoten]"]
+ *   K["taxmod:chosen …[knoten] or the row's …[art]"] --> F["fetch taxmod_node_fields (node, kind)"] --> S["refill select[data-taxmod-fields-of=knoten]"]
  * ```
  */
 ( function () {
@@ -3949,26 +3949,47 @@
 		select.classList.toggle( 'taxmod-unsatisfiable', fields.length === 0 );
 	}
 
-	function refill( relation, form, node ) {
-		var selects = Array.prototype.filter.call( document.querySelectorAll( 'select[data-taxmod-fields-of="' + relation + '"]' ), function ( select ) {
-			return formOf( select ) === form;
+	// D-1552: the kind chosen in the select's own row — the same name with the kind's relation as its last part.
+	function kindOf( select ) {
+		var kindField = select.getAttribute( 'data-taxmod-kind-field' );
+
+		if ( ! kindField ) {
+			return '';
+		}
+
+		var name   = select.name.replace( /\[\d+\]$/, '[' + kindField + ']' );
+		var picked = '';
+
+		document.querySelectorAll( '[name="' + name.replace( /"/g, '\\"' ) + '"]' ).forEach( function ( field ) {
+			if ( ( field.type === 'radio' && ! field.checked ) || field.value === '' ) {
+				return;
+			}
+			picked = field.value;
 		} );
 
-		if ( selects.length === 0 ) {
+		return picked;
+	}
+
+	function refillOne( select ) {
+		var relation = select.getAttribute( 'data-taxmod-fields-of' );
+		var node     = chosenNode( relation, formOf( select ) );
+		var kind     = kindOf( select );
+
+		if ( ! node && ! kind ) {
+			fill( select, [] );
+
 			return;
 		}
 
-		if ( ! node ) {
-			selects.forEach( function ( select ) {
-				fill( select, [] );
-			} );
+		var url = new URL( select.getAttribute( 'data-taxmod-fields-url' ), window.location.href );
 
-			return;
+		url.searchParams.set( 'node', node || '' );
+
+		if ( kind ) {
+			url.searchParams.set( 'kind', kind );
+			url.searchParams.set( 'key', select.getAttribute( 'data-taxmod-kind-key' ) || '' );
+			url.searchParams.set( 'from', select.getAttribute( 'data-taxmod-kind-from' ) || '' );
 		}
-
-		var url = new URL( selects[ 0 ].getAttribute( 'data-taxmod-fields-url' ), window.location.href );
-
-		url.searchParams.set( 'node', node );
 
 		var key = url.toString();
 		var got = cache[ key ] || window.fetch( key, { credentials: 'same-origin' } ).then( function ( answer ) {
@@ -3979,25 +4000,114 @@
 
 		cache[ key ] = got;
 		got.then( function ( fields ) {
-			selects.forEach( function ( select ) {
-				fill( select, fields );
+			fill( select, fields );
+			refillValue( select );
+		} ).catch( function () {
+			delete cache[ key ];
+		} );
+	}
+
+	// D-1551: the node's choice is the event — in its dialog only once «OK» keeps it. D-1552: so is a row's kind.
+	document.addEventListener( 'taxmod:chosen', function ( event ) {
+		var detail   = event.detail || {};
+		var relation = relationOf( detail.field );
+		var form     = detail.form && detail.form.id ? detail.form.id : '';
+
+		if ( ! relation ) {
+			return;
+		}
+
+		document.querySelectorAll( 'select[data-taxmod-fields-of="' + relation + '"]' ).forEach( function ( select ) {
+			if ( formOf( select ) === form ) {
+				refillOne( select );
+			}
+		} );
+
+		document.querySelectorAll( 'select[data-taxmod-kind-field="' + relation + '"]' ).forEach( function ( select ) {
+			if ( select.name.replace( /\[\d+\]$/, '' ) === String( detail.field ).replace( /\[\d+\]$/, '' ) ) {
+				refillOne( select );
+			}
+		} );
+	} );
+
+	// D-1552: the row's value follows the field chosen in the row — a choice of that field's values, or one line.
+	function rowOf( name ) {
+		return String( name || '' ).replace( /\[\d+\]$/, '' );
+	}
+
+	function valueControls( feldSelect ) {
+		var relation = relationOf( feldSelect.name );
+		var row      = rowOf( feldSelect.name );
+
+		return Array.prototype.filter.call( document.querySelectorAll( 'select[data-taxmod-value-of="' + relation + '"], input[id^="taxmod-value-of-' + relation + '-"]' ), function ( control ) {
+			return rowOf( control.name ) === row;
+		} );
+	}
+
+	function swapValue( control, values, feldRelation ) {
+		var replacement;
+
+		if ( values.length > 0 ) {
+			replacement = document.createElement( 'select' );
+			replacement.className = 'taxmod-choice';
+			replacement.setAttribute( 'data-taxmod-value-of', feldRelation );
+			replacement.add( new Option( '', '' ) );
+			values.forEach( function ( value ) {
+				replacement.add( new Option( value.name, value.id, false, value.id === control.value ) );
+			} );
+		} else {
+			replacement = document.createElement( 'input' );
+			replacement.type = 'text';
+			replacement.id = 'taxmod-value-of-' + feldRelation + '-' + Math.random().toString( 36 ).slice( 2, 12 );
+			replacement.value = control.tagName === 'SELECT' ? '' : control.value;
+		}
+
+		replacement.name = control.name;
+
+		if ( control.getAttribute( 'form' ) ) {
+			replacement.setAttribute( 'form', control.getAttribute( 'form' ) );
+		}
+
+		control.replaceWith( replacement );
+	}
+
+	function refillValue( feldSelect ) {
+		var controls = valueControls( feldSelect );
+
+		if ( controls.length === 0 ) {
+			return;
+		}
+
+		var url = new URL( feldSelect.getAttribute( 'data-taxmod-fields-url' ), window.location.href );
+
+		url.searchParams.set( 'action', 'taxmod_field_values' );
+		url.searchParams.set( 'field', feldSelect.value || '0' );
+
+		var key = url.toString();
+		var got = cache[ key ] || window.fetch( key, { credentials: 'same-origin' } ).then( function ( answer ) {
+			return answer.ok ? answer.json() : Promise.reject( answer.status );
+		} ).then( function ( answer ) {
+			return answer && answer.success ? answer.data : [];
+		} );
+
+		cache[ key ] = got;
+		got.then( function ( values ) {
+			controls.forEach( function ( control ) {
+				swapValue( control, values, relationOf( feldSelect.name ) );
 			} );
 		} ).catch( function () {
 			delete cache[ key ];
 		} );
 	}
 
-	// D-1551: the node's choice is the event — in its dialog only once «OK» keeps it.
 	document.addEventListener( 'taxmod:chosen', function ( event ) {
-		var detail   = event.detail || {};
-		var relation = relationOf( detail.field );
-		var form     = detail.form && detail.form.id ? detail.form.id : '';
+		var detail = event.detail || {};
 
-		if ( ! relation || ! document.querySelector( 'select[data-taxmod-fields-of="' + relation + '"]' ) ) {
-			return;
-		}
-
-		refill( relation, form, chosenNode( relation, form ) );
+		document.querySelectorAll( 'select[data-taxmod-fields-of]' ).forEach( function ( select ) {
+			if ( select.name === detail.field ) {
+				refillValue( select );
+			}
+		} );
 	} );
 
 	// A filter row added after the node was chosen starts from the template, empty (and so disabled): it fills itself when it arrives.
@@ -4011,10 +4121,8 @@
 				var found = added.matches( 'select[data-taxmod-fields-of]' ) ? [ added ] : Array.prototype.slice.call( added.querySelectorAll( 'select[data-taxmod-fields-of]' ) );
 
 				found.forEach( function ( select ) {
-					var relation = select.getAttribute( 'data-taxmod-fields-of' );
-
 					if ( select.options.length <= 1 ) {
-						refill( relation, formOf( select ), chosenNode( relation, formOf( select ) ) );
+						refillOne( select );
 					}
 				} );
 			} );

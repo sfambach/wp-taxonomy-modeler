@@ -930,6 +930,18 @@ final class Rendering implements Presets, \Taxmod\Core\Port\FieldAddons
         return $kopie;
     }
 
+    /** @var array<string, string> D-1552: the rule book's operators → the software's word for each, from the boundary (AR-2). */
+    private array $operatorWords = [];
+
+    /** @param array<string, string> $words operator → word */
+    public function withOperatorWords(array $words): static
+    {
+        $kopie                = clone $this;
+        $kopie->operatorWords = $words;
+
+        return $kopie;
+    }
+
     /** Ob die Seite den einen Auswahlbaum zeichnet — dann öffnet ein ganzer Knotenbaum ihn, statt einen eigenen zu tragen (D-815). */
     private bool $sharedPicker = false;
 
@@ -2259,6 +2271,20 @@ final class Rendering implements Presets, \Taxmod\Core\Port\FieldAddons
             $farbwerte = $renderer instanceof \Taxmod\Core\Renderer\ColorChoiceRenderer ? $this->farbwerteUnter($relation->toNodeId) : [];
             // D-1541: a field of the node chosen in the record (or the record holding it) — the field of a rule filter.
             $feldwahl = $renderer instanceof \Taxmod\Core\Renderer\FieldChoiceRenderer ? $this->felderDesGewaehlten($settings, $values + $ownerValues) : null;
+            // D-1552: a rule filter's operator, among those the rule book knows, in the software's words.
+            if ($renderer instanceof \Taxmod\Core\Renderer\OperatorChoiceRenderer) {
+                $feldwahl = [];
+
+                foreach (\Taxmod\Core\Rules\RuleBook::OPERATORS as $operator) {
+                    $feldwahl[$operator] = $this->operatorWords[$operator] ?? $operator;
+                }
+            }
+
+            // D-1552: a rule filter's value is entered as the field chosen in the same row takes it.
+            if ($renderer instanceof \Taxmod\Core\Renderer\FieldValueRenderer) {
+                $gefolgt  = ($settings[\Taxmod\Core\Renderer\FieldValueRenderer::FIELD_FIELD] ?? null)?->value->int ?? 0;
+                $feldwahl = $this->valueOptionsOf($gefolgt > 0 ? (int) (($values[$gefolgt] ?? null)?->int ?? 0) : 0);
+            }
 
             $context = new RenderContext(
                 purpose: $purpose,
@@ -8951,10 +8977,95 @@ final class Rendering implements Presets, \Taxmod\Core\Port\FieldAddons
      */
     private function felderDesGewaehlten(array $settings, array $values): array
     {
-        $feld   = ($settings[\Taxmod\Core\Renderer\FieldChoiceRenderer::NODE_FIELD] ?? null)?->value->int ?? 0;
-        $knoten = $feld > 0 ? (int) (($values[$feld] ?? null)?->reference ?? 0) : 0;
+        $knoten = $this->offeringNode($settings, $values);
 
         return $knoten > 0 ? $this->fieldNamesOf($knoten) : [];
+    }
+
+    /**
+     * The node whose fields a field choice offers: the node the row's kind names (D-1552), else the node chosen in `knoten_feld`.
+     *
+     * @param array<string, mixed>   $settings `mixed`: resolved settings by key
+     * @param array<int, TypedValue> $values
+     */
+    public function offeringNode(array $settings, array $values): int
+    {
+        $setting = static fn (string $key): int => ($settings[$key] ?? null)?->value->int ?? 0;
+        $artFeld = $setting(\Taxmod\Core\Renderer\FieldChoiceRenderer::KIND_FIELD);
+        $art     = $artFeld > 0 ? (int) (($values[$artFeld] ?? null)?->reference ?? 0) : 0;
+        $von     = $art > 0 ? $this->nodeOfKind($art, $setting(\Taxmod\Core\Renderer\FieldChoiceRenderer::KIND_KEY), $setting(\Taxmod\Core\Renderer\FieldChoiceRenderer::KIND_FIELDS_FROM)) : 0;
+
+        if ($von > 0) {
+            return $von;
+        }
+
+        $feld = $setting(\Taxmod\Core\Renderer\FieldChoiceRenderer::NODE_FIELD);
+
+        return $feld > 0 ? (int) (($values[$feld] ?? null)?->reference ?? 0) : 0;
+    }
+
+    /** D-1552: the node a kind's record names in its list — one indexed lookup and one read (CD-7); 0 when it names none. */
+    public function nodeOfKind(int $kind, int $keyField, int $fieldsFrom): int
+    {
+        if ($this->records === null || $keyField <= 0 || $fieldsFrom <= 0) {
+            return 0;
+        }
+
+        foreach ($this->records->findByRelationValue($keyField, TypedValue::ofReference($kind)) as $record) {
+            foreach ($this->records->valuesOf($record) as $value) {
+                if ($value->relationId === $fieldsFrom && ($value->value->reference ?? 0) > 0) {
+                    return (int) $value->value->reference;
+                }
+            }
+        }
+
+        return 0;
+    }
+
+    /**
+     * D-1552: what a field takes when it chooses from a list — node id → word, as its own choice offers it; empty for any other
+     * field (one line then).
+     *
+     * @return array<string, string>
+     */
+    public function valueOptionsOf(int $relationId): array
+    {
+        $relation = $relationId > 0 ? $this->relations?->byId($relationId) : null;
+        $ziel     = $relation === null || $relation->isSetting() ? null : $this->gemerkterKnoten($relation->toNodeId);
+
+        if ($ziel === null || ! in_array($ziel->klasse, [\Taxmod\Core\Model\NodeClass\Choice::class, \Taxmod\Core\Model\NodeClass\Constant::class, \Taxmod\Core\Model\NodeClass\Unit::class], true)) {
+            return [];
+        }
+
+        $angebot = [];
+
+        foreach ($this->optionsFor([$relation])[$relation->id] ?? [] as $id => $wort) {
+            $angebot[(string) $id] = (string) $wort;
+        }
+
+        return $angebot;
+    }
+
+    /**
+     * D-1558: the words of rule filters as a list shows them — the field by its name, the value by the option it names where the
+     * field chooses among options, else as it is. One relation read per field, each field's options once (CD-7).
+     *
+     * @param list<array{field: int, value: string}> $filters
+     * @return list<array{0: string, 1: string}> field name, value word
+     */
+    public function filterWords(array $filters): array
+    {
+        $options = [];
+        $out     = [];
+
+        foreach ($filters as $filter) {
+            $field    = $filter['field'];
+            $relation = $field > 0 ? $this->relations?->byId($field) : null;
+            $options[$field] ??= $this->valueOptionsOf($field);
+            $out[]    = [$relation?->name ?? ($field > 0 ? '#' . $field : ''), $options[$field][$filter['value']] ?? $filter['value']];
+        }
+
+        return $out;
     }
 
     /**

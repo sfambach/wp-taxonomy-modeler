@@ -16,15 +16,25 @@ namespace Taxmod\Core\Rules;
  * A condition names a node; it holds when that node is in the context's list for the condition — the caller lists a thing
  * with every node above it, so a rule on «Widerstände» holds for each resistor below. An empty condition always holds.
  * A filter narrows further, «field · value» (his word 20.11. «was ein Feld beinhalten muss, damit die Regel zieht»): it holds
- * when the thing has that value in that field. Every condition and every filter must hold. A filter may name its operator;
- * only «equals» is built — «≥», «enthält» are the next stage (his word 20.11. 23:40), and an operator not built yet never
- * holds, so a rule is not applied wider than it says.
+ * when the thing has that value in that field. Every condition and every filter must hold. A filter may name its operator
+ * (D-1552): «gleich», «ungleich», «größer», «kleiner», «enthält»; an operator not built never holds, so a rule is not applied
+ * wider than it says. «größer»/«kleiner» compare plain decimal numbers as decimals, never as floats (D-051) — a value with a
+ * unit or anything not a number never holds until values are compared in their base unit (D-1555).
  *
  * @see docs/NewConcept/90-decision-log.md D-1541
  */
 final class RuleBook
 {
     public const EQUALS = 'equals';
+
+    /** D-1552: the further operators, «ungleich · größer · kleiner · enthält». */
+    public const NOT_EQUALS = 'not_equals';
+    public const GREATER    = 'greater';
+    public const LESS       = 'less';
+    public const CONTAINS   = 'contains';
+
+    /** The operators built, in the order a choice shows them. */
+    public const OPERATORS = [self::EQUALS, self::NOT_EQUALS, self::GREATER, self::LESS, self::CONTAINS];
 
     /** @var list<array{id: int, position: int, conditions: array<int, int>, filters?: list<array{field: int, value: string, operator?: string}>}> */
     private readonly array $rules;
@@ -80,13 +90,70 @@ final class RuleBook
     private function passes(array $filters, array $values): bool
     {
         foreach ($filters as $filter) {
-            $operator = $filter['operator'] ?? self::EQUALS;
-
-            if ($operator !== self::EQUALS || ! in_array($filter['value'], $values[$filter['field']] ?? [], true)) {
+            if (! $this->passesOne($filter['operator'] ?? self::EQUALS, $filter['value'], $values[$filter['field']] ?? [])) {
                 return false;
             }
         }
 
         return true;
+    }
+
+    /** @param list<string> $have the thing's values in the filter's field */
+    private function passesOne(string $operator, string $want, array $have): bool
+    {
+        return match ($operator) {
+            self::EQUALS     => in_array($want, $have, true),
+            // «ungleich»: the thing has the field and none of its values is the one named.
+            self::NOT_EQUALS => $have !== [] && ! in_array($want, $have, true),
+            self::GREATER    => $this->anyCompares($have, $want, 1),
+            self::LESS       => $this->anyCompares($have, $want, -1),
+            self::CONTAINS   => $want !== '' && array_filter($have, static fn (string $v): bool => mb_stripos($v, $want) !== false) !== [],
+            default          => false,
+        };
+    }
+
+    /** @param list<string> $have */
+    private function anyCompares(array $have, string $want, int $sign): bool
+    {
+        foreach ($have as $value) {
+            if (self::compareDecimal($value, $want) === $sign) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /** -1, 0, 1 for two plain decimal numbers («3», «-0.5», «1,25»); null when either is no plain number. */
+    public static function compareDecimal(string $a, string $b): ?int
+    {
+        $parse = static function (string $text): ?array {
+            $text = str_replace(',', '.', trim($text));
+
+            if (preg_match('/^([+-]?)(\d+)(?:\.(\d+))?$/', $text, $m) !== 1) {
+                return null;
+            }
+
+            $whole = ltrim($m[2], '0');
+            $part  = rtrim($m[3] ?? '', '0');
+
+            return [$whole === '' && $part === '' ? 1 : ($m[1] === '-' ? -1 : 1), $whole, $part];
+        };
+        $x = $parse($a);
+        $y = $parse($b);
+
+        if ($x === null || $y === null) {
+            return null;
+        }
+
+        if ($x[0] !== $y[0]) {
+            return $x[0] <=> $y[0];
+        }
+
+        $width = max(strlen($x[2]), strlen($y[2]));
+        $left  = str_pad($x[1], strlen($y[1]), '0', STR_PAD_LEFT) . str_pad($x[2], $width, '0');
+        $right = str_pad($y[1], strlen($x[1]), '0', STR_PAD_LEFT) . str_pad($y[2], $width, '0');
+
+        return $x[0] * (strcmp($left, $right) <=> 0);
     }
 }

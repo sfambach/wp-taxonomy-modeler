@@ -779,6 +779,19 @@ final class ModelDoor
     }
 
     /**
+     * D-1558: rule filters in words — the field by its name, the value by the option it names.
+     *
+     * @param list<array{field: int, value: string}> $filters
+     * @return list<array{0: string, 1: string}> field name, value word, in the order asked
+     */
+    public function filterWords(array $filters): array
+    {
+        $answer = $filters === [] ? [] : apply_filters(Plugin::FILTER_WORDS_FILTER, [], $filters);
+
+        return is_array($answer) ? $answer : [];
+    }
+
+    /**
      * The add-on names chosen at these fields, asked of the modeller's one resolver (D-1208).
      *
      * @param list<int> $relations

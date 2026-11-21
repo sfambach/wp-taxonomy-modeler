@@ -14,9 +14,13 @@ use Taxmod\Core\Model\SimpleType;
  * record (or of the record that holds it) points at, inherited ones included. Which field that is says `knoten_feld`; the
  * offer is handed in as {@see Surroundings::$options}, read once at the boundary of rendering, never here (D-445).
  *
+ * D-1552: with `art_feld` the row names its kind; the kind's record in its list says in `art_felder_von` whose fields it offers
+ * (stock lot, purchase, process). A kind without that node offers the fields of `knoten_feld`, as before.
+ *
  * ```mermaid
  * flowchart LR
- *   K["knoten_feld → the node chosen in the record"] --> F["its fields, inherited ones included"]
+ *   A["art_feld → the kind chosen in the row"] -->|"its record: art_felder_von"| F["that node's fields"]
+ *   A -->|"none"| K["knoten_feld → the node chosen in the rule"] --> F
  *   F --> W["choice: field name, stored as relation id"]
  * ```
  *
@@ -28,9 +32,28 @@ final class FieldChoiceRenderer extends RendererNode
 
     public const NODE_FIELD = 'knoten_feld';
 
+    /** D-1552: the kind of the filter row (a relation id); its term says whose fields are offered. */
+    public const KIND_FIELD = 'art_feld';
+
+    /** D-1552: at the list of kinds, the field naming the term of a record (a relation id). */
+    public const KIND_KEY = 'art_schluessel';
+
+    /** D-1552: at the list of kinds, the field naming the node whose fields the term offers (a relation id); empty = knoten_feld. */
+    public const KIND_FIELDS_FROM = 'art_felder_von';
+
     /** The field of the record (or of the record holding it) whose chosen node offers its fields here — a relation id. */
     #[\Taxmod\Core\Model\NodeClass\Attribut]
     public int $knoten_feld = 0;
+
+    /** D-1552, his word 21.11. «bei Filter gebe ich dann mit, ob es ein Feldfilter, ein Bestandsfilter, ein Einkaufsfilter ist». */
+    #[\Taxmod\Core\Model\NodeClass\Attribut]
+    public int $art_feld = 0;
+
+    #[\Taxmod\Core\Model\NodeClass\Attribut]
+    public int $art_schluessel = 0;
+
+    #[\Taxmod\Core\Model\NodeClass\Attribut]
+    public int $art_felder_von = 0;
 
     public function supports(): array
     {
@@ -67,6 +90,9 @@ final class FieldChoiceRenderer extends RendererNode
             editable: $context->editable,
             // D-1550, his word 21.11. 08:28 «wenn ich jetzt am Knoten ausgewählt habe, dann müsste ja eigentlich ein Event geschickt werden».
             fieldsOf: ($context->settings[self::NODE_FIELD] ?? null)?->value->int ?? 0,
+            kindField: ($context->settings[self::KIND_FIELD] ?? null)?->value->int ?? 0,
+            kindKey: ($context->settings[self::KIND_KEY] ?? null)?->value->int ?? 0,
+            kindFieldsFrom: ($context->settings[self::KIND_FIELDS_FROM] ?? null)?->value->int ?? 0,
         ));
     }
 }

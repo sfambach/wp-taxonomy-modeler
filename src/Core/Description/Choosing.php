@@ -36,6 +36,12 @@ final class Choosing implements Describes
         public readonly string $nothingWord = '',
         /** D-1550: the options are the fields of the node chosen in this field (a relation id) — refilled when that choice changes. */
         public readonly int $fieldsOf = 0,
+        /** D-1552: the row's kind field and, at the list of kinds, its key and «Felder von» fields — relation ids, 0 when unused. */
+        public readonly int $kindField = 0,
+        public readonly int $kindKey = 0,
+        public readonly int $kindFieldsFrom = 0,
+        /** D-1552: the options are the values of the field chosen in this field of the row (a relation id) — refilled when it changes. */
+        public readonly int $valueOf = 0,
     ) {
     }
 
@@ -56,6 +62,10 @@ final class Choosing implements Describes
         array $swatches = [],
         string $nothingWord = '',
         int $fieldsOf = 0,
+        int $kindField = 0,
+        int $kindKey = 0,
+        int $kindFieldsFrom = 0,
+        int $valueOf = 0,
     ): self {
         $wahl = Choice::forSetting($options, ! $mayBeNothing, $now === null || $now === '' ? null : TypedValue::ofText($now), $editable);
 
@@ -74,6 +84,10 @@ final class Choosing implements Describes
             $swatches,
             $nothingWord,
             $fieldsOf,
+            $kindField,
+            $kindKey,
+            $kindFieldsFrom,
+            $valueOf,
         );
     }
 
@@ -93,6 +107,8 @@ final class Choosing implements Describes
             'hint'          => $this->hint,
             'swatches'      => $this->swatches,
             'nothing_word'  => $this->nothingWord,
-        ] + ($this->fieldsOf > 0 ? ['fields_of' => $this->fieldsOf] : []);
+        ] + ($this->fieldsOf > 0 ? ['fields_of' => $this->fieldsOf] : [])
+            + ($this->kindField > 0 ? ['kind' => [$this->kindField, $this->kindKey, $this->kindFieldsFrom]] : [])
+            + ($this->valueOf > 0 ? ['value_of' => $this->valueOf] : []);
     }
 }

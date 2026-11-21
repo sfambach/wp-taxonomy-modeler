@@ -953,10 +953,22 @@ final class EdgeDrawer implements Drawer
             $merkmale['title'] = $wahl->hint;
         }
 
+        // D-1552: a filter's value follows the field chosen in its row — the page asks for that field's values.
+        if ($wahl->valueOf > 0) {
+            $merkmale['data-taxmod-value-of'] = (string) $wahl->valueOf;
+        }
+
         // D-1550: a field choice refills itself when the node it reads from is chosen anew — no save needed in between.
         if ($wahl->fieldsOf > 0) {
             $merkmale['data-taxmod-fields-of']  = (string) $wahl->fieldsOf;
             $merkmale['data-taxmod-fields-url'] = add_query_arg(['action' => \Taxmod\WordPress\Admin\NodesScreen::NODE_FIELDS_ACTION, 'nonce' => wp_create_nonce(\Taxmod\WordPress\Admin\NodesScreen::NODE_FIELDS_ACTION)], admin_url('admin-ajax.php'));
+
+            // D-1552: the row's kind decides whose fields are offered; the page sends it with the question.
+            if ($wahl->kindField > 0) {
+                $merkmale['data-taxmod-kind-field'] = (string) $wahl->kindField;
+                $merkmale['data-taxmod-kind-key']   = (string) $wahl->kindKey;
+                $merkmale['data-taxmod-kind-from']  = (string) $wahl->kindFieldsFrom;
+            }
         }
 
         if ($wahl->purpose !== ChoicePurpose::Colour) {

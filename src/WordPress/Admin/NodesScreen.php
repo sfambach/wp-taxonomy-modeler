@@ -247,6 +247,9 @@ final class NodesScreen
     /** D-1550: admin-ajax — the fields of a node, for a field choice refilled on the page. */
     public const NODE_FIELDS_ACTION = 'taxmod_node_fields';
 
+    /** D-1552: admin-ajax answering the values a field takes when it chooses from a list. */
+    public const FIELD_VALUES_ACTION = 'taxmod_field_values';
+
     /** Ein Satz, der über seinen Link geöffnet wird — der Knoten dazu wird beim Öffnen nachgeschlagen (D-852). */
     private const OPEN_RECORD = 'taxmod_open_record';
 
@@ -626,10 +629,38 @@ final class NodesScreen
 
         check_ajax_referer(self::NODE_FIELDS_ACTION, 'nonce');
         $node = absint(wp_unslash($_GET['node'] ?? 0));
+        $kind = absint(wp_unslash($_GET['kind'] ?? 0));
         $out  = [];
+
+        // D-1552: a row's kind names the node whose fields it offers; a kind naming none keeps the rule's node.
+        if ($kind > 0) {
+            $node = $this->rendering->nodeOfKind($kind, absint(wp_unslash($_GET['key'] ?? 0)), absint(wp_unslash($_GET['from'] ?? 0))) ?: $node;
+        }
 
         foreach ($node > 0 ? $this->rendering->fieldNamesOf($node) : [] as $id => $name) {
             $out[] = ['id' => (string) $id, 'name' => $name];
+        }
+
+        wp_send_json_success($out);
+    }
+
+    /**
+     * admin-ajax `taxmod_field_values` (D-1552): what the field just chosen in a filter row takes — a list of values where it
+     * chooses from a list, else nothing (one line). Capability → nonce → validate → answer (CD-5); read only.
+     */
+    public function fieldValues(): void
+    {
+        if (! current_user_can(\Taxmod\WordPress\Plugin::CAPABILITY)) {
+            wp_send_json_error(['message' => __('Not allowed.', 'taxmod')], 403);
+        }
+
+        // The same read-only question family as the field list: the page asks with the field choice's own address (D-1550).
+        check_ajax_referer(self::NODE_FIELDS_ACTION, 'nonce');
+        $field = absint(wp_unslash($_GET['field'] ?? 0));
+        $out   = [];
+
+        foreach ($this->rendering->valueOptionsOf($field) as $id => $word) {
+            $out[] = ['id' => (string) $id, 'name' => $word];
         }
 
         wp_send_json_success($out);
@@ -1207,6 +1238,15 @@ final class NodesScreen
         $kante = Relation::attribute(0, $at, $at, \Taxmod\Core\Model\RelationKind::Aggregation, 'search', 0);
 
         return array_map('strval', $this->rendering->summaryTextsOf([['relation' => $kante, 'records' => $ids]])[0] ?? []);
+    }
+
+    /**
+     * @param list<array{field: int, value: string}> $filters
+     * @return list<array{0: string, 1: string}>
+     */
+    public function filterWords(array $filters): array
+    {
+        return $this->rendering->filterWords($filters);
     }
 
     /**
