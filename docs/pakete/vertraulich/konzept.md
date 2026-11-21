@@ -102,6 +102,34 @@ flowchart LR
   und nur von Hand mit Haken; der Reiter zeigt, ab wann. Taucht wieder etwas mit ihm auf (alte Sicherung zurückgespielt),
   beginnen die acht Tage neu.
 
+## Je Knoten (D-1578)
+
+```mermaid
+flowchart TB
+  K["Kante «Name»\nVertraulich an der Kante?"] --> PA["Partner"]
+  PA --> PE["Person · confidential = ja"]
+  PA --> OR["Organisation · confidential = nein"]
+  PE --> V1["Wert versiegelt"]
+  OR --> V2["Wert Klartext"]
+```
+
+Stefan 21.11.2026 22:14: «Firmennamen soll lesbar bleiben». Person und Organisation teilen das Feld «Name» (D-1573);
+nur das Verhalten unterscheidet sich.
+
+- «Vertraulich» kann zusätzlich **je (Knoten, Kante)** stehen — dieselbe Adresse wie «hidden» (D-1144): der Satz
+  `Knoten × Kante`, darin die Einstellung **`confidential`** (Wahrheitswert) der Wurzel. Ohne diese Einstellung an der
+  Wurzel lehnt `set_confidential` laut ab.
+- Wer gilt: der eigene Knoten, dann seine Vorfahren — der nähere schlägt den ferneren; sagt kein Knoten etwas, gilt
+  «Vertraulich» an der Kante (`Core\Privacy\Confidentiality`, Kerntest Person versiegelt / Organisation Klartext).
+- Der Plan (Kanten + Knotenangaben) wird in **einer** Abfrage gelesen. `DataEntry` reicht den Knoten des Satzes durch,
+  ohne neue Abfrage; Kopien im `ModelEditor` (Feld verschieben, Zusammenführen) lesen höchstens einmal je Akt die Knoten
+  ihrer Sätze.
+- Ohne Knoten (wo die Antwort vom Knoten abhängt) gilt ein Wert als vertraulich — lieber einmal zu viel versiegelt.
+- Agent: `taxmod/apply` Op **`set_confidential {node, field, confidential}`**.
+- Bestand: `taxmod/field-seal` zählt zusätzlich `unseal_left` (versiegelt, aber für den Knoten seines Satzes nicht mehr
+  vertraulich); **nur mit `unseal: true`** öffnet ein Lauf sie — live, Schatten, Chronik. `admin_init` öffnet nie.
+- Suche: `findByRelationValue` vergleicht auf gemischten Kanten Klartext in SQL **und** die versiegelten Werte in PHP.
+
 ## Altbestand
 
 `FieldSealJob` versiegelt, was ein Feld hielt, bevor es vertraulich wurde — live, im Schatten und in der Chronik — in
@@ -122,3 +150,6 @@ Transient `taxmod_body_*`, Käuferadressen in Verkäufen.
   stünde der Name in ihnen lesbar. Die Änderungsliste markiert sie mit.
 - Eine Kennzahl (D-1149), die nach einem vertraulichen Feld filtert, findet nichts (`MetricSums` vergleicht in SQL).
 - `set_addons` ersetzt die Zusatzfunktionen einer Kante — die Änderungsliste nimmt vorhandene mit.
+- *INFERRED (D-1578):* Die Einstellung heißt `confidential` und ist ein Wahrheitswert an der Wurzel; Kopien von Verweisen
+  (`TypedValue::ofReference`) bleiben unberührt, weil sie keinen Text tragen.
+- Firmenadresse und Firmen-E-Mail bleiben, wie sie sind — offene Frage an Stefan.

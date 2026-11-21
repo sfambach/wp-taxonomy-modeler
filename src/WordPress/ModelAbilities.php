@@ -96,6 +96,7 @@ final class ModelAbilities
         'set_label' => '{node, field?, role, text, locale?} — sets one label of the node (role help, select, form …) as the labels box would; with field the label belongs to that field of the node, e.g. its own help before the help of its target (D-1524); empty text removes it',
         'set_addons' => '{node, field?, addons: [{name, fields: {attribute: text or @ref}}]} — replaces the add-on functions of the node or, with field, of that use site (node then being the target of the field), in this order; name calculate with fields operation (plus, minus, times, divided_by) and field (a field of the record) makes the field a calculated one: read-only, every record recalculated (also when the steps are unchanged — sending them again recalculates); name metric on a node with fields title, measure (count, sum), value_field, date_field, filter_field (fields of the node), filter_value and months makes a key figure shown as a tile per month',
         'hide_field'  => '{node, field, hidden} — the eye at a field row: at the field\'s owner it hides the field everywhere, at any other node only there and below (D-1144); hidden true or false.',
+        'set_confidential' => '{node, field, confidential} — «Vertraulich» for this node and below on one field (D-1578): true seals its values there, false keeps them readable; the nearer node wins, the edge\'s «Vertraulich» add-on holds where no node says anything. Needs the «confidential» setting at the root. Existing values follow with taxmod/field-seal (unseal true opens what no longer needs sealing).',
         'set_setting' => '{node, attribute, value, field?} — sets one plain setting (e.g. with_label, name_as_link_text) as the screen would; with field only at that use site, node then being the target of the field; an empty value removes it.',
         'duplicate_record' => '{record} — copies a record with its values and own parts next to itself.',
     ];
@@ -228,7 +229,7 @@ final class ModelAbilities
         wp_register_ability('taxmod/apply', [
             'label'               => __('Change the model', 'taxmod'),
             'description'         => __(
-                'Applies a list of changes as one act (one change number, all or nothing). The answer names its change number as "act"; undo_act {act} takes a change back. Ops: create_node, rename_node, trash_node, trash_unused_constant, move_node, add_field, rename_field, remove_field, move_field, retarget_field, merge_field, create_record, set_values, remove_record, make_variants, add_variant, merge_record, move_part, reorder_values, duplicate_record, set_kind, set_multiplicity, move_record, set_list, set_label, set_addons, set_setting, hide_field. Fields and rules of one op: taxmod/help {op}. Any op may carry "ref"; later ops use "@ref" in place of an id. Values are typed as on the admin screen. brief: true answers with the count and the refs only. dry_run: true writes nothing: a list of only merge_field answers what each would move (records, both, duplicates); any other list is run whole and rolled back, answering fits, not_asked (module vetoes are not asked), applied, refs, reported and the first refusal.',
+                'Applies a list of changes as one act (one change number, all or nothing). The answer names its change number as "act"; undo_act {act} takes a change back. Ops: create_node, rename_node, trash_node, trash_unused_constant, move_node, add_field, rename_field, remove_field, move_field, retarget_field, merge_field, create_record, set_values, remove_record, make_variants, add_variant, merge_record, move_part, reorder_values, duplicate_record, set_kind, set_multiplicity, move_record, set_list, set_label, set_addons, set_setting, hide_field, set_confidential. Fields and rules of one op: taxmod/help {op}. Any op may carry "ref"; later ops use "@ref" in place of an id. Values are typed as on the admin screen. brief: true answers with the count and the refs only. dry_run: true writes nothing: a list of only merge_field answers what each would move (records, both, duplicates); any other list is run whole and rolled back, answering fits, not_asked (module vetoes are not asked), applied, refs, reported and the first refusal.',
                 'taxmod'
             ),
             'category'            => self::CATEGORY,
@@ -242,7 +243,7 @@ final class ModelAbilities
                         'items'    => [
                             'type'       => 'object',
                             'properties' => [
-                                'op'          => ['type' => 'string', 'enum' => ['create_node', 'rename_node', 'set_class', 'trash_node', 'trash_unused_constant', 'move_node', 'add_field', 'rename_field', 'remove_field', 'move_field', 'merge_field', 'merge_constant', 'retarget_field', 'drop_unfit_values', 'create_record', 'set_values', 'remove_record', 'make_variants', 'add_variant', 'merge_record', 'move_record', 'move_part', 'reorder_values', 'duplicate_record', 'set_kind', 'set_multiplicity', 'set_list', 'set_setting', 'hide_field', 'set_label', 'set_addons', 'undo_act']],
+                                'op'          => ['type' => 'string', 'enum' => ['create_node', 'rename_node', 'set_class', 'trash_node', 'trash_unused_constant', 'move_node', 'add_field', 'rename_field', 'remove_field', 'move_field', 'merge_field', 'merge_constant', 'retarget_field', 'drop_unfit_values', 'create_record', 'set_values', 'remove_record', 'make_variants', 'add_variant', 'merge_record', 'move_record', 'move_part', 'reorder_values', 'duplicate_record', 'set_kind', 'set_multiplicity', 'set_list', 'set_setting', 'hide_field', 'set_confidential', 'set_label', 'set_addons', 'undo_act']],
                                 'act'         => ['type' => 'integer', 'minimum' => 1],
                                 'ref'         => ['type' => 'string', 'pattern' => '^[A-Za-z0-9_-]+$'],
                                 'name'        => ['type' => 'string'],
@@ -489,13 +490,14 @@ final class ModelAbilities
         // D-1514 point 8: what a field held before it became confidential — counted first, sealed only when asked.
         wp_register_ability('taxmod/field-seal', [
             'label'               => __('Seal old values of confidential fields', 'taxmod'),
-            'description'         => __('How many values on fields marked «Confidential» are still plain (plain) and how many are still sealed with a former key after a change of key (resealing_left; per former key: sealed_with_old_keys), each as live rows, history rows and chronicle entries. dry_run (default true) only counts. dry_run false seals and reseals one batch (limit, default 500, at most 5000) and answers how many rows it changed (sealed) and what is left; call again until nothing is left. This changes the stored form, not the value: it is no act and has no undo, because an undo would bring plain text back (D-1514, D-1562). Needs the data key.', 'taxmod'),
+            'description'         => __('How many values on fields marked «Confidential» are still plain (plain) and how many are still sealed with a former key after a change of key (resealing_left; per former key: sealed_with_old_keys), each as live rows, history rows and chronicle entries; and how many are sealed although they are no longer confidential for the node of their record (unseal_left, e.g. the name of an organisation once «Confidential» stands only at Person, D-1578). dry_run (default true) only counts. dry_run false seals and reseals one batch (limit, default 500, at most 5000), with unseal true also opens what is no longer confidential, and answers how many rows it changed (sealed) and what is left; call again until nothing is left. This changes the stored form, not the value: it is no act and has no undo, because an undo would bring plain text back (D-1514, D-1562). Needs the data key.', 'taxmod'),
             'category'            => self::CATEGORY,
             'input_schema'        => [
                 'type'       => 'object',
                 'properties' => [
                     'dry_run' => ['type' => 'boolean', 'default' => true],
                     'limit'   => ['type' => 'integer', 'minimum' => 1, 'maximum' => 5000, 'default' => 500],
+                    'unseal'  => ['type' => 'boolean', 'default' => false],
                 ],
                 'additionalProperties' => false,
             ],
@@ -698,8 +700,8 @@ final class ModelAbilities
      * @return array{summary: list<array<string, int|string>>, fields?: list<array<string, bool|int|string>>}
      */
     /**
-     * @param array{dry_run?: bool, limit?: int} $input
-     * @return array<string, mixed> dry_run, edges, key, key_id, plain, resealing_left, sealed_with_old_keys; after a run also sealed and left
+     * @param array{dry_run?: bool, limit?: int, unseal?: bool} $input
+     * @return array<string, mixed> dry_run, edges, key, key_id, plain, unseal_left, resealing_left, sealed_with_old_keys; after a run also sealed and left
      */
     private function fieldSeal(array $input): array
     {
@@ -711,6 +713,7 @@ final class ModelAbilities
             'key'                  => $seal::cipher() !== null,
             'key_id'               => $seal::keyId(),
             'plain'                => $job::plainLeft(),
+            'unseal_left'          => $job::unsealLeft(),
             'resealing_left'       => $job::resealLeft(),
             'sealed_with_old_keys' => $job::sealedWithRetired(),
         ];
@@ -723,8 +726,8 @@ final class ModelAbilities
             throw \Taxmod\Core\Exception\FieldDoesNotOpen::withoutKey();
         }
 
-        $answer['sealed'] = $job::runBatch(max(1, min(5000, (int) ($input['limit'] ?? 500))));
-        $answer['left']   = ['plain' => $job::plainLeft(), 'resealing' => $job::resealLeft(), 'sealed_with_old_keys' => $job::sealedWithRetired()];
+        $answer['sealed'] = $job::runBatch(max(1, min(5000, (int) ($input['limit'] ?? 500))), ($input['unseal'] ?? false) === true);
+        $answer['left']   = ['plain' => $job::plainLeft(), 'unseal' => $job::unsealLeft(), 'resealing' => $job::resealLeft(), 'sealed_with_old_keys' => $job::sealedWithRetired()];
         $seal::noteSealedWith($answer['left']['sealed_with_old_keys'], time());
 
         return $answer;
@@ -1626,6 +1629,23 @@ final class ModelAbilities
                 } elseif (! $screen->entries()->hideFieldAt($nodeId, $field, $hidden)) {
                     throw new \RuntimeException('hide_field: this model has no «hidden» setting at its root (D-1144), so a node cannot hide an inherited field.');
                 }
+
+                return $nodeId;
+
+            case 'set_confidential':
+                $nodeId       = $this->node($at('node'))->id;
+                $field        = $at('field');
+                $confidential = filter_var($change['confidential'] ?? null, FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE) ?? throw new \InvalidArgumentException('set_confidential needs confidential true or false.');
+
+                if (! in_array($field, array_map(static fn ($row): int => $row->id, $editor->fieldsOf($nodeId)), true)) {
+                    throw new \InvalidArgumentException('set_confidential: the node has no such field.');
+                }
+
+                if (! $screen->entries()->confidentialAt($nodeId, $field, $confidential)) {
+                    throw new \RuntimeException('set_confidential: this model has no «confidential» setting at its root (D-1578).');
+                }
+
+                \Taxmod\WordPress\Privacy\FieldSeal::forget();
 
                 return $nodeId;
 

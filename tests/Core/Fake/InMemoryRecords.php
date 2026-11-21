@@ -301,7 +301,7 @@ final class InMemoryRecords implements RecordRepository
      * Schlüssel `(recordId, path, locale)`, könnte kein Kerntest zeigen, dass drei Werte eines Feldes
      * nebeneinander stehen.*
      */
-    public function putValue(RelationRecord $value): int
+    public function putValue(RelationRecord $value, ?int $nodeId = null): int
     {
         $id = $value->id ?? ++$this->lastValueId;
 
