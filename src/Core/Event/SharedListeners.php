@@ -60,7 +60,28 @@ final class SharedListeners
 
     public static function dispatcher(): Dispatcher
     {
-        return new Dispatcher(self::provider());
+        return new Dispatcher(self::$silent ? new ListenerProvider() : self::provider());
+    }
+
+    private static bool $silent = false;
+
+    /**
+     * D-1561: runs `$run` while no module hears an event — a dry run of a change list is rolled back, so nobody may act on it.
+     *
+     * @template T
+     * @param callable(): T $run
+     * @return T
+     */
+    public static function silenced(callable $run): mixed
+    {
+        $before       = self::$silent;
+        self::$silent = true;
+
+        try {
+            return $run();
+        } finally {
+            self::$silent = $before;
+        }
     }
 
     /** Tests only: forget every subscription and the way they were gathered. */

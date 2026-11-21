@@ -49,6 +49,13 @@ $claims = [
     'a missing walk is said in the console, not silent'         => str_contains((string) @file_get_contents($root . '/assets/side-tree.js'), 'console.error'),
     'the drawing times split the detail into its blocks'        => str_contains($nodes, 'private function block(') && substr_count($nodes, '$this->block(__(') >= 6,
     'a jump and an anchor still happen after a tree click'        => str_contains($admin, "'taxmod:navigated'") && str_contains($live, "'taxmod:navigated'"),
+    // D-1560: the page says that it is working — one state at body, derived from aria-busy and a page on its way.
+    'the busy state is said at one place, from aria-busy'         => substr_count($live, "setAttribute( 'data-taxmod-busy'") === 1 && str_contains($live, 'function said') && str_contains($live, "querySelectorAll( '[aria-busy=\"true\"]' )") && str_contains($live, "attributeFilter: [ 'aria-busy' ]"),
+    'no second busy mechanism in admin.js'                        => ! str_contains($admin, 'data-taxmod-busy'),
+    'a Taxmod link, a GET form and a fetched view raise it'       => str_contains($live, 'function leaving') && substr_count($live, 'leaving();') >= 2 && (bool) preg_match('/navigating = new AbortController\(\);.*?away = true;\s*said\(\);/s', $live),
+    'a view in place and a page from the cache take it back'      => (bool) preg_match('/navigating = null;\s*away = false;\s*said\(\);/', $live) && (bool) preg_match('/event\.persisted \) \{\s*away = false;/', $live),
+    'a jump on the same page and a foreign page do not raise it'  => str_contains($live, "/^taxmod/.test( to.searchParams.get( 'page' )") && str_contains($live, "to.hash !== ''"),
+    'the words are translated and the bar is drawn by the stylesheet' => str_contains($plugin, "'window.taxmodLiveWords='") && str_contains($plugin, "__('Saving …', 'taxmod')") && str_contains((string) @file_get_contents($root . '/assets/admin.css'), 'body[data-taxmod-busy]::before') && str_contains((string) @file_get_contents($root . '/assets/admin.css'), 'attr(data-taxmod-busy-word)'),
 ];
 
 foreach ($claims as $claim => $holds) {

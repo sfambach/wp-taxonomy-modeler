@@ -78,6 +78,14 @@ final class ActStamp
         self::$known = null;
     }
 
+    /** D-1561: nach einem zurückgerollten Probelauf — seine Zeilen gibt es nicht mehr, also bekommen sie auch keine Nummer. */
+    public static function discard(): void
+    {
+        self::$pending     = [];
+        self::$placeholder = 0;
+        self::$known       = null;
+    }
+
     /** Ob seit der letzten Journalzeile Zeilen ohne Nummer geschrieben wurden. */
     public static function hasPending(): bool
     {

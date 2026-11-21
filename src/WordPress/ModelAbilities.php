@@ -228,7 +228,7 @@ final class ModelAbilities
         wp_register_ability('taxmod/apply', [
             'label'               => __('Change the model', 'taxmod'),
             'description'         => __(
-                'Applies a list of changes as one act (one change number, all or nothing). The answer names its change number as "act"; undo_act {act} takes a change back. Ops: create_node, rename_node, trash_node, trash_unused_constant, move_node, add_field, rename_field, remove_field, move_field, retarget_field, merge_field, create_record, set_values, remove_record, make_variants, add_variant, merge_record, move_part, reorder_values, duplicate_record, set_kind, set_multiplicity, move_record, set_list, set_label, set_addons, set_setting, hide_field. Fields and rules of one op: taxmod/help {op}. Any op may carry "ref"; later ops use "@ref" in place of an id. Values are typed as on the admin screen. brief: true answers with the count and the refs only. dry_run: true writes nothing and answers what each merge_field would move (records, both, duplicates); only merge_field.',
+                'Applies a list of changes as one act (one change number, all or nothing). The answer names its change number as "act"; undo_act {act} takes a change back. Ops: create_node, rename_node, trash_node, trash_unused_constant, move_node, add_field, rename_field, remove_field, move_field, retarget_field, merge_field, create_record, set_values, remove_record, make_variants, add_variant, merge_record, move_part, reorder_values, duplicate_record, set_kind, set_multiplicity, move_record, set_list, set_label, set_addons, set_setting, hide_field. Fields and rules of one op: taxmod/help {op}. Any op may carry "ref"; later ops use "@ref" in place of an id. Values are typed as on the admin screen. brief: true answers with the count and the refs only. dry_run: true writes nothing: a list of only merge_field answers what each would move (records, both, duplicates); any other list is run whole and rolled back, answering fits, not_asked (module vetoes are not asked), applied, refs, reported and the first refusal.',
                 'taxmod'
             ),
             'category'            => self::CATEGORY,
@@ -303,6 +303,25 @@ final class ModelAbilities
                 'additionalProperties' => false,
             ],
             'execute_callback'    => fn (mixed $input = null) => $this->guarded(fn (): array => $this->pageTimes(is_array($input) ? $input : [])),
+            'permission_callback' => $this->allowedToRead(...),
+            'meta'                => ['public' => true, 'annotations' => ['readonly' => true, 'destructive' => false, 'idempotent' => true]],
+        ]);
+
+        // His line 2026-11-21: «Detail: Vorschau 15825 ms / 661 Abfragen» — which field it is, measured where his data is (D-1482, Nachtrag 2).
+        wp_register_ability('taxmod/preview-times', [
+            'label'               => __('Measure the preview of a record', 'taxmod'),
+            'description'         => __('What the editable preview of one record takes on the model page: the steps before the fields, then each field drawn alone, then both sides whole — ms, database statements and KB of markup each. Field names and numbers only, no values. Reads only.', 'taxmod'),
+            'category'            => self::CATEGORY,
+            'input_schema'        => [
+                'type'       => 'object',
+                'properties' => [
+                    'node'   => ['type' => 'integer', 'minimum' => 1],
+                    'record' => ['type' => 'integer', 'minimum' => 1],
+                ],
+                'required'   => ['node', 'record'],
+                'additionalProperties' => false,
+            ],
+            'execute_callback'    => fn (mixed $input = null) => $this->guarded(fn (): array => $this->previewTimes(is_array($input) ? $input : [])),
             'permission_callback' => $this->allowedToRead(...),
             'meta'                => ['public' => true, 'annotations' => ['readonly' => true, 'destructive' => false, 'idempotent' => true]],
         ]);
@@ -1144,15 +1163,17 @@ final class ModelAbilities
 
         // ⚠️ *Der Trockenlauf vor einem Umbau (D-1205): dieselben Prüfungen, kein Schreiben, nur die Zahlen. Nur für merge_field, weil nur
         // dort die Zahl gefragt war; jede andere Op würde stillschweigend «geprüft» heissen, ohne geprüft zu sein.*
-        if (! empty($input['dry_run'])) {
+        $probe = ! empty($input['dry_run']);
+
+        if ($probe && array_filter($changes, static fn (mixed $change): bool => ! is_array($change) || ($change['op'] ?? '') !== 'merge_field') === []) {
             return ['dry_run' => array_map(fn (mixed $change): array => $this->mergePreview(is_array($change) ? $change : [], $refs), $changes)];
         }
 
         // ⚠️ *No copy per change list any more (D-1407): a full copy took half a minute live; the nightly one stands, and the
         // answer names it.*
-        $nacht     = ! $onlyData && ! empty($input['backup']) ? \Taxmod\WordPress\Persistence\DailyBackup::latest() : null;
+        $nacht     = ! $probe && ! $onlyData && ! empty($input['backup']) ? \Taxmod\WordPress\Persistence\DailyBackup::latest() : null;
         $sicherung = $nacht['file'] ?? null;
-        $warnung   = ! $onlyData && ! empty($input['backup']) ? \Taxmod\WordPress\Persistence\DailyBackup::warning($nacht) : null;
+        $warnung   = ! $probe && ! $onlyData && ! empty($input['backup']) ? \Taxmod\WordPress\Persistence\DailyBackup::warning($nacht) : null;
         $ergebnis  = [];
         $changelog = ($this->changelog)();
 
@@ -1164,7 +1185,9 @@ final class ModelAbilities
         $erwartet = RecordStamp::fromList(is_array($input['expect'] ?? null) ? array_values(array_filter($input['expect'], 'is_array')) : []);
 
         try {
-            Transaction::whole('taxmod_apply', function () use ($erwartet, $changes, $onlyData, &$refs, &$ergebnis): void {
+            // ⚠️ *A plain closure, not `fn`: an arrow function would take $refs and $ergebnis by value, and the run would fill copies.*
+            $lauf = function () use ($erwartet, $changes, $onlyData, $probe, &$refs, &$ergebnis): void {
+                Transaction::whole('taxmod_apply', function () use ($erwartet, $changes, $onlyData, $probe, &$refs, &$ergebnis): void {
                 // ⚠️ *First, inside the transaction, so the rows stay held to the commit (D-1148).*
                 $this->screen()->entries()->claim($erwartet);
 
@@ -1186,10 +1209,27 @@ final class ModelAbilities
                     $ergebnis[] = ['op' => (string) $change['op'], 'id' => $id] + ($this->merged === null ? [] : ['merged' => $this->merged]);
                     $this->merged = null;
                 }
-            });
+
+                // ⚠️ *Der Probelauf jeder Op (Prüftor 21.11. 11:37, Pflicht vor einem grossen Umzug): dieselbe Liste, dieselben Prüfungen,
+                // derselbe Akt — und am Ende zurückgerollt, also auch das Journal. Ein Umzug ohne Kopie der Nachtsicherung wird so prüfbar.*
+                if ($probe) {
+                    throw new ProbeRolledBack();
+                }
+                });
+            };
+            // D-1561: a dry run is heard by no module — what it wrote is rolled back, so nobody may act on it.
+            $probe ? \Taxmod\Core\Event\SharedListeners::silenced($lauf) : $lauf();
 
             // *The number of this act, for its undo (D-1410); null when nothing was journaled.*
             $akt = $changelog->currentAct();
+        } catch (\RuntimeException $e) {
+            if (! $probe) {
+                throw $e;
+            }
+
+            $this->forgetProbe();
+
+            return $this->probeAnswer($e instanceof ProbeRolledBack, $ergebnis, $refs, $e instanceof ProbeRolledBack ? null : $e->getMessage());
         } finally {
             $changelog->endAct();
             $this->onlyRecords = false;
@@ -1217,6 +1257,42 @@ final class ModelAbilities
         return (! empty($input['brief'])
             ? ['count' => count($ergebnis), 'act' => $akt, 'refs' => $refs, 'backup' => $sicherung, 'backup_made' => $nacht === null ? null : false, 'backup_at' => $nacht['at'] ?? null, 'backup_warning' => $warnung, 'versions' => $versionen]
             : ['applied' => $ergebnis, 'act' => $akt, 'refs' => $refs, 'backup' => $sicherung, 'backup_made' => $nacht === null ? null : false, 'backup_at' => $nacht['at'] ?? null, 'backup_warning' => $warnung, 'versions' => $versionen]) + $extra;
+    }
+
+    /**
+     * D-1561: after a rolled-back dry run nothing it wrote may still be remembered — not the act's pending rows (else the closing act
+     * would journal them), not the reads of this request, not the object cache (options and transients it touched).
+     */
+    private function forgetProbe(): void
+    {
+        Persistence\ActStamp::discard();
+        Persistence\Query::forget();
+        \Taxmod\WordPress\Privacy\FieldSeal::forget();
+
+        if (wp_using_ext_object_cache()) {
+            wp_cache_flush();
+        } else {
+            wp_cache_flush_runtime();
+        }
+    }
+
+    /**
+     * The answer of a dry run over any op: what would have been applied, the refs it would have made, the range notes (D-1554), and
+     * the first refusal — nothing written, no act. Ids in it are those the run had; a real run may get others.
+     *
+     * @param list<array<string, mixed>> $applied
+     * @param array<string, int>         $refs
+     * @return array<string, mixed>
+     */
+    private function probeAnswer(bool $fits, array $applied, array $refs, ?string $refused): array
+    {
+        $screen   = $this->screen();
+        $gemeldet = array_map(static fn (\Taxmod\Core\Addon\Complaint $c): array => ['key' => $c->key, 'text' => $screen->reportedText($c), 'node' => $c->address?->nodeId, 'field' => $c->address?->edgeId, 'record' => $c->address?->recordId], $screen->takeReported());
+
+        // D-1561: modules hear nothing in a dry run, so their vetoes (stock on merge_record) were not asked — fits is no guarantee.
+        return ['dry_run' => true, 'written' => false, 'fits' => $fits, 'not_asked' => ['module vetoes'], 'applied' => $applied, 'refs' => $refs]
+            + ($refused === null ? [] : ['refused' => $refused])
+            + ($gemeldet === [] ? [] : ['reported' => $gemeldet]);
     }
 
     /**
@@ -1730,6 +1806,35 @@ final class ModelAbilities
                 'switches'  => (string) ($e['a'] ?? ''),
             ], array_reverse(array_slice($calls, -$limit))),
         ];
+    }
+
+    /**
+     * D-1482, Nachtrag 2: the preview of one record, measured inside the read memory as the page draws it.
+     *
+     * @param array<string, mixed> $input
+     * @return array{node: int, record: int, total_ms: int, total_queries: int, mb: int, steps: list<array<string, int|string>>, fields: list<array<string, int|string>>}
+     */
+    private function previewTimes(array $input): array
+    {
+        $node   = $this->node((int) ($input['node'] ?? 0));
+        $record = (int) ($input['record'] ?? 0);
+        $screen = ($this->screen)();
+
+        if (! in_array($record, array_map(static fn (\Taxmod\Core\Model\NodeRecord $one): int => $one->id, $screen->entries()->recordsOf($node->id)), true)) {
+            throw new \InvalidArgumentException("Record {$record} is not a record of node {$node->id}.");
+        }
+
+        $start   = hrtime(true);
+        $queries = Persistence\Query::asked();
+        $took    = Persistence\Query::remembering(static fn (): array => $screen->previewTimes($node, $record));
+
+        return [
+            'node'          => $node->id,
+            'record'        => $record,
+            'total_ms'      => (int) round((hrtime(true) - $start) / 1e6),
+            'total_queries' => Persistence\Query::asked() - $queries,
+            'mb'            => (int) round(memory_get_peak_usage(true) / 1048576),
+        ] + $took;
     }
 
     private function node(int $id): Node

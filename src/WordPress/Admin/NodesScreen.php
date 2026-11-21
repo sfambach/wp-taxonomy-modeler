@@ -3290,6 +3290,106 @@ final class NodesScreen
     }
 
     /**
+     * What the editable preview of one record takes, step by step and field by field (D-1482, Nachtrag 2) — numbers and field names only.
+     *
+     * His line 2026-11-21: «Detail: Vorschau 15825 ms / 661 Abfragen» at one node, while the same preview rebuilt from
+     * invented records took 0.3 s: what is slow lies in his data, so the measurement runs where the data is. Each field is
+     * drawn alone, as the admin side draws it; the steps before it are those of {@see previewPanel()}. Nothing is written.
+     *
+     * ```mermaid
+     * flowchart LR
+     *   A["node + record"] --> S["steps: settings, values, parts, visibility, referrers, claims, acts"]
+     *   S --> F["each shown field alone: ms, statements, KB"]
+     *   F --> W["both sides whole, as the page draws them"]
+     * ```
+     *
+     * @return array{steps: list<array{step: string, ms: int, queries: int, kb: int}>, fields: list<array{relation_id: int, name: string, ms: int, queries: int, kb: int}>}
+     * @see docs/pakete/ladezeit/konzept.md
+     */
+    public function previewTimes(Node $selected, int $recordId): array
+    {
+        $steps = [];
+        /**
+         * @template T
+         * @param  callable(): T $work
+         * @return T
+         */
+        $timed = static function (string $step, callable $work, ?array &$into = null) use (&$steps): mixed {
+            $start   = hrtime(true);
+            $queries = \Taxmod\WordPress\Persistence\Query::asked();
+            $made    = $work();
+            $row     = [
+                'ms'      => (int) round((hrtime(true) - $start) / 1e6),
+                'queries' => \Taxmod\WordPress\Persistence\Query::asked() - $queries,
+                'kb'      => is_string($made) ? (int) round(strlen($made) / 1024) : 0,
+            ];
+
+            if ($into === null) {
+                $steps[] = ['step' => $step] + $row;
+            } else {
+                $into = $row;
+            }
+
+            return $made;
+        };
+
+        $relations  = $timed('fields', fn (): array => $this->editor->fieldsOf($selected->id));
+        $resolved   = $timed('settings', fn (): array => $this->rendering->settingsForUseSites($relations));
+        $held       = [];
+
+        foreach ($recordId > 0 ? $this->data->valuesOf($recordId) : [] as $value) {
+            $held[$value->relationId] = $value->value;
+        }
+
+        $values     = $timed('values', fn (): array => $this->rendering->previewValuesFor($relations, $resolved, $held));
+        $teile      = $timed('parts', fn (): array => $recordId === 0 ? [] : $this->rendering->partsOfRecord($recordId, $relations));
+        $visibility = $timed('visibility', fn (): array => $this->rendering->previewVisibilityFor($relations, $resolved));
+        $locale     = $this->localeFromRequest();
+        $formId     = $recordId === 0 ? '' : 'taxmod-preview-record-' . $recordId;
+
+        $timed('referrers', fn (): string => $this->referrersLine($recordId));
+
+        $claimed = $timed('claims', fn (): array => $this->claimedFields($recordId, $selected->id));
+
+        if ($formId !== '') {
+            $timed('acts', fn (): string => $this->previewActs($selected, $recordId, $formId) . $this->variantsLine($selected, $recordId) . $this->claimedRows($recordId, $relations, $claimed));
+        }
+
+        $changeable = array_values(array_filter($visibility['shown'], static fn (Relation $one): bool => ! isset($claimed[$one->id])));
+        $draw       = fn (array $gezeigte, Purpose $purpose, Level $level, bool $editable, string $form): string => \Taxmod\WordPress\Draw\Markup::of(
+            $this->rendering->withPartActs(__('Add row', 'taxmod'), __('Remove this row', 'taxmod'), __('Add several', 'taxmod'), __('Insert a row below this one', 'taxmod'), __('Remove from this list — the record itself stays', 'taxmod'))
+                ->withRecordLinks(fn (int $satz, int $knoten = 0): string => $this->recordAddress($satz, $knoten))
+                ->withRecordCreation(...$this->recordCreation())
+                ->nodeAsForm(
+                    $selected,
+                    $gezeigte,
+                    $values,
+                    $purpose,
+                    $form === '' ? '' : self::VALUE_FIELD . '[' . $recordId . ']',
+                    $locale,
+                    $level,
+                    $editable,
+                    $this->rendering->containerChosenFor($selected) ? '' : \Taxmod\Core\Renderer\TableRenderer::NAME,
+                    $teile,
+                    formId: $form,
+                    recordId: $recordId
+                )
+        );
+        $fields = [];
+
+        foreach ($changeable as $relation) {
+            $row = [];
+            $timed('', fn (): string => $draw([$relation], Purpose::Edit, Level::Admin, true, $formId), $row);
+            $fields[] = ['relation_id' => $relation->id, 'name' => $relation->name] + $row;
+        }
+
+        $timed('display side, whole', fn (): string => $draw($visibility['shown'], Purpose::Display, Level::FrontEnd, false, ''));
+        $timed('admin side, whole', fn (): string => $draw($changeable, Purpose::Edit, Level::Admin, true, $formId));
+
+        return ['steps' => $steps, 'fields' => $fields];
+    }
+
+    /**
      * Die Bedienung der bearbeitbaren Vorschau: die Art des Satzes, Speichern, ein neuer Satz ([D-785](../../../docs/NewConcept/90-decision-log.md)).
      *
      * ⚠️ *Ein eigenes Formular mit eigener Id — die Zeile desselben Satzes in der Tabelle behält ihr `taxmod-record-<id>` für
