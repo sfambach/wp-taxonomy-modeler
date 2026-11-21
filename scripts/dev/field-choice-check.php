@@ -92,5 +92,21 @@ check('with the chooser at «Knoten» the rule chooses a node of the tree, not a
 check('D-1543: in a form the tree chooser is the field with the tree button and opens a dialog, never an inline tree', str_contains($knoten, 'taxmod-pick-tree') && str_contains($knoten, 'taxmod-dialog-switch') && ! str_contains($knoten, 'taxmod-chooser-open'), substr($knoten, 0, 3000));
 check('… and no field of another node is offered', ! str_contains($drawn, '__fcc Feld<') && ! str_contains($drawn, '__fcc Knoten<'), $drawn);
 
+// D-1550, his word 21.11. 08:28 «wenn ich jetzt am Knoten ausgewählt habe, dann müsste ja eigentlich ein Event geschickt werden»:
+// the field choice names the node field it follows, and the page asks for the fields of the newly chosen node without saving.
+check('D-1550: the field choice names the node field whose choice refills it', str_contains($drawn, 'data-taxmod-fields-of="' . $ref['knoten'] . '"') && str_contains($drawn, 'data-taxmod-fields-url='), $drawn);
+$_GET     = ['action' => \Taxmod\WordPress\Admin\NodesScreen::NODE_FIELDS_ACTION, 'nonce' => wp_create_nonce(\Taxmod\WordPress\Admin\NodesScreen::NODE_FIELDS_ACTION), 'node' => (string) $ref['p']];
+$_REQUEST = $_GET;
+add_filter('wp_doing_ajax', '__return_true');
+add_filter('wp_die_ajax_handler', static fn (): callable => static function (): void { throw new \RuntimeException('done'); });
+ob_start();
+try {
+    do_action('wp_ajax_' . \Taxmod\WordPress\Admin\NodesScreen::NODE_FIELDS_ACTION);
+} catch (\RuntimeException) {
+}
+$answer = json_decode((string) ob_get_clean(), true);
+$names  = array_column((array) ($answer['data'] ?? []), 'name');
+check('D-1550: asked for another node, the page gets that node\'s fields — and not those of the nodes below it', ($answer['success'] ?? false) === true && in_array('__fcc Bauform', $names, true) && ! in_array('__fcc Widerstandswert', $names, true), json_encode($answer));
+
 echo $bad === 0 ? "\nall green\n" : "\n$bad failed\n";
 exit($bad === 0 ? 0 : 1);

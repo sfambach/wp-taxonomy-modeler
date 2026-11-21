@@ -241,6 +241,9 @@ final class NodesScreen
      */
     private const QUIET_ACTS = ['put_setting', 'save_record'];
 
+    /** D-1550: admin-ajax — the fields of a node, for a field choice refilled on the page. */
+    public const NODE_FIELDS_ACTION = 'taxmod_node_fields';
+
     /** Ein Satz, der über seinen Link geöffnet wird — der Knoten dazu wird beim Öffnen nachgeschlagen (D-852). */
     private const OPEN_RECORD = 'taxmod_open_record';
 
@@ -606,6 +609,27 @@ final class NodesScreen
         }
 
         return '<div class="taxmod-claimed-fields">' . $rows . '</div>';
+    }
+
+    /**
+     * admin-ajax `taxmod_node_fields` (D-1550): the fields of the node just chosen, so a field choice refills without a save.
+     * Capability → nonce → validate → answer (CD-5); read only.
+     */
+    public function nodeFields(): void
+    {
+        if (! current_user_can(\Taxmod\WordPress\Plugin::CAPABILITY)) {
+            wp_send_json_error(['message' => __('Not allowed.', 'taxmod')], 403);
+        }
+
+        check_ajax_referer(self::NODE_FIELDS_ACTION, 'nonce');
+        $node = absint(wp_unslash($_GET['node'] ?? 0));
+        $out  = [];
+
+        foreach ($node > 0 ? $this->rendering->fieldNamesOf($node) : [] as $id => $name) {
+            $out[] = ['id' => (string) $id, 'name' => $name];
+        }
+
+        wp_send_json_success($out);
     }
 
     /**

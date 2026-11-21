@@ -34,6 +34,8 @@ final class Choosing implements Describes
         public readonly ?string $hint = null,
         public readonly array $swatches = [],
         public readonly string $nothingWord = '',
+        /** D-1550: the options are the fields of the node chosen in this field (a relation id) — refilled when that choice changes. */
+        public readonly int $fieldsOf = 0,
     ) {
     }
 
@@ -53,6 +55,7 @@ final class Choosing implements Describes
         ?string $hint = null,
         array $swatches = [],
         string $nothingWord = '',
+        int $fieldsOf = 0,
     ): self {
         $wahl = Choice::forSetting($options, ! $mayBeNothing, $now === null || $now === '' ? null : TypedValue::ofText($now), $editable);
 
@@ -70,6 +73,7 @@ final class Choosing implements Describes
             $hint,
             $swatches,
             $nothingWord,
+            $fieldsOf,
         );
     }
 
@@ -89,6 +93,6 @@ final class Choosing implements Describes
             'hint'          => $this->hint,
             'swatches'      => $this->swatches,
             'nothing_word'  => $this->nothingWord,
-        ];
+        ] + ($this->fieldsOf > 0 ? ['fields_of' => $this->fieldsOf] : []);
     }
 }

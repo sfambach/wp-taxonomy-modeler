@@ -8953,7 +8953,19 @@ final class Rendering implements Presets, \Taxmod\Core\Port\FieldAddons
     {
         $feld   = ($settings[\Taxmod\Core\Renderer\FieldChoiceRenderer::NODE_FIELD] ?? null)?->value->int ?? 0;
         $knoten = $feld > 0 ? (int) (($values[$feld] ?? null)?->reference ?? 0) : 0;
-        $node   = $knoten > 0 ? $this->gemerkterKnoten($knoten) : null;
+
+        return $knoten > 0 ? $this->fieldNamesOf($knoten) : [];
+    }
+
+    /**
+     * The fields of a node, inherited ones included, by name — what a field choice offers (D-1541); asked again from the page when
+     * the node is chosen anew (D-1550).
+     *
+     * @return array<string, string> relation id => name
+     */
+    public function fieldNamesOf(int $nodeId): array
+    {
+        $node = $this->gemerkterKnoten($nodeId);
 
         if ($node === null || $this->relations === null) {
             return [];

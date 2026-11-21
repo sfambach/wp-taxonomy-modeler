@@ -3887,3 +3887,130 @@
 		tell();
 	} );
 }() );
+
+/**
+ * D-1550: a field choice («Feld» of a rule filter) offers the fields of the node chosen in another field of the same form. When that
+ * node is chosen anew, the choice asks the server for the new node's fields and refills — no save in between. His word 21.11.2026:
+ * «wenn ich jetzt am Knoten ausgewählt habe, dann müsste ja eigentlich ein Event geschickt werden … für was wir dann Events haben».
+ *
+ * ```mermaid
+ * flowchart LR
+ *   K["change on …[knoten]"] --> F["fetch taxmod_node_fields"] --> S["refill select[data-taxmod-fields-of=knoten]"]
+ * ```
+ */
+( function () {
+	'use strict';
+
+	var cache = {};
+
+	function formOf( element ) {
+		return element.getAttribute( 'form' ) || ( element.form ? element.form.id : '' ) || '';
+	}
+
+	function relationOf( name ) {
+		var match = /\[(\d+)\]$/.exec( name || '' );
+
+		return match ? match[ 1 ] : '';
+	}
+
+	function chosenNode( relation, form ) {
+		var picked = null;
+
+		document.querySelectorAll( 'input[name$="[' + relation + ']"], select[name$="[' + relation + ']"]' ).forEach( function ( field ) {
+			if ( formOf( field ) !== form || ( field.type === 'radio' && ! field.checked ) || field.value === '' ) {
+				return;
+			}
+			picked = field.value;
+		} );
+
+		return picked;
+	}
+
+	function fill( select, fields ) {
+		var now = select.value;
+
+		while ( select.options.length > 0 && select.options[ select.options.length - 1 ].value !== '' ) {
+			select.remove( select.options.length - 1 );
+		}
+
+		if ( select.options.length === 0 ) {
+			select.add( new Option( '', '' ) );
+		}
+
+		fields.forEach( function ( field ) {
+			select.add( new Option( field.name, field.id, false, field.id === now ) );
+		} );
+		select.disabled = fields.length === 0;
+		select.classList.toggle( 'taxmod-unsatisfiable', fields.length === 0 );
+	}
+
+	function refill( relation, form, node ) {
+		var selects = Array.prototype.filter.call( document.querySelectorAll( 'select[data-taxmod-fields-of="' + relation + '"]' ), function ( select ) {
+			return formOf( select ) === form;
+		} );
+
+		if ( selects.length === 0 ) {
+			return;
+		}
+
+		if ( ! node ) {
+			selects.forEach( function ( select ) {
+				fill( select, [] );
+			} );
+
+			return;
+		}
+
+		var url = new URL( selects[ 0 ].getAttribute( 'data-taxmod-fields-url' ), window.location.href );
+
+		url.searchParams.set( 'node', node );
+
+		var key = url.toString();
+		var got = cache[ key ] || window.fetch( key, { credentials: 'same-origin' } ).then( function ( answer ) {
+			return answer.ok ? answer.json() : Promise.reject( answer.status );
+		} ).then( function ( answer ) {
+			return answer && answer.success ? answer.data : [];
+		} );
+
+		cache[ key ] = got;
+		got.then( function ( fields ) {
+			selects.forEach( function ( select ) {
+				fill( select, fields );
+			} );
+		} ).catch( function () {
+			delete cache[ key ];
+		} );
+	}
+
+	document.addEventListener( 'change', function ( event ) {
+		var field    = event.target;
+		var relation = field && field.name ? relationOf( field.name ) : '';
+
+		if ( ! relation || ! document.querySelector( 'select[data-taxmod-fields-of="' + relation + '"]' ) ) {
+			return;
+		}
+
+		refill( relation, formOf( field ), chosenNode( relation, formOf( field ) ) );
+	} );
+
+	// A filter row added after the node was chosen starts from the template, empty (and so disabled): it fills itself when it arrives.
+	new MutationObserver( function ( changes ) {
+		changes.forEach( function ( change ) {
+			change.addedNodes.forEach( function ( added ) {
+				if ( ! ( added instanceof Element ) ) {
+					return;
+				}
+
+				var found = added.matches( 'select[data-taxmod-fields-of]' ) ? [ added ] : Array.prototype.slice.call( added.querySelectorAll( 'select[data-taxmod-fields-of]' ) );
+
+				found.forEach( function ( select ) {
+					var relation = select.getAttribute( 'data-taxmod-fields-of' );
+
+					if ( select.options.length <= 1 ) {
+						refill( relation, formOf( select ), chosenNode( relation, formOf( select ) ) );
+					}
+				} );
+			} );
+		} );
+	} ).observe( document.documentElement, { childList: true, subtree: true } );
+}() );
