@@ -1061,7 +1061,7 @@
                 "text_form": null,
                 "text_table": null,
                 "text_select": null,
-                "text_help": "Text field type, display length of the text can be chosen",
+                "text_help": "Textfeld; die angezeigte Länge des Texts ist einstellbar.",
                 "text_symbol": null
             },
             {
