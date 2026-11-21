@@ -46,6 +46,8 @@ final class Restore
     public static function previous(string $liveTable, int $id): bool
     {
         TileCounts::forget(TileCounts::MODEL);
+        // D-1514: an undo may take «Vertraulich» back or bring it back; the remembered edges are read again.
+        \Taxmod\WordPress\Privacy\FieldSeal::forget();
 
         global $wpdb;
 
@@ -178,6 +180,8 @@ final class Restore
     public static function group(int $changeGroupId): array
     {
         TileCounts::forget(TileCounts::MODEL);
+        // D-1514: an undo may take «Vertraulich» back or bring it back; the remembered edges are read again.
+        \Taxmod\WordPress\Privacy\FieldSeal::forget();
 
         global $wpdb;
 
@@ -282,6 +286,8 @@ final class Restore
      */
     public static function act(int $act, Changelog $changelog, bool $recordsOnly = false): array
     {
+        // D-1514: an undo may take «Vertraulich» back or bring it back; the remembered edges are read again.
+        \Taxmod\WordPress\Privacy\FieldSeal::forget();
         global $wpdb;
 
         $journal = Schema::table('changelog');

@@ -181,6 +181,8 @@ final class Plugin
         \Taxmod\WordPress\Printing\ScannerTab::boot($plugin->screen(...));
         // D-1160: the label reads the fields its layout names from the record itself.
         $labelValues = static fn (int $record, array $fields): array => $plugin->screen()->labelValues($record, $fields);
+        // The line «Entries per list page» in the Benutzereinstellungen the stock draws (D-1502).
+        add_filter('taxmod_user_settings', \Taxmod\WordPress\Admin\ListPage::userSetting(...));
         // D-1295: the labels module asks the same words through the door (D-1292).
         add_filter(self::LABEL_VALUES_FILTER, static fn (mixed $answer, int $record, array $fields): array => $labelValues($record, array_values(array_map('strval', $fields))), 10, 3);
         // D-1208: a module's door asks which fields are «Variante von» and «Je Variante», from the one resolver.
@@ -195,6 +197,10 @@ final class Plugin
             array_values((new WpdbRelationRepository())->byIds(array_map('intval', $relations)))
         ), 10, 3);
         add_action('admin_init', \Taxmod\WordPress\Printing\PrintJobSchema::upgrade(...));
+        // D-1514: what a field held before it became confidential is sealed in batches; without the data key a warning says how.
+        add_action('admin_init', [\Taxmod\WordPress\Privacy\FieldSealJob::class, 'onAdmin'], 20);
+        add_action('admin_notices', [\Taxmod\WordPress\Admin\FieldSealNotice::class, 'show']);
+        add_filter(self::CONFIG_TABS_FILTER, static fn (array $tabs): array => $tabs + [\Taxmod\WordPress\Privacy\DataKeyTab::SLUG => \Taxmod\WordPress\Privacy\DataKeyTab::tab()], 4);
 
 
         add_action('admin_menu', $plugin->registerMenu(...));
@@ -361,6 +367,8 @@ final class Plugin
         add_action('admin_post_' . ListPage::COLUMNS_ACTION, [ListPage::class, 'saveColumns']);
         add_action('wp_ajax_' . ListPage::DETAILS_ACTION, [ListPage::class, 'details']);
         add_action('wp_ajax_' . ListPage::TREE_STATE_ACTION, [ListPage::class, 'saveTreeState']);
+        // D-1545 F1: the size chosen on a list is kept for that list and user.
+        add_action('wp_ajax_' . ListPage::PER_PAGE_ACTION, [ListPage::class, 'saveChosenSize']);
         // D-1413: the link dialog's search on taxmod pages finds unpublished posts too, by title, and names their state.
         \Taxmod\WordPress\Admin\LinkSearch::wire();
 
@@ -1158,6 +1166,8 @@ final class Plugin
                 // *D-1520: the offer comes from another field of the same record.*
                 'addon:choice_from'     => __('Choice from field', 'taxmod'),
                 'field:from_field'      => __('only what this record holds in', 'taxmod'),
+                // *D-1514: the field's text is stored sealed.*
+                'addon:confidential'    => __('Confidential (stored encrypted)', 'taxmod'),
                 'addon:range'           => __('Check range', 'taxmod'),
                 'addon:shape'           => __('Check shape', 'taxmod'),
                 'field:source_field'    => __('field here', 'taxmod'),

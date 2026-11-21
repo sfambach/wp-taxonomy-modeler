@@ -131,6 +131,8 @@ final class Backup
      */
     public function restore(string $file): array
     {
+        // D-1514: the copy brings its own settings; the remembered confidential edges are read again.
+        \Taxmod\WordPress\Privacy\FieldSeal::forget();
         self::zipIsAvailable();
 
         $zip = new \ZipArchive();

@@ -35,6 +35,8 @@ final class WpdbSettingsRepository implements SettingsRepository
             ['%d', '%s', '%d']
         );
 
+        \Taxmod\WordPress\Privacy\FieldSeal::forget();
+
         return $object->withAssignedId((int) $wpdb->insert_id);
     }
 
@@ -70,6 +72,9 @@ final class WpdbSettingsRepository implements SettingsRepository
 
     public function addValue(SettingsValue $value): SettingsValue
     {
+        // D-1514: which edges are confidential is a setting; a write may change it.
+        \Taxmod\WordPress\Privacy\FieldSeal::forget();
+
         global $wpdb;
 
         [$spalten, $formate] = $this->columnsOf($value);
@@ -84,11 +89,16 @@ final class WpdbSettingsRepository implements SettingsRepository
             throw new \RuntimeException('Einstellungszeile schreiben: ' . $wpdb->last_error);
         }
 
+        \Taxmod\WordPress\Privacy\FieldSeal::forget();
+
         return $value->stored((int) $wpdb->insert_id, $value->version);
     }
 
     public function saveValue(SettingsValue $value, int $expectedVersion): void
     {
+        // D-1514: which edges are confidential is a setting; a write may change it.
+        \Taxmod\WordPress\Privacy\FieldSeal::forget();
+
         global $wpdb;
 
         $id = $value->id ?? throw new \LogicException('Eine Zeile ohne Id kann nicht neu geschrieben werden.');
@@ -105,6 +115,7 @@ final class WpdbSettingsRepository implements SettingsRepository
             $formate,
             ['%d', '%d']
         );
+        \Taxmod\WordPress\Privacy\FieldSeal::forget();
 
         if ($written === 1) {
             return;
@@ -285,6 +296,9 @@ final class WpdbSettingsRepository implements SettingsRepository
 
     public function forgetValue(int $id): ?int
     {
+        // D-1514: which edges are confidential is a setting; a write may change it.
+        \Taxmod\WordPress\Privacy\FieldSeal::forget();
+
         global $wpdb;
 
         $version = Query::value('Version der Einstellungszeile vor dem Wandern lesen', $wpdb->prepare(
@@ -298,6 +312,7 @@ final class WpdbSettingsRepository implements SettingsRepository
 
         Shadow::keepOne('settings_value', $id, true);
         $wpdb->delete(Schema::table('settings_value'), ['id' => $id], ['%d']);
+        \Taxmod\WordPress\Privacy\FieldSeal::forget();
 
         return (int) $version;
     }
@@ -323,6 +338,7 @@ final class WpdbSettingsRepository implements SettingsRepository
 
         Shadow::keepOne('settings_object', $id, true);
         $wpdb->delete(Schema::table('settings_object'), ['id' => $id], ['%d']);
+        \Taxmod\WordPress\Privacy\FieldSeal::forget();
 
         return $object->version;
     }

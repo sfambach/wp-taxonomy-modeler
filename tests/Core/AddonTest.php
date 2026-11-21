@@ -199,8 +199,8 @@ final class AddonTest extends TestCase
     #[Test]
     public function the_shipped_set_is_preset_add_several_the_two_checks_and_the_calculation_step(): void
     {
-        // ⚠️ *Seit D-1022 auch der Rechenschritt — nur an einer Verwendungsstelle. Seit D-1149 die Kennzahl, nur am Knoten. Seit D-1180 die Syntaxprüfung des Code-Felds. Seit D-1208 «Je Variante», nur an einer Verwendungsstelle, und «Variante von», nur an einer Kante auf Sätze. Seit D-1520 «Auswahl aus Feld», nur an einer Kante auf Sätze.*
-        self::assertSame(['preset', 'pick_rows', 'range', 'shape', 'syntax', 'calculate', 'metric', 'variant', 'variant_of', 'choice_from'], ShippedAddons::registry()->names());
+        // ⚠️ *Seit D-1022 auch der Rechenschritt — nur an einer Verwendungsstelle. Seit D-1149 die Kennzahl, nur am Knoten. Seit D-1180 die Syntaxprüfung des Code-Felds. Seit D-1208 «Je Variante», nur an einer Verwendungsstelle, und «Variante von», nur an einer Kante auf Sätze. Seit D-1520 «Auswahl aus Feld», nur an einer Kante auf Sätze. Seit D-1514 «Vertraulich», nur an einer Verwendungsstelle.*
+        self::assertSame(['preset', 'pick_rows', 'range', 'shape', 'syntax', 'calculate', 'metric', 'variant', 'variant_of', 'choice_from', 'confidential'], ShippedAddons::registry()->names());
     }
 
     /** ⚠️ *Jede Funktion sagt selbst, wo sie hängen darf (D-845): «Mehrere hinzufügen» nur an einer mehrfachen Kante.* */
@@ -210,8 +210,8 @@ final class AddonTest extends TestCase
         $namen = static fn (array $orte): array => array_map(static fn ($a): string => $a->name(), ShippedAddons::registry()->forSites($orte));
 
         self::assertSame(['preset', 'range', 'shape', 'syntax', 'metric'], $namen([AddonSite::Node]));
-        self::assertSame(['range', 'shape', 'syntax', 'calculate', 'variant'], $namen([AddonSite::Edge]));
-        self::assertSame(['preset', 'pick_rows', 'range', 'shape', 'syntax', 'calculate', 'variant', 'variant_of', 'choice_from'], $namen([AddonSite::Edge, AddonSite::ManyEdge, AddonSite::RecordEdge]));
+        self::assertSame(['range', 'shape', 'syntax', 'calculate', 'variant', 'confidential'], $namen([AddonSite::Edge]));
+        self::assertSame(['preset', 'pick_rows', 'range', 'shape', 'syntax', 'calculate', 'variant', 'variant_of', 'choice_from', 'confidential'], $namen([AddonSite::Edge, AddonSite::ManyEdge, AddonSite::RecordEdge]));
     }
 
     /**
