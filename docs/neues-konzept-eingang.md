@@ -1422,7 +1422,7 @@ Anlass: [INF-073](#inf-073--bestand-und-fertigung-vom-wareneingang-über-die-pla
 - **Offen:** D-1208 nennt «etwa Farbe oder Pins» nur als Beispiel. Soll «Farbe» (und weitere, z. B. Ausrichtung) je Variante eigen sein? Ohne Antwort bleibt Farbe am Vater.
 - **Live nicht gefunden:** das Feld «mit/ohne Pins», das D-1208 als vorhanden nennt («Das Feld für mit/ohne Pins gibt es schon»), gibt es live nicht (gesucht 21.11. an Displays und Steckverbindern). Es wird nicht neu angelegt; offen, ob und wo es entstehen soll.
 
-## INF-142 · Druck-Vorwahlen mit «für»: wohin bei der Übernahme? (2026-11-21)
+## INF-142 · Druck-Vorwahlen mit «für»: wohin bei der Übernahme? (2026-11-21) — erledigt
 
 - **Anlass:** Übernahme der heutigen Etiketten-Vorwahlen in Druckregeln ([D-1552](NewConcept/90-decision-log.md), [INF-137](#inf-137--vorwahl-rückfall-druck-weg-nach-übernahme-2026-11-21)). Zuordnung vom Prüftor 21.11. freigegeben: Gruppe → Knoten der Regel; Bauform → Filter Art «Feld»; Platzart → Filter Art «Bestand», Feld Platzart; Etikett und Exemplare bleiben Felder der Regel.
-- **Offen:** Jede Vorwahl nennt heute, wofür sie gilt («für»: Material, Posten oder Lagerort). Eine Regel aus Knoten + Filter hat dafür kein Feld. Wie wird «für» abgebildet (eigener Regeltyp, Filter, Feld der Druckregel)? Bis dahin listet die Lese-Ability `taxmod-stock/rule-proposals` solche Vorwahlen nur auf, mit dem Grund «Zuordnung von … offen», ohne Operation.
+- **Erledigt (Prüftor 21.11.):** Die Druckregel hat ihr eigenes Feld «Wofür» (149000110566, live geprüft per read_node: Ergebnisfeld der Druckregel). «für» wird ohne Umdeutung dorthin übernommen, mit demselben Wert. Die Lese-Ability `taxmod-stock/rule-proposals` (Lager 0.64.195, Etiketten 0.0.39) liefert dafür Operationen. Nur ohne dieses Feld bliebe eine Vorwahl aufgelistet.
