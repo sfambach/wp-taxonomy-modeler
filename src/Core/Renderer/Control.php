@@ -167,6 +167,11 @@ final class Control implements \Taxmod\Core\Description\Describes
         public readonly bool $iconWithLabel = false,
         /** Which node, edge, record or field the act is about (plan step 1, [D-1424](../../../docs/NewConcept/90-decision-log.md)). */
         public readonly ?\Taxmod\Core\Event\Address $address = null,
+        /**
+         * Der gemeinsame Wahlbaum vor dem Akt (D-1574, Prüftor zu Live-Check 15): der Knopf öffnet ihn, «OK» schickt den Akt mit der
+         * Wahl ab — Verschieben aus der Zeile, im ganzen wie im eingegrenzten Baum derselbe Baustein.
+         */
+        public readonly ?\Taxmod\Core\Description\PickOpener $picks = null,
     ) {
     }
 
@@ -187,6 +192,7 @@ final class Control implements \Taxmod\Core\Description\Describes
             $this->opens,
             $this->iconWithLabel,
             $address,
+            $this->picks,
         );
     }
 
@@ -212,6 +218,7 @@ final class Control implements \Taxmod\Core\Description\Describes
             'opens'           => $this->opens === null ? null : ['id' => $this->opens->id, 'title' => $this->opens->title, 'body' => $this->opens->body, 'confirm' => $this->opens->confirm, 'cancel' => $this->opens->cancel],
             'icon_with_label' => $this->iconWithLabel,
             'address'         => $this->address?->token(),
+            'picks'           => $this->picks?->field,
         ];
     }
 }
