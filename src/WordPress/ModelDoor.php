@@ -274,6 +274,48 @@ final class ModelDoor
         return (new Persistence\SeededFrameworkNodes($nodes, new Persistence\WpdbRelationRepository(), new Persistence\WpdbChangelog(new SystemClock())))->rootOf(\Taxmod\Core\Model\Branch::Constants)->id;
     }
 
+    /**
+     * The Feldkatalog ([D-1555](../../docs/NewConcept/90-decision-log.md)): the branch «Data Types» and every composite data type
+     * with what is below it, in tree order — each entry with its role and how many fields point at it. The Logistik page shows
+     * this branch and keeps no copy. Three reads, whatever the size (`CD-7`): the tree, the composites, the fields.
+     *
+     * @return list<array{id: int, name: string, parent: int, depth: int, role: string, uses: int}>
+     */
+    public function catalogue(): array
+    {
+        if (! current_user_can('manage_options')) {
+            return [];
+        }
+
+        $nodes     = new Persistence\WpdbNodeRepository();
+        $relations = new Persistence\WpdbRelationRepository();
+        $framework = new Persistence\SeededFrameworkNodes($nodes, $relations, new Persistence\WpdbChangelog(new SystemClock()));
+        $katalog   = Persistence\CatalogueBase::catalogue(new Persistence\SeededTypeNodes($nodes, $framework));
+        $typen     = $framework->rootOf(\Taxmod\Core\Model\Branch::DataTypes);
+        $uses      = [];
+
+        foreach ($relations->everyFieldRelation() as $relation) {
+            if ($relation->kind !== \Taxmod\Core\Model\RelationKind::Setting) {
+                $uses[$relation->toNodeId] = ($uses[$relation->toNodeId] ?? 0) + 1;
+            }
+        }
+
+        $out = [];
+
+        foreach ((new \Taxmod\Core\Service\Tree($nodes))->rowsUnder($framework->root(), [$framework->trash()->id], [], true, true) as $row) {
+            $node = $row['node'];
+            $role = $katalog->roleOf($node);
+
+            if ($role === \Taxmod\Core\Model\CatalogueRole::Outside && ! $node->isDescendantOf($typen)) {
+                continue;
+            }
+
+            $out[] = ['id' => $node->id, 'name' => $node->name, 'parent' => (int) $node->parentNodeId, 'depth' => $row['depth'], 'role' => $role->value, 'uses' => $uses[$node->id] ?? 0];
+        }
+
+        return $out;
+    }
+
     /** D-1458, D-1474: every choice of `$from` chooses `$into`, `$from` goes to the trash; the modeller's rules refuse with a reason. */
     public function mergeConstant(int $from, int $into): int
     {

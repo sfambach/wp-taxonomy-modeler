@@ -1058,6 +1058,23 @@
 	// *Capturing: the dialog's switch is remembered before admin.js moves the focus or a value into the panel.*
 	document.addEventListener( 'change', chosenFromChange, true );
 
+	// *A name being typed is a choice too where its field says so (`data-taxmod-typed`, D-1555): the similar data elements
+	// follow it while the dialog is still open — said after a short pause, not on every key.*
+	var typing = new WeakMap();
+
+	document.addEventListener( 'input', function ( event ) {
+		var control = event.target;
+
+		if ( ! control || ! control.matches || ! control.matches( 'input[data-taxmod-typed]' ) ) {
+			return;
+		}
+
+		window.clearTimeout( typing.get( control ) );
+		typing.set( control, window.setTimeout( function () {
+			chosen( control );
+		}, 350 ) );
+	} );
+
 	// *A pick from the quick search sets its radio without a «change» (D-1311).*
 	document.addEventListener( 'taxmod-record-picked', function ( event ) {
 		if ( event.target && ! pendingIn( event.target ) ) {

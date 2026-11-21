@@ -74,4 +74,56 @@ final class FieldCatalogue
 
         return $roles;
     }
+
+    /**
+     * The data elements below the same base type whose name is like the new one — what creating one first shows
+     * ([D-1555](../../../docs/NewConcept/90-decision-log.md): «Creating a node or a relation first shows similar data elements … and asks
+     * whether to use one»). Same name rule as the MCP `similar-fields` ({@see SimilarFields::nameSimilarity()}).
+     *
+     * @param  list<Node> $nodes every live node (the tree)
+     * @return list<Node> best first
+     */
+    public function similarElements(string $name, Node $parent, array $nodes): array
+    {
+        $base = $this->baseTypeOf($parent);
+
+        if ($base === null) {
+            return [];
+        }
+
+        $wanted = SimilarFields::folded($name);
+        $found  = [];
+
+        foreach ($nodes as $node) {
+            if ($wanted === '' || $this->baseTypeOf($node) !== $base || isset($this->baseTypes[$node->id])) {
+                continue;
+            }
+
+            $score = SimilarFields::nameSimilarity($wanted, SimilarFields::folded($node->name));
+
+            if ($score >= SimilarFields::NAME_THRESHOLD) {
+                $found[] = [$score, $node];
+            }
+        }
+
+        usort($found, static fn (array $a, array $b): int => [$b[0], $a[1]->id] <=> [$a[0], $b[1]->id]);
+
+        return array_map(static fn (array $f): Node => $f[1], $found);
+    }
+
+    /** The base type a node is or hangs below, or null outside the catalogue's base types. */
+    public function baseTypeOf(Node $node): ?int
+    {
+        if (isset($this->baseTypes[$node->id])) {
+            return $node->id;
+        }
+
+        foreach ($node->ancestorIds() as $ancestor) {
+            if (isset($this->baseTypes[$ancestor])) {
+                return $ancestor;
+            }
+        }
+
+        return null;
+    }
 }
