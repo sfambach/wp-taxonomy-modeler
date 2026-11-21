@@ -109,6 +109,7 @@
     display: inline-flex;
     align-items: center;
     cursor: pointer;
+    position: relative;
 }
 
 .taxmod-toggle-input {
@@ -801,6 +802,9 @@ details.taxmod-page-block > summary {
 .taxmod-chooser {
     display: inline-block;
     max-width: 100%;
+    /* Live-Check 13: the clipped switch inside is `position: absolute`; without a frame here it hangs off the page,
+       escapes the list's own scroll box and widens the whole document (Druckregeln 1185 vs 1124). */
+    position: relative;
 }
 
 .taxmod-chooser-current {
