@@ -10,6 +10,7 @@
  *   M["module: its rule records"] --> D["ModelDoor::firstRule"]
  *   D --> B["RuleBook: by position, node + filters"]
  *   B --> A["rule id, or null: the module's default"]
+ *   D -->|"«liegt unter»: nodes above, one read"| B
  * ```
  */
 
@@ -66,6 +67,14 @@ check('node and filter hold → that rule', $door->firstRule($rules, [1 => [70, 
 check('filter fails → the next rule', $door->firstRule($rules, [1 => [70, 7]], [40 => ['THT']]) === 3);
 check('the caller may refuse a rule', $door->firstRule($rules, [1 => [70, 7]], [40 => ['SMD']], static fn (int $id): bool => $id !== 2) === 3);
 check('no rule → null, the caller\'s default', $door->firstRule([$rules[0]], [1 => [5]]) === null);
+
+// D-1563: «liegt unter» — the door reads the nodes above each value from the nodes' own path, in one query.
+$kind  = array_key_first($door->children(402));
+$below = [['id' => 4, 'position' => 0, 'conditions' => [], 'filters' => [['field' => 40, 'value' => '402', 'operator' => Taxmod\Core\Rules\RuleBook::BELOW]]]];
+check('a node below the one named holds «liegt unter»', $kind !== null && $door->firstRule($below, [], [40 => [(string) $kind]]) === 4, 'child of Model: ' . var_export($kind, true));
+check('the node named itself holds «liegt unter»', $door->firstRule($below, [], [40 => ['402']]) === 4);
+check('a node above it does not', $door->firstRule($below, [], [40 => ['1']]) === null);
+check('«liegt unter» has its word', (Taxmod\WordPress\Plugin::operatorWords()[Taxmod\Core\Rules\RuleBook::BELOW] ?? '') !== '');
 
 echo "\n$ok OK, $bad FAIL\n";
 exit($bad === 0 ? 0 : 1);
