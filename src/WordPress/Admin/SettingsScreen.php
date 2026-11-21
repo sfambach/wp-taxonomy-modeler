@@ -961,7 +961,7 @@ final class SettingsScreen
      *
      * ⚠️ **Ein Umstand und keine Einstellung** ([D-389](../../../docs/NewConcept/90-decision-log.md)):
      * *er reist in der Adresse (`taxmod_locale`), so wie der Faltzustand. Er wird nirgends gespeichert
-     * — wer die Seite ohne ihn aufruft, arbeitet in seiner eigenen Sprache (INF-146), ausserhalb des Admin in der
+     * — wer die Seite ohne ihn aufruft, arbeitet in seiner eigenen Sprache (D-1577), ausserhalb des Admin in der
      * Standardsprache.*
      *
      * ⚠️ **An **einer** Stelle gelesen, aus demselben Grund, aus dem
@@ -981,7 +981,8 @@ final class SettingsScreen
     /**
      * Die gewählte Sprache, sonst im Admin die des Benutzers, sonst die Standardsprache.
      *
-     * ⚠️ *INF-146, sein Wort am 2026-11-21: «Ja, bitte in meiner Sprache.» Live-Check 13 sah «Value / Prefix / Unit», obwohl
+     * ⚠️ **[D-1577](../../../docs/NewConcept/90-decision-log.md), ändert D-389 für den Admin.** *INF-146, sein Wort am 2026-11-21:
+     * «Ja, bitte in meiner Sprache.» Umbenennen schreibt im Admin in die Benutzersprache. Live-Check 13 sah «Value / Prefix / Unit», obwohl
      * «Wert / Präfix / Einheit» unter de_DE stand: ohne `taxmod_locale` zeichnete der Admin in der Standardsprache en_US.
      * Fehlt ein Text in der Benutzersprache, fällt die Kette weiter auf die Standardsprache (D-645). Ausserhalb des Admin
      * (REST, Fähigkeiten, Cron) bleibt es die Standardsprache, damit Schreiber dort keine Übersetzung anlegen, wo sie den
