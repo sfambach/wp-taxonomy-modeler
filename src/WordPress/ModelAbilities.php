@@ -486,6 +486,24 @@ final class ModelAbilities
             'meta'                => ['public' => true, 'annotations' => ['readonly' => true, 'destructive' => false, 'idempotent' => true]],
         ]);
 
+        // D-1514 point 8: what a field held before it became confidential — counted first, sealed only when asked.
+        wp_register_ability('taxmod/field-seal', [
+            'label'               => __('Seal old values of confidential fields', 'taxmod'),
+            'description'         => __('How many values on fields marked «Confidential» are still plain (plain) and how many are still sealed with a former key after a change of key (resealing_left; per former key: sealed_with_old_keys), each as live rows, history rows and chronicle entries. dry_run (default true) only counts. dry_run false seals and reseals one batch (limit, default 500, at most 5000) and answers how many rows it changed (sealed) and what is left; call again until nothing is left. This changes the stored form, not the value: it is no act and has no undo, because an undo would bring plain text back (D-1514, D-1562). Needs the data key.', 'taxmod'),
+            'category'            => self::CATEGORY,
+            'input_schema'        => [
+                'type'       => 'object',
+                'properties' => [
+                    'dry_run' => ['type' => 'boolean', 'default' => true],
+                    'limit'   => ['type' => 'integer', 'minimum' => 1, 'maximum' => 5000, 'default' => 500],
+                ],
+                'additionalProperties' => false,
+            ],
+            'execute_callback'    => fn (mixed $input = null) => $this->guarded(fn (): array => $this->fieldSeal(is_array($input) ? $input : [])),
+            'permission_callback' => $this->allowed(...),
+            'meta'                => ['public' => true, 'annotations' => ['readonly' => false, 'destructive' => false, 'idempotent' => true]],
+        ]);
+
         // *Vor und nach jedem Umbau an einem Renderer: welche Beiträge zeigen welchen Satz ([D-1052](../../docs/NewConcept/90-decision-log.md)).*
         wp_register_ability('taxmod/block-usage', [
             'label'               => __('List record block usage', 'taxmod'),
@@ -679,6 +697,39 @@ final class ModelAbilities
      * @param  array<string, mixed> $input `mixed`: the ability's input, checked by its schema
      * @return array{summary: list<array<string, int|string>>, fields?: list<array<string, bool|int|string>>}
      */
+    /**
+     * @param array{dry_run?: bool, limit?: int} $input
+     * @return array<string, mixed> dry_run, edges, key, key_id, plain, resealing_left, sealed_with_old_keys; after a run also sealed and left
+     */
+    private function fieldSeal(array $input): array
+    {
+        $seal   = \Taxmod\WordPress\Privacy\FieldSeal::class;
+        $job    = \Taxmod\WordPress\Privacy\FieldSealJob::class;
+        $answer = [
+            'dry_run'              => ($input['dry_run'] ?? true) !== false,
+            'edges'                => count($seal::confidentialRelations()),
+            'key'                  => $seal::cipher() !== null,
+            'key_id'               => $seal::keyId(),
+            'plain'                => $job::plainLeft(),
+            'resealing_left'       => $job::resealLeft(),
+            'sealed_with_old_keys' => $job::sealedWithRetired(),
+        ];
+
+        if ($answer['dry_run']) {
+            return $answer;
+        }
+
+        if (! $answer['key']) {
+            throw \Taxmod\Core\Exception\FieldDoesNotOpen::withoutKey();
+        }
+
+        $answer['sealed'] = $job::runBatch(max(1, min(5000, (int) ($input['limit'] ?? 500))));
+        $answer['left']   = ['plain' => $job::plainLeft(), 'resealing' => $job::resealLeft(), 'sealed_with_old_keys' => $job::sealedWithRetired()];
+        $seal::noteSealedWith($answer['left']['sealed_with_old_keys'], time());
+
+        return $answer;
+    }
+
     private function settingsUsage(array $input): array
     {
         $repository = new \Taxmod\WordPress\Persistence\WpdbSettingsRepository();
