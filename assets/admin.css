@@ -3493,3 +3493,4 @@ details.taxmod-record-section > summary {
 
 /* D-1571: an empty optional field of a compact form waits hidden for «+ Festlegung». */
 .taxmod-form-row[hidden] { display: none !important; }
+.taxmod-field-remove { color: #b32d2e; }
