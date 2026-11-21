@@ -81,3 +81,6 @@ The «Bauläufe» of the stock draft ([`../lager/konzept.md`](../lager/konzept.m
    - «Fertig» rising books a receipt of that material into the order's box, lot condition «ungeprüft»; lowering it gives it back;
    - «Fertig» cannot exceed the boards with every used position fitted;
    - «Geprüft» stays a count on the board; checking the lot itself happens in the stock module. Whether the inspection is mandatory stays open (§4, 3).
+7. Platine ohne Bestückungsteile (Live-Check 21.11., Auftrag 88226, MCEBlaster 48255), gebaut 0.0.115 — **angenommen, nicht von ihm gesagt**, vom Prüftor als Annahme freigegeben (PR-2):
+   - Hat die Stückliste einer Revision nichts zu bestücken, nur die Platine, oder sind alle Positionen «nicht verwendet», dann gilt jedes Stück als voll bestückt. Vorher blieb der Auftrag bei «0 von 1 bestückt» und konnte nie fertig werden.
+   - Ohne ankreuzbare Zeile wird keine Sammelleiste gezeigt.
