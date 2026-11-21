@@ -78,5 +78,16 @@ check('a node above it does not', $door->firstRule($below, [1 => [70]], [40 => [
 check('a rule that names no node holds nothing (D-1563)', $door->firstRule([['id' => 5, 'position' => 0, 'conditions' => [1 => 0]]], [1 => [70, 7]]) === null);
 check('«liegt unter» has its word', (Taxmod\WordPress\Plugin::operatorWords()[Taxmod\Core\Rules\RuleBook::BELOW] ?? '') !== '');
 
+// D-1569: ▲/▼ in the rule list — the modeller's own sibling buttons, a swap of neighbours, blocked at the ends.
+check('two rules swap their positions', Taxmod\Core\Rules\RuleOrder::move([1 => 10, 2 => 9990, 3 => 9991], 3, -1) === [3 => 9990, 2 => 9991]);
+$page = Taxmod\WordPress\Admin\RulesPage::fromSetup();
+if ($page === null || $page->types() === []) {
+    echo "  (no rules page set up here — the list's ▲/▼ is not drawn)\n";
+} else {
+    $_GET = [];
+    $html = $page->render();
+    check('the rule list draws ▲/▼ with the sibling icons', str_contains($html, 'value="up"') && str_contains($html, 'dashicons-arrow-up-alt2') && str_contains($html, 'dashicons-arrow-down-alt2'));
+}
+
 echo "\n$ok OK, $bad FAIL\n";
 exit($bad === 0 ? 0 : 1);

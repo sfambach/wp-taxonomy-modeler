@@ -2,6 +2,9 @@
 
 namespace Taxmod\WordPress\Admin;
 
+use Taxmod\Core\Renderer\Control;
+use Taxmod\Core\Rules\RuleOrder;
+use Taxmod\WordPress\Draw\ControlMarkup;
 use Taxmod\WordPress\ModelDoor;
 use Taxmod\WordPress\Plugin;
 
@@ -16,6 +19,7 @@ use Taxmod\WordPress\Plugin;
  *   T["taxmod_rule_types: position, roots, hint per type"] --> P
  *   P -->|"Auge / Neue Regel"| E["record editor"]
  *   P -->|"Papierkorb / Sammel-Löschen"| W["one act, undoable"]
+ *   P -->|"▲ / ▼ (D-1569)"| W
  * ```
  *
  * The module that registers the page answers `taxmod_rules_setup`; each module that reads a type answers `taxmod_rule_types`.
@@ -139,7 +143,7 @@ final class RulesPage
             . ListPage::table($columns, $this->rows($type, $rules, array_keys($own), $words))]], $this->version, $this->plugin, tabs: $tabs);
     }
 
-    /** admin-post «Neue Regel» and «Löschen»: capability → nonce → validate → act (CD-5, D-1254). */
+    /** admin-post «Neue Regel», «Löschen» and ▲/▼: capability → nonce → validate → act (CD-5, D-1254). */
     public function handle(): void
     {
         $type = absint($_POST['typ'] ?? 0);
@@ -167,6 +171,12 @@ final class RulesPage
                 $this->remove($type, $chosen);
 
                 return self::url($type, ['entfernt' => count($chosen)]);
+            }
+
+            if ($do === 'up' || $do === 'down') {
+                $this->move($type, absint($_POST['regel'] ?? 0), $do === 'up' ? -1 : 1);
+
+                return self::url($type);
             }
 
             throw new \RuntimeException(__('Unknown action.', 'taxmod'));
@@ -274,7 +284,9 @@ final class RulesPage
             return '<tr class="no-items"><td class="colspanchange" colspan="' . (6 + count($own)) . '">' . esc_html__('No rule yet.', 'taxmod') . '</td></tr>';
         }
 
-        $body = '';
+        $body    = '';
+        $ordered = (int) ($this->types[$type]['position'] ?? 0) > 0;
+        $ids     = array_keys($rules);
 
         foreach ($rules as $id => $rule) {
             $url   = self::url($type, ['satz' => $id]);
@@ -285,10 +297,21 @@ final class RulesPage
                 $cells[] = esc_html((string) ($words[$relation][$id] ?? '') ?: '—');
             }
 
-            $body .= ListPage::row(self::BULK_FORM, (string) $id, $cells, ListPage::openButton($url) . ' ' . $this->removeDialog($type, $id, $rule['word'])[0], '');
+            $move  = $ordered ? $this->moveButtons($type, $id, $id === $ids[0], $id === end($ids)) . ' ' : '';
+            $body .= ListPage::row(self::BULK_FORM, (string) $id, $cells, $move . ListPage::openButton($url) . ' ' . $this->removeDialog($type, $id, $rule['word'])[0], '');
         }
 
         return $body;
+    }
+
+    /** D-1569: the modeller's own ▲/▼ of the sibling order (D-1511 rule 3), blocked at the first and the last rule. */
+    private function moveButtons(int $type, int $id, bool $first, bool $last): string
+    {
+        return '<form method="post" action="' . esc_url(admin_url('admin-post.php')) . '" style="display:inline">' . $this->hidden($type)
+            . '<input type="hidden" name="regel" value="' . esc_attr((string) $id) . '">'
+            . ControlMarkup::button(new Control('do', 'up', __('Up', 'taxmod'), __('Move up among its siblings', 'taxmod'), ! $first, icon: 'arrow-up-alt2'))
+            . ControlMarkup::button(new Control('do', 'down', __('Down', 'taxmod'), __('Move down among its siblings', 'taxmod'), ! $last, icon: 'arrow-down-alt2'))
+            . '</form>';
     }
 
     private function createButton(int $type): string
@@ -357,5 +380,34 @@ final class RulesPage
         }
 
         $this->model->write(array_map(static fn (int $id): array => ['op' => 'remove_record', 'record' => $id], $rules));
+    }
+
+    /**
+     * D-1569: one rule a place up or down — its position swapped with its neighbour's, in one act (undo by its number, D-1410).
+     * Only a rule of this type, and only where the type keeps a position.
+     */
+    private function move(int $type, int $rule, int $step): void
+    {
+        $field = (int) ($this->types[$type]['position'] ?? 0);
+
+        if ($field === 0) {
+            throw new \RuntimeException(__('Unknown action.', 'taxmod'));
+        }
+
+        $positions = [];
+
+        foreach ($this->model->records($type) as $id => $values) {
+            $positions[(int) $id] = (int) ($values[$field][0] ?? 0);
+        }
+
+        uksort($positions, static fn (int $a, int $b): int => [$positions[$a], $a] <=> [$positions[$b], $b]);
+
+        try {
+            $changes = RuleOrder::move($positions, $rule, $step);
+        } catch (\DomainException) {
+            throw new \RuntimeException(__('Unknown action.', 'taxmod'));
+        }
+
+        $this->model->write(array_map(static fn (int $id, int $position): array => ['op' => 'set_values', 'record' => $id, 'values' => [(string) $field => (string) $position]], array_keys($changes), $changes));
     }
 }
