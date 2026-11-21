@@ -3908,8 +3908,13 @@
 
 	var cache = {};
 
+	// A form field named «id» shadows form.id, so the attribute is read.
+	function idOf( form ) {
+		return form && form.getAttribute ? form.getAttribute( 'id' ) || '' : '';
+	}
+
 	function formOf( element ) {
-		return element.getAttribute( 'form' ) || ( element.form ? element.form.id : '' ) || '';
+		return element.getAttribute( 'form' ) || idOf( element.form );
 	}
 
 	function relationOf( name ) {
@@ -4011,7 +4016,7 @@
 	document.addEventListener( 'taxmod:chosen', function ( event ) {
 		var detail   = event.detail || {};
 		var relation = relationOf( detail.field );
-		var form     = detail.form && detail.form.id ? detail.form.id : '';
+		var form     = idOf( detail.form );
 
 		if ( ! relation ) {
 			return;

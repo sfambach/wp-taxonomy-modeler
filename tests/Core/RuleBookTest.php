@@ -36,6 +36,21 @@ final class RuleBookTest extends TestCase
         self::assertNull($later->first([], [40 => ['5']]), 'an operator not built yet never holds');
     }
 
+    public function testLiesBelowHoldsForTheNodeAndEveryNodeBelowIt(): void
+    {
+        // D-1563: Bauform (field 40) «SMD» = 9; «0603» = 91 lies below it, «THT» = 8 does not. The caller hands in the nodes above.
+        $book  = new RuleBook([['id' => 5, 'position' => 0, 'conditions' => [], 'filters' => [['field' => 40, 'value' => '9', 'operator' => RuleBook::BELOW]]]]);
+        $above = ['91' => ['1', '9'], '8' => ['1'], '9' => ['1']];
+
+        self::assertSame([40], $book->fieldsBelow(), 'only the fields of «liegt unter» need the nodes above');
+        self::assertSame(5, $book->first([], [40 => ['91']], null, $above), 'a value below the node holds');
+        self::assertSame(5, $book->first([], [40 => ['9']], null, $above), 'the node itself holds');
+        self::assertNull($book->first([], [40 => ['8']], null, $above), 'a value beside it does not');
+        self::assertNull($book->first([], [40 => ['91']]), 'without the nodes above, a value is only itself');
+        self::assertNull($book->first([], [], null, $above), 'a thing without the field fails the filter');
+        self::assertSame([], (new RuleBook([['id' => 1, 'position' => 0, 'conditions' => [], 'filters' => [['field' => 40, 'value' => '9']]]]))->fieldsBelow());
+    }
+
     public function testNoRuleHoldsGivesNullForTheCallersDefault(): void
     {
         self::assertNull((new RuleBook([['id' => 1, 'position' => 0, 'conditions' => [1 => 7]]]))->first([1 => [5]]));
