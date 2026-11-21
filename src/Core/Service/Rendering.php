@@ -593,6 +593,9 @@ final class Rendering implements Presets, \Taxmod\Core\Port\FieldAddons
 
         // *Wer eine Revision hält, kann sich mit jedem Schreiben ändern (D-903).*
         $this->gehaltenAn = [];
+        // *Die gemerkten Worte tragen die Werte der Sätze in sich — nach einem Schreiben neu.*
+        $this->gemerkteWorte         = [];
+        $this->gemerkteAngebotsWorte = [];
     }
 
     /**
@@ -5268,6 +5271,20 @@ final class Rendering implements Presets, \Taxmod\Core\Port\FieldAddons
             return $leer;
         }
 
+        // ⚠️ **Die Worte aller angebotenen Sätze einmal je Angebot, nicht je Zeile** (`CD-7`, D-1482 Nachtrag 3). *Gemessen am 2026-11-21
+        // live: das Feld «Revisionen» eines Bauplans 15,7 s bei 108 Abfragen — jede Position der Stückliste lief für ihren Wähler «Part»
+        // alle Sätze unter dem Ziel neu durch, obwohl sich von Zeile zu Zeile nur der gewählte Satz und die Vorbelegung ändern. Was nicht
+        // von der Zeile abhängt, hängt an: den Kanten, dem Zweck, den Sätzen und der mitgebrachten Feldwahl.*
+        $geordnet = $satzIds;
+        sort($geordnet);
+        $schluessel = implode(',', array_map(static fn (Relation $r): int => $r->id, $betroffen)) . '|' . $purpose->name . '|' . md5(implode(',', $geordnet)) . '|' . md5(serialize($feldwahl));
+
+        if (isset($this->gemerkteWorte[$schluessel])) {
+            [$wort, $eigenesWort, $suche, $felder, $werte] = $this->gemerkteWorte[$schluessel];
+
+            return $this->summaryAnswer($leer, $betroffen, $values, $ownerValues, $mehrfach, $feldwahl, $purpose, $ziele, $angebote, $saetzeJeKnoten, $unterZiel, $wort, $eigenesWort, $suche, $felder, $werte, $schluessel);
+        }
+
         [$saetze, $werte] = $this->gemerkteSaetze($satzIds);
 
         // ⚠️ *Die Halter der Revisionen gleich mitladen — ihr Wort steht vor dem des Satzes (D-903), samt ihren inneren Verweisen.*
@@ -5450,7 +5467,21 @@ final class Rendering implements Presets, \Taxmod\Core\Port\FieldAddons
             $besitzerJeKnoten = [];
             $alleBesitzer     = [];
 
-            foreach ($this->gemerkteKnoten(array_keys($knotenIds)) as $knoten) {
+            $satzKnoten = $this->gemerkteKnoten(array_keys($knotenIds));
+            $zuLaden    = [];
+
+            foreach ($satzKnoten as $knoten) {
+                foreach ($this->framework->inheritanceOwnersOf($knoten) as $besitzerId) {
+                    $zuLaden[$besitzerId] = true;
+                }
+            }
+
+            // ⚠️ **Die Einstellungen aller Knoten und Besitzer in einem Zug** (`CD-7`, D-1482 Nachtrag 3). *Gemessen am 2026-11-21 an
+            // «Variante von»: 565 Abfragen für ein Feld — je Knoten unter dem Ziel fragte {@see SettingsResolver::listOf()} seine
+            // Zeilen, das Objekt dahinter und dessen Zeilen einzeln, drei Abfragen je Knoten.*
+            $this->resolver->preload(array_values($this->gemerkteKnoten(array_keys($zuLaden))));
+
+            foreach ($satzKnoten as $knoten) {
                 $besitzerJeKnoten[$knoten->id] = $this->framework->inheritanceOwnersOf($knoten);
                 $alleBesitzer                  = [...$alleBesitzer, ...$besitzerJeKnoten[$knoten->id]];
 
@@ -5978,19 +6009,51 @@ final class Rendering implements Presets, \Taxmod\Core\Port\FieldAddons
             }
         }
 
+        $this->gemerkteWorte[$schluessel] = [$wort, $eigenesWort, $suche, $felder, $werte];
+
+        return $this->summaryAnswer($leer, $betroffen, $values, $ownerValues, $mehrfach, $feldwahl, $purpose, $ziele, $angebote, $saetzeJeKnoten, $unterZiel, $wort, $eigenesWort, $suche, $felder, $werte, $schluessel);
+    }
+
+    /**
+     * @var array<string, array{0: \Closure, 1: \Closure, 2: array<int, string>, 3: array<int, list<int>>, 4: array<int, list<object>>}>
+     *      what {@see self::summariesOf()} worked out for one offer, kept while this page is drawn — emptied by {@see self::forgetRecords()}
+     */
+    private array $gemerkteWorte = [];
+
+    /** @var array<string, array<string, string>> the words {@see self::summaryAnswer()} said for the records of one offer */
+    private array $gemerkteAngebotsWorte = [];
+
+    /**
+     * The part of {@see self::summariesOf()} that belongs to one row: the word of its chosen record, its presets, its offer and tree.
+     *
+     * @param array<string, array<int, mixed>> $leer
+     * @param list<Relation>                   $betroffen
+     * @return array<string, array<int, mixed>>
+     */
+    private function summaryAnswer(array $leer, array $betroffen, array $values, array $ownerValues, array $mehrfach, array $feldwahl, Purpose $purpose, array $ziele, array $angebote, array $saetzeJeKnoten, array $unterZiel, \Closure $wort, \Closure $eigenesWort, array $suche, array $felder, array $werte, string $schluessel): array
+    {
         $aus = $leer;
 
         // D-1281: sind die gewählten Felder eines Satzes leer, heisst er wie ohne Wahl (erstes Textfeld mit Wert), nicht «#<id>» — sein
         // Wort «schauen wo evtl noch nummern drinne stehen und das beheben»; rund 650 Materialien hiessen so, obwohl die Bezeichnung stand.
         // Nur, wo die Wahl aus dem Modell kommt: wer die Felder selbst mitbringt (Vergleich, eine Zelle je Feld), bekommt weiter die leere Zelle.
-        $wortOderName = static function (int $satzId, array $feldIds, bool $mitgebracht) use ($wort, $eigenesWort): string {
+        // *Das Wort eines Satzes hängt an Satz und Feldwahl, nicht an der Zeile — je Angebot einmal gebildet (D-1482 Nachtrag 3).*
+        $gesagtes     = &$this->gemerkteAngebotsWorte[$schluessel];
+        $gesagtes   ??= [];
+        $wortOderName = static function (int $satzId, array $feldIds, bool $mitgebracht) use ($wort, $eigenesWort, &$gesagtes): string {
+            $stelle = $satzId . '|' . implode(',', $feldIds) . '|' . ($mitgebracht ? '1' : '0');
+
+            if (isset($gesagtes[$stelle])) {
+                return $gesagtes[$stelle];
+            }
+
             $gesagt = $wort($satzId, $feldIds);
 
             if ($mitgebracht || $gesagt !== '#' . $satzId) {
-                return $gesagt;
+                return $gesagtes[$stelle] = $gesagt;
             }
 
-            return $eigenesWort($satzId, [], 0, true);
+            return $gesagtes[$stelle] = $eigenesWort($satzId, [], 0, true);
         };
 
         foreach ($betroffen as $relation) {

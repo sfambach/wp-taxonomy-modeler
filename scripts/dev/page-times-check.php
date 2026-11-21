@@ -156,8 +156,8 @@ if ($preview !== null) {
         $say(array_filter($counted, static fn (array $one): bool => $one['kb'] < 100 || array_keys($one['markup']) !== ['tags', 'classes'] || array_filter(array_merge($one['markup']['tags'], $one['markup']['classes']), static fn (mixed $n): bool => ! is_int($n)) !== []) === [], 'ein großes Feld (ab 100 KB) zählt sein Markup aus: Elemente und Klassen, nur Zahlen (Nachtrag 3)');
         $asked = is_array($answer) ? array_filter($answer['fields'], static fn (array $one): bool => isset($one['statements'])) : [];
         $say(array_filter($asked, static fn (array $one): bool => $one['queries'] < 50 || preg_match('/\'|\d/', implode('', array_keys($one['statements']))) === 1) === [], 'ein Feld mit vielen Abfragen (ab 50) nennt deren Formen: kein Text, keine Zahl darin (Nachtrag 3)');
-        $shape = (new ReflectionMethod(\Taxmod\WordPress\Admin\NodesScreen::class, 'statementShape'))->invoke(null, "SELECT a FROM t WHERE id IN (12, 13,14) AND name = 'O\\'Neil 7' AND x = 4.5");
-        $say($shape === 'SELECT a FROM t WHERE id IN (?…) AND name = ? AND x = ?', 'die Form einer Anweisung trägt weder Text noch Zahl — ' . $shape);
+        $shape = (new ReflectionMethod(\Taxmod\WordPress\Admin\NodesScreen::class, 'statementShape'))->invoke(null, "SELECT a FROM t WHERE id IN (12, 13,14) AND name = 'O\\'Neil 7' AND x = 4.5 AND h = 0x1F");
+        $say($shape === 'SELECT a FROM t WHERE id IN (?…) AND name = ? AND x = ? AND h = ?', 'die Form einer Anweisung trägt weder Text noch Zahl — ' . $shape);
         $say(is_array($answer) && in_array('admin side, whole', array_column($answer['steps'], 'step'), true), 'und beide Seiten als Ganzes');
         $say(is_array($answer) && ! str_contains((string) wp_json_encode($answer), (string) $row['word']), 'kein Wert des Satzes steht in der Antwort');
 
@@ -168,6 +168,46 @@ if ($preview !== null) {
     wp_set_current_user(0);
     $say($preview->check_permissions(['node' => 1, 'record' => 1]) !== true, 'ohne Anmeldung verschlossen');
     wp_set_current_user(1);
+}
+
+// ⚠️ *`CD-7`, gemessen am 2026-11-21 live an «Variante von»: 565 Abfragen für ein Feld, drei je Knoten unter seinem Ziel
+// (D-1482, Nachtrag 3). Ein Wähler über Sätze fragt die Einstellungen aller Knoten in einem Zug — mehr Knoten, gleiche Zahl.*
+echo "\nEin Wähler fragt nicht je Knoten (CD-7)\n";
+
+$apply = wp_get_ability('taxmod/apply');
+$model = (int) get_option('taxmod_branch_model_id', 0);
+$text  = (new \Taxmod\WordPress\Persistence\WpdbNodeRepository())->byImplementations([\Taxmod\Core\Model\Type\TextType::class])[\Taxmod\Core\Model\Type\TextType::class]->id ?? 0;
+
+if ($apply === null || $preview === null || $model === 0 || $text === 0) {
+    $say(false, 'Gerüst fehlt (apply, preview-times, Model, Text)');
+} else {
+    $kinder = static fn (int|string $unter, string $kennung, int $von, int $bis): array => array_merge(...array_map(static fn (int $i): array => [
+        ['op' => 'create_node', 'ref' => $kennung . $i, 'name' => '__pt Art ' . $kennung . $i, 'parent' => $unter],
+        ['op' => 'create_record', 'ref' => $kennung . 's' . $i, 'node' => '@' . $kennung . $i],
+    ], range($von, $bis)));
+    $geruest = $apply->execute(['changes' => [
+        ['op' => 'create_node', 'ref' => 'teil', 'name' => '__pt Teil', 'parent' => $model],
+        ['op' => 'add_field', 'node' => '@teil', 'name' => '__pt Name', 'target' => $text, 'kind' => 'composition', 'multiplicity' => '0..1'],
+        ['op' => 'create_node', 'ref' => 'halter', 'name' => '__pt Halter', 'parent' => $model],
+        ['op' => 'add_field', 'node' => '@halter', 'name' => '__pt Wahl', 'target' => '@teil', 'kind' => 'aggregation', 'multiplicity' => '0..1'],
+        ['op' => 'create_record', 'ref' => 'satz', 'node' => '@halter'],
+        ...$kinder('@teil', 'a', 1, 3),
+    ]]);
+
+    if (is_wp_error($geruest)) {
+        $say(false, 'Gerüst: ' . $geruest->get_error_message());
+    } else {
+        $ask   = static function () use ($preview, $geruest): int {
+            $answer = $preview->execute(['node' => (int) $geruest['refs']['halter'], 'record' => (int) $geruest['refs']['satz']]);
+
+            return is_array($answer) ? (int) $answer['total_queries'] : -1;
+        };
+        $wenige = $ask();
+        $mehr   = $apply->execute(['changes' => $kinder((int) $geruest['refs']['teil'], 'b', 1, 12)]);
+        $viele  = is_wp_error($mehr) ? -2 : $ask();
+
+        $say($wenige > 0 && $viele === $wenige, "drei Knoten unter dem Ziel oder fünfzehn: gleich viele Abfragen — {$wenige}, dann {$viele}");
+    }
 }
 
 printf("\n%s\n", $failed === 0 ? 'all green' : sprintf('%d FEHLER', $failed));
