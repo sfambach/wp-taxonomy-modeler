@@ -7976,9 +7976,12 @@ final class Rendering implements Presets, \Taxmod\Core\Port\FieldAddons
         // ⚠️ *In einer Abfrage für alle offenen Ziele zusammen (`CD-7`), nicht einer je Zeile.*
         if ($offen !== []) {
             $kinder = $this->gemerkteSichtbareKinder(array_values(array_unique($offen)));
+            $teile  = $this->compositionTargetsWithOwnFields($relations, $offen, $kinder);
 
             foreach ($offen as $relationId => $targetId) {
-                if (($kinder[$targetId] ?? []) !== []) {
+                // ⚠️ *D-541: «hat es eigene Felder, braucht er einen Teil; hat es nur Kinder, wählt man eines aus.» Seit Schritt 4 hat
+                // «Einheitenwert» Kinder (D-1559), und jede Polzahl wurde eine Auswahl aus «Frequenz, Länge …» — sein Befund 21.11. 17:08.*
+                if (($kinder[$targetId] ?? []) !== [] && ! isset($teile[$relationId])) {
                     $types[$relationId] = SimpleType::NodeRef;
                     unset($offen[$relationId]);
                 }
@@ -8023,6 +8026,40 @@ final class Rendering implements Presets, \Taxmod\Core\Port\FieldAddons
         }
 
         return $types;
+    }
+
+    /**
+     * The compositions among the open ones whose target has children and declares fields of its own: a part, not a choice
+     * ([D-541](../../../docs/NewConcept/90-decision-log.md)). One read for all (`CD-7`).
+     *
+     * @param  list<Relation>         $relations
+     * @param  array<int, int>        $offen     relation id => target id
+     * @param  array<int, list<Node>> $kinder    target id => visible children
+     * @return array<int, true>       by relation id
+     */
+    private function compositionTargetsWithOwnFields(array $relations, array $offen, array $kinder): array
+    {
+        $gefragt = [];
+
+        foreach ($relations as $relation) {
+            if (isset($offen[$relation->id]) && $relation->kind === RelationKind::Composition && ($kinder[$relation->toNodeId] ?? []) !== []) {
+                $gefragt[$relation->id] = $relation->toNodeId;
+            }
+        }
+
+        if ($gefragt === [] || $this->relations === null) {
+            return [];
+        }
+
+        $mitFeldern = [];
+
+        foreach ($this->relations->fieldRelationsOf(array_values(array_unique($gefragt))) as $feld) {
+            if (! $feld->isSetting()) {
+                $mitFeldern[$feld->fromNodeId] = true;
+            }
+        }
+
+        return array_map(static fn (): bool => true, array_filter($gefragt, static fn (int $ziel): bool => isset($mitFeldern[$ziel])));
     }
 
     /**

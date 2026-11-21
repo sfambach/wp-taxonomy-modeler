@@ -3100,6 +3100,27 @@ final class RenderingTest extends TestCase
         self::assertSame('KF2510' . SummaryRenderer::SEPARATOR . '1 m', $texte[$gleich] ?? null, 'the same end once');
     }
 
+    /**
+     * D-541: «hat es eigene Felder, braucht er einen Teil; hat es nur Kinder, wählt man eines aus.» His finding 21.11. 17:08: since
+     * «Einheitenwert» has child data elements (D-1559), «Polzahl» was a choice among «Frequenz, Länge …».
+     */
+    #[Test]
+    public function a_part_with_fields_of_its_own_stays_a_part_when_it_gets_children(): void
+    {
+        $ende     = $this->thing('Steckseite');
+        $wertTyp  = $this->editor->createNode('Einheitenwert', $this->branchRoot['compositions']->id);
+        $this->editor->addField($wertTyp->id, $this->type('Decimal')->id, 'wert');
+        $this->editor->createNode('Frequenz', $wertTyp->id);
+        $pole     = $this->editor->addField($ende->id, $wertTyp->id, 'polzahl', RelationKind::Composition);
+        $arten    = $this->thing('Steckertypen');
+        $this->editor->createNode('D-Sub', $arten->id);
+        $typ      = $this->editor->addField($ende->id, $arten->id, 'steckertyp', RelationKind::Aggregation);
+        $this->neuZeichnen();
+
+        self::assertNotSame(SimpleType::NodeRef, $this->rendering->typeAt($pole), 'a composition onto a node with fields of its own is a part');
+        self::assertSame(SimpleType::NodeRef, $this->rendering->typeAt($typ), 'a choice list stays a choice');
+    }
+
     /** D-1366: a composed field (D-888) speaks its parts in their own words, as the chooser does. */
     #[Test]
     public function a_composed_field_names_its_parts_by_their_own_choice(): void
