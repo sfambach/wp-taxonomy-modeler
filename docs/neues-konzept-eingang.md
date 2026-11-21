@@ -1453,6 +1453,13 @@ Anlass: [INF-073](#inf-073--bestand-und-fertigung-vom-wareneingang-über-die-pla
 - **Offen:** Wo eine Druckfrage den Posten, Einkauf oder Prozess hernimmt (beim Material-Etikett gibt es keinen), und ob ein Filter, dessen Art nicht auflösbar ist, dann nie hält (wie ein nicht gebauter Operator, [D-1541](NewConcept/90-decision-log.md)).
 - **Nicht entschieden. Keine Annahme gebaut.**
 
+## INF-147 · Arbeitsplatz als «Wenn»-Art der Regeln (2026-11-21)
+
+- **Anlass:** [D-1571](NewConcept/90-decision-log.md), Prüftor 21.11. Das feste Feld «Arbeitsplatz» der Druckregel fällt weg. Gemessen 21.11.: In keiner der 26 Druckregeln steht ein Arbeitsplatz.
+- **Beschluss dazu:** [D-1571](NewConcept/90-decision-log.md): «Wenn»-Zeilen fragen erst die Art (Feld · Bestand · Einkauf · Prozess), dann Feld · Operator · Wert. [D-1502](NewConcept/90-decision-log.md): der Arbeitsplatz ist ein Stammdatum je Benutzer.
+- **Offen:** Soll eine Regel nach dem Arbeitsplatz unterscheiden, an dem gedruckt wird? Das wäre eine Art, die nicht den gedruckten Satz liest, sondern den Ort, an dem gedruckt wird.
+- **Nicht entschieden. Nicht bauen.**
+
 ## INF-146 · Anzeigesprache der Admin-Formulare nach Benutzer (2026-11-21)
 
 - **Anlass:** Live-Check 4 (Prüftor 21.11.). Der Hilfetext «Text» (Knoten 1175) stand nach Akt 603821 deutsch unter de_DE, im Formular aber weiter englisch. Ursache: Die Admin-Formulare zeichnen in der Standardsprache (`taxmod_neutral_locale`, live `en_US`), nicht in der Sprache des Benutzers.

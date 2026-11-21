@@ -4625,6 +4625,10 @@ final class Rendering implements Presets, \Taxmod\Core\Port\FieldAddons
         int $recordId = 0,
         /** Das Formular, zu dem die Felder gehören, wenn sie ausserhalb von ihm stehen — die bearbeitbare Vorschau (D-785). */
         string $formId = '',
+        /** D-1571: a compact form's optional fields, relation id → empty; see {@see Surroundings::$addable}. @var array<int, bool> */
+        array $addable = [],
+        /** @var array<string, string> */
+        array $addWords = [],
     ): RenderResult {
         // ⚠️ *Der gezeichnete Knoten gilt als «schon besucht» — sonst klappt ein Feld, das auf ihn
         // selbst zeigt, ihn ein zweites Mal auf. Genau das war auf `DisplayOption` zu sehen.*
@@ -4648,7 +4652,7 @@ final class Rendering implements Presets, \Taxmod\Core\Port\FieldAddons
                 locale: $locale,
                 level: $level,
                 editable: $editable,
-                surroundings: new Surroundings(parts: $parts),
+                surroundings: new Surroundings(parts: $parts, addable: $addable, addWords: $addWords),
             )
         );
     }

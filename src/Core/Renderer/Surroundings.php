@@ -266,6 +266,15 @@ final class Surroundings
          * @var array<int, string>
          */
         public readonly array $swatches = [],
+        /**
+         * D-1571: a compact form's optional fields — relation id → true while empty (the form adds it by «+»), false once it holds
+         * a value (shown, ✕ takes it away). A field not listed always shows.
+         *
+         * @var array<int, bool>
+         */
+        public readonly array $addable = [],
+        /** D-1571: the words of «+ Festlegung» — `add` the button, `remove` the ✕, `choose` the choice's empty entry. @var array<string, string> */
+        public readonly array $addWords = [],
     ) {
     }
 

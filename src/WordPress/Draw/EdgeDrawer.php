@@ -113,7 +113,7 @@ final class EdgeDrawer implements Drawer
                 . '<span class="taxmod-repeatable-value">' . $this->draw($e['value']) . '</span>'
                 . ($e['remove'] === null ? '' : '<span class="taxmod-repeatable-act">' . $this->draw($e['remove']) . '</span>') . '</li>', $piece->entries)) . '</ul>'
                 . ($piece->add === null ? '' : '<div class="taxmod-repeatable-add">' . $this->draw($piece->add) . '</div>'),
-            $piece instanceof FormView   => $piece->lines === [] ? '' : '<div class="taxmod-form">' . implode('', array_map($this->formLine(...), $piece->lines)) . '</div>',
+            $piece instanceof FormView   => $piece->lines === [] ? '' : '<div class="taxmod-form">' . implode('', array_map(fn (array $zeile): string => $this->formLine($zeile, $piece->addWords), $piece->lines)) . $this->formAdding($piece) . '</div>',
             $piece instanceof RecordView => $this->record($piece),
             $piece instanceof ComplexView => $this->complex($piece),
             $piece instanceof UnfoldingSummary => '<details class="taxmod-complex-link"><summary>' . self::e($piece->words) . '</summary>' . $this->draw($piece->part) . '</details>',
@@ -661,12 +661,36 @@ final class EdgeDrawer implements Drawer
     }
 
     /** @param array{name: string, field: ?Describes, hint: string} $zeile */
-    private function formLine(array $zeile): string
+    /** @param array<string, string> $words D-1571: `remove` names the ✕ of an optional field */
+    private function formLine(array $zeile, array $words = []): string
     {
-        return $zeile['field'] === null
-            ? '<div class="taxmod-form-group"><span class="taxmod-form-group-name">' . self::e($zeile['name']) . '</span></div>'
-            : '<div class="taxmod-form-row"><span class="taxmod-form-label">' . self::e($zeile['name']) . '</span>'
-                . '<span class="taxmod-form-field">' . $this->draw($zeile['field']) . '</span>' . HintMarkup::icon($zeile['hint']) . '</div>';
+        if ($zeile['field'] === null) {
+            return '<div class="taxmod-form-group"><span class="taxmod-form-group-name">' . self::e($zeile['name']) . '</span></div>';
+        }
+
+        // D-1571: an optional field of a compact form carries its relation; empty, it waits hidden for «+», and ✕ takes it away.
+        $optional = isset($zeile['addable'], $zeile['relation']);
+
+        return '<div class="taxmod-form-row"' . ($optional ? ' data-taxmod-optional="' . (int) $zeile['relation'] . '"' . ($zeile['addable'] ? ' hidden' : '') : '') . '>'
+            . '<span class="taxmod-form-label">' . self::e($zeile['name']) . '</span>'
+            . '<span class="taxmod-form-field">' . $this->draw($zeile['field'])
+            . ($optional ? ' <button type="button" class="button ' . ControlMarkup::ICON_ONLY . ' taxmod-field-remove" style="color:#b32d2e">'
+                . IconMarkup::dashicon('trash', $words['remove'] ?? '') . '</button>' : '')
+            . '</span>' . HintMarkup::icon($zeile['hint']) . '</div>';
+    }
+
+    /** D-1571: «+ Festlegung» — the standard choice of the empty optional fields with the standard «+» beside it (D-1511 rule 3). */
+    private function formAdding(FormView $form): string
+    {
+        $offered = $form->adding();
+
+        if ($offered === []) {
+            return '';
+        }
+
+        return '<div class="taxmod-form-row taxmod-form-adding"><span class="taxmod-form-label">' . self::e($form->addWords['add'] ?? '') . '</span>'
+            . '<span class="taxmod-form-field">' . SelectMarkup::select(Choosing::offer('', array_map('strval', $offered), null, true, nothingWord: $form->addWords['choose'] ?? ''), ['class' => 'taxmod-field-choice'])
+            . SelectMarkup::add(new \Taxmod\Core\Description\AddChosen($form->addWords['add'] ?? '', true), 'taxmod-field-add') . '</span></div>';
     }
 
     private function record(RecordView $r): string

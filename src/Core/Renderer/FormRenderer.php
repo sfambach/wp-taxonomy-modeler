@@ -76,10 +76,10 @@ final class FormRenderer extends RendererNode
             }
 
             $usedRelations = [...$usedRelations, ...$part->result->usedRelations];
-            $rows      = [...$rows, ...$this->row($part)];
+            $rows      = [...$rows, ...$this->row($part, $context->surroundings->addable)];
         }
 
-        return RenderResult::described(new FormView($rows), ...array_values(array_unique($usedRelations)));
+        return RenderResult::described(new FormView($rows, $context->surroundings->addWords), ...array_values(array_unique($usedRelations)));
     }
 
     /**
@@ -151,7 +151,8 @@ final class FormRenderer extends RendererNode
      * trennt.*
      */
     /** @return list<array{name: string, field: ?\Taxmod\Core\Description\Describes, hint: string}> */
-    private function row(RenderedField $part): array
+    /** @param array<int, bool> $addable D-1571: relation id → empty (true) or holding a value (false) */
+    private function row(RenderedField $part, array $addable = []): array
     {
         $stueck = $part->result->piece();
 
@@ -164,6 +165,8 @@ final class FormRenderer extends RendererNode
             return [['name' => $part->relation->name, 'field' => null, 'hint' => ''], ...$stueck->lines];
         }
 
-        return [['name' => $part->relation->name, 'field' => $stueck, 'hint' => $part->hint]];
+        $line = ['name' => $part->relation->name, 'field' => $stueck, 'hint' => $part->hint];
+
+        return [isset($addable[$part->relation->id]) ? $line + ['relation' => $part->relation->id, 'addable' => $addable[$part->relation->id]] : $line];
     }
 }
