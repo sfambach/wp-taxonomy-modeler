@@ -51,6 +51,8 @@ $built = wp_get_ability('taxmod/apply')->execute(['changes' => [
     ['op' => 'add_field', 'ref' => 'bauform', 'node' => '@p', 'target' => $text, 'name' => '__fcc Bauform'],
     ['op' => 'create_node', 'ref' => 'z', 'name' => '__fcc Widerstände', 'parent' => '@p'],
     ['op' => 'add_field', 'ref' => 'wert', 'node' => '@z', 'target' => $text, 'name' => '__fcc Widerstandswert'],
+    // A tree, not a flat level: a grandchild makes the chooser a tree (D-1543).
+    ['op' => 'create_node', 'ref' => 'smd', 'name' => '__fcc SMD-Widerstände', 'parent' => '@z'],
     ['op' => 'create_node', 'ref' => 'f', 'name' => '__fcc Filter', 'parent' => $model],
     ['op' => 'add_field', 'ref' => 'feld', 'node' => '@f', 'target' => $int, 'name' => '__fcc Feld'],
     ['op' => 'add_field', 'ref' => 'fwert', 'node' => '@f', 'target' => $text, 'name' => '__fcc Wert'],
@@ -84,7 +86,10 @@ check('… and those it inherits from the nodes above', str_contains($drawn, '__
 check('… the stored field is chosen, stored as its relation id', (bool) preg_match('/value="' . $ref['wert'] . '"[^>]*selected/', $drawn), $drawn);
 // A rule's node is a node of the tree, not a record — as a data job sets it at «Knoten» and «Wofür».
 $editor = is_array($set) ? (string) apply_filters(\Taxmod\WordPress\Plugin::RECORD_EDITOR_FILTER, '', (int) $set['refs']['rule'], '') : '';
-check('with the chooser at «Knoten» the rule chooses a node of the tree, not a record', (bool) preg_match('/value="' . $ref['z'] . '" selected>__fcc Widerstände/', $editor) && ! str_contains($editor, 'taxmod-record-search'), substr($editor, 0, 3000));
+$knoten = (string) preg_replace('/^.*?(<div class="taxmod-chooser[^"]*"[^>]*>(?:(?!<div class="taxmod-chooser).)*?\\[' . $ref['knoten'] . '\\].*?)(?=<div class="taxmod-chooser|$).*$/s', '$1', $editor);
+check('with the chooser at «Knoten» the rule chooses a node of the tree, not a record', (bool) preg_match('/value="' . $ref['z'] . '"[^>]*checked/', $knoten) && ! str_contains($editor, 'taxmod-record-search'), substr($knoten, 0, 3000));
+// D-1543, his word 21.11. 06:55: «bei Formularen das immer der Button ist und dann Dialog und nicht Inline».
+check('D-1543: in a form the tree chooser is the field with the tree button and opens a dialog, never an inline tree', str_contains($knoten, 'taxmod-pick-tree') && str_contains($knoten, 'taxmod-dialog-switch') && ! str_contains($knoten, 'taxmod-chooser-open'), substr($knoten, 0, 3000));
 check('… and no field of another node is offered', ! str_contains($drawn, '__fcc Feld<') && ! str_contains($drawn, '__fcc Knoten<'), $drawn);
 
 echo $bad === 0 ? "\nall green\n" : "\n$bad failed\n";
