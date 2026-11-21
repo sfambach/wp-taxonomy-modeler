@@ -1410,3 +1410,8 @@ Anlass: [INF-073](#inf-073--bestand-und-fertigung-vom-wareneingang-über-die-pla
 - **Heute:** nur per Datenjob über die Queue (gemacht für die THT-Widerstände, 21.11.). In der Oberfläche gibt es Sammelfunktionen nur je Liste ([D-1403](NewConcept/90-decision-log.md)), keine Auswahl «Knoten + Filter» und kein «Werte setzen» für viele Sätze.
 - **Offen:** Auswahl wie bei den Regeln ([D-1552](NewConcept/90-decision-log.md): Knoten + Filter)? Welche Felder dürfen in Masse geändert werden (Lager-Werte, Umbuchen)? Rolle «Supervisor» — gibt es sie, und was darf sie? Vorschau und ein Akt, rückgängig ([D-1410](NewConcept/90-decision-log.md))?
 - **Nicht entschieden. Keine Annahme gebaut.**
+
+## INF-140 · Welche Felder «Je Variante» außer Bilder, Pins, Pinbelegung? (2026-11-21)
+
+- **Anlass:** Stefan 21.11. «varianten erstellen war nicht möglich» — live fehlte das Feld «Variante von» (Plan-Schritt 8 von [D-1208](NewConcept/90-decision-log.md) nie gelaufen). Der Datenjob setzt «Je Variante» nur an den drei Feldern, die D-1208 ausdrücklich nennt: Bilder, mit/ohne Pins, Pinbelegung.
+- **Offen:** D-1208 nennt «etwa Farbe oder Pins» nur als Beispiel. Soll «Farbe» (und weitere, z. B. Ausrichtung) je Variante eigen sein? Ohne Antwort bleibt Farbe am Vater.
