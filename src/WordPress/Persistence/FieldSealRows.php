@@ -2,72 +2,149 @@
 
 namespace Taxmod\WordPress\Persistence;
 
+use Taxmod\Core\Privacy\Confidentiality;
 use Taxmod\Core\Addon\AddonRegistry;
 use Taxmod\Core\Addon\ConfidentialAddon;
+use Taxmod\Core\Model\RecordType;
 use Taxmod\Core\Privacy\FieldCipher;
 
 /**
- * The queries of the confidential fields (D-1514): which edges carry «Vertraulich», and the rows still plain on them in
+ * The queries of the confidential fields (D-1514, D-1578): which edges and nodes say «Vertraulich», and the rows on them in
  * the live table, the shadow table and the chronicle. The data layer's part; sealing itself is `Privacy\FieldSeal`'s.
  *
  * @see docs/pakete/vertraulich/konzept.md
  */
 final class FieldSealRows
 {
-    /** @return list<int> the edges with an active «Vertraulich» */
-    public static function confidentialRelationIds(): array
+    /**
+     * In one statement: the edges with an active «Vertraulich» (D-1514) and what nodes say for an edge (D-1578).
+     *
+     * @return array{edges: array<int, true>, overrides: array<int, array<int, bool>>}
+     */
+    public static function confidentialPlan(): array
     {
         global $wpdb;
 
-        $ids = Query::column('Vertrauliche Kanten lesen', $wpdb->prepare(
-            'SELECT DISTINCT v.relation_id FROM ' . Schema::table('settings_value') . ' v
+        $root = (int) get_option(SeededFrameworkNodes::ROOT_OPTION, 0);
+        $rows = Query::rows('Vertrauliche Kanten und Knoten lesen', $wpdb->prepare(
+            'SELECT 0 AS node_id, v.relation_id, 1 AS said FROM ' . Schema::table('settings_value') . ' v
              JOIN ' . Schema::table('settings_object') . ' o ON o.id = v.wert_settings_object_id
-             WHERE v.attribut = %s AND v.relation_id IS NOT NULL AND v.aktiv = 1 AND o.klasse = %s',
+             WHERE v.attribut = %s AND v.relation_id IS NOT NULL AND v.aktiv = 1 AND o.klasse = %s
+             UNION ALL
+             SELECT s.node_id, s.relation_id, w.value_int AS said FROM ' . Schema::table('node_records') . ' s
+             JOIN ' . Schema::table('relation_records') . ' w ON w.node_record_id = s.id
+             JOIN ' . Schema::table('relations_named') . ' k ON k.id = w.relation_id
+             WHERE s.record_type = %s AND s.relation_id > 0 AND k.from_node_id = %d AND k.name = %s AND k.kind = %s AND w.value_int IS NOT NULL',
             AddonRegistry::ATTRIBUTE,
-            ConfidentialAddon::class
+            ConfidentialAddon::class,
+            RecordType::Settings->value,
+            $root,
+            Confidentiality::SETTING,
+            'setting'
         ));
 
-        return array_map(intval(...), $ids ?: []);
+        $edges     = [];
+        $overrides = [];
+
+        foreach ($rows ?: [] as $row) {
+            if ((int) $row['node_id'] === 0) {
+                $edges[(int) $row['relation_id']] = true;
+            } else {
+                $overrides[(int) $row['relation_id']][(int) $row['node_id']] = (int) $row['said'] !== 0;
+            }
+        }
+
+        return ['edges' => $edges, 'overrides' => $overrides];
     }
 
     /**
-     * How many rows of `relation_records` or `relation_records_history` still hold a plain text on these edges.
+     * The node of each record, in one statement.
      *
-     * @param list<int> $kanten
+     * @param list<int> $recordIds
+     * @return array<int, int> record id → node id
      */
-    public static function plainCount(string $tabelle, array $kanten): int
+    public static function nodesOfRecords(array $recordIds): array
     {
         global $wpdb;
 
-        [$wo, $params] = self::plainWhere($kanten);
+        $ids = array_values(array_unique(array_filter(array_map(intval(...), $recordIds))));
 
-        return (int) Query::value('Klartext an vertraulichen Kanten zählen', $wpdb->prepare('SELECT COUNT(*) FROM ' . Schema::table(self::valueTable($tabelle)) . $wo, ...$params));
+        if ($ids === []) {
+            return [];
+        }
+
+        $rows = Query::rows('Knoten der Saetze lesen', $wpdb->prepare(
+            'SELECT id, node_id FROM ' . Schema::table('node_records') . ' WHERE id IN (' . implode(',', array_fill(0, count($ids), '%d')) . ')',
+            ...$ids
+        ));
+        $aus  = [];
+
+        foreach ($rows ?: [] as $row) {
+            $aus[(int) $row['id']] = (int) $row['node_id'];
+        }
+
+        return $aus;
     }
 
     /**
-     * Up to `$limit` such rows with their key, edge and text.
+     * D-1578: the rows of a value table on these edges with the node of their record — plain and non-empty, or (`$sealed`)
+     * sealed; which of them have to change is decided per node, so the rows come without their text, a page after `$afterId`.
      *
      * @param list<int> $kanten
-     * @return list<array{id: int, version: ?int, relation_id: int, text: string}>
+     * @return list<array{id: int, version: ?int, relation_id: int, node_id: int}>
      */
-    public static function plainRows(string $tabelle, array $kanten, int $limit): array
+    public static function rowsWithNode(string $tabelle, array $kanten, bool $sealed, int $afterId, int $limit): array
     {
         global $wpdb;
 
-        $tabelle       = self::valueTable($tabelle);
-        [$wo, $params] = self::plainWhere($kanten);
-        $mitVersion    = $tabelle === 'relation_records_history';
-        $zeilen        = Query::rows('Klartext an vertraulichen Kanten lesen', $wpdb->prepare(
-            'SELECT id, ' . ($mitVersion ? 'version' : 'NULL AS version') . ', relation_id, value_text FROM ' . Schema::table($tabelle) . $wo . ' LIMIT %d',
-            ...[...$params, $limit]
+        if ($kanten === []) {
+            return [];
+        }
+
+        $tabelle    = self::valueTable($tabelle);
+        $mitVersion = $tabelle === 'relation_records_history';
+        $form       = $sealed ? 'w.value_text LIKE %s' : "w.value_text IS NOT NULL AND w.value_text <> '' AND w.value_text NOT LIKE %s";
+        $zeilen     = Query::rows('Werte vertraulicher Kanten mit Knoten lesen', $wpdb->prepare(
+            'SELECT w.id, ' . ($mitVersion ? 'w.version' : 'NULL AS version') . ', w.relation_id, s.node_id FROM ' . Schema::table($tabelle) . ' w
+             JOIN ' . Schema::table('node_records') . ' s ON s.id = w.node_record_id
+             WHERE w.relation_id IN (' . implode(',', array_fill(0, count($kanten), '%d')) . ') AND ' . $form . ' AND w.id > %d
+             ORDER BY w.id ASC LIMIT %d',
+            ...[...$kanten, $wpdb->esc_like(FieldCipher::PREFIX) . '%', $afterId, $limit]
         ));
 
         return array_map(static fn (array $z): array => [
             'id'          => (int) $z['id'],
             'version'     => $z['version'] === null ? null : (int) $z['version'],
             'relation_id' => (int) $z['relation_id'],
-            'text'        => (string) $z['value_text'],
+            'node_id'     => (int) $z['node_id'],
         ], $zeilen ?: []);
+    }
+
+    /**
+     * The texts of these rows, by id.
+     *
+     * @param list<int> $ids
+     * @return array<int, string>
+     */
+    public static function textsOf(string $tabelle, array $ids): array
+    {
+        global $wpdb;
+
+        if ($ids === []) {
+            return [];
+        }
+
+        $rows = Query::rows('Texte nach Id lesen', $wpdb->prepare(
+            'SELECT id, value_text FROM ' . Schema::table(self::valueTable($tabelle)) . ' WHERE id IN (' . implode(',', array_fill(0, count($ids), '%d')) . ')',
+            ...array_map(intval(...), $ids)
+        ));
+        $aus  = [];
+
+        foreach ($rows ?: [] as $row) {
+            $aus[(int) $row['id']] = (string) $row['value_text'];
+        }
+
+        return $aus;
     }
 
     /** The stored form of one row's text, in place: same id, same version, no shadow row. */
@@ -210,6 +287,22 @@ final class FieldSealRows
         ));
     }
 
+    /** @return list<int> the edges on which some live or history row holds a sealed text (D-1578) */
+    public static function sealedEdges(): array
+    {
+        global $wpdb;
+
+        $like = $wpdb->esc_like(FieldCipher::PREFIX) . '%';
+        $ids  = Query::column('Kanten mit versiegelten Werten lesen', $wpdb->prepare(
+            'SELECT DISTINCT relation_id FROM ' . Schema::table('relation_records') . ' WHERE value_text LIKE %s
+             UNION SELECT DISTINCT relation_id FROM ' . Schema::table('relation_records_history') . ' WHERE value_text LIKE %s',
+            $like,
+            $like
+        ));
+
+        return array_map(intval(...), $ids ?: []);
+    }
+
     /** One live value sealed with this key id, to test an entered key against; null while nothing is sealed with it. */
     public static function sealedSample(string $keyId): ?string
     {
@@ -239,19 +332,5 @@ final class FieldSealRows
         return $with
             ? [' WHERE value_text LIKE %s', [$mit]]
             : [' WHERE value_text LIKE %s AND value_text NOT LIKE %s', [$wpdb->esc_like(FieldCipher::PREFIX) . '%', $mit]];
-    }
-
-    /**
-     * @param list<int> $kanten
-     * @return array{0: string, 1: list<int|string>}
-     */
-    private static function plainWhere(array $kanten): array
-    {
-        global $wpdb;
-
-        return [
-            ' WHERE relation_id IN (' . implode(',', array_fill(0, count($kanten), '%d')) . ") AND value_text IS NOT NULL AND value_text <> '' AND value_text NOT LIKE %s",
-            [...$kanten, $wpdb->esc_like(FieldCipher::PREFIX) . '%'],
-        ];
     }
 }

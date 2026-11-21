@@ -104,11 +104,14 @@ require $root . '/wp-load.php';
 require __DIR__ . '/lib/no-write.php';
 require dirname(__DIR__, 2) . '/vendor/autoload.php';
 
+use Taxmod\Core\Model\Type\BoolType;
 use Taxmod\Core\Model\Type\TextType;
+use Taxmod\Core\Privacy\Confidentiality;
 use Taxmod\Core\Privacy\FieldCipher;
 use Taxmod\WordPress\ModelDoor;
 use Taxmod\WordPress\Persistence\FieldSealRows;
 use Taxmod\WordPress\Persistence\Schema;
+use Taxmod\WordPress\Persistence\SeededFrameworkNodes;
 use Taxmod\WordPress\Persistence\WpdbNodeRepository;
 use Taxmod\WordPress\Persistence\WpdbRecordRepository;
 use Taxmod\WordPress\Privacy\DataKeyTab;
@@ -257,6 +260,82 @@ for ($i = 0; $i < 50 && FieldSealJob::runBatch() > 0; $i++) {
 
 check('after the job nothing is plain', FieldSealJob::plainLeft() === ['live' => 0, 'history' => 0, 'journal' => 0], wp_json_encode(FieldSealJob::plainLeft()));
 check('the old value is now sealed and reads plain', FieldCipher::isSealed((string) $raw((int) $ref['alt'], $ref['ort'])) && ((new ModelDoor())->records($ref['k'])[$ref['alt']][$ref['ort']] ?? []) === ['Altstadt vor dem Umstellen']);
+
+echo "Per node: Person sealed, Organisation plain (D-1578)\n";
+
+// *Stefan 21.11.2026 22:14: «Firmennamen soll lesbar bleiben» — Person and Organisation share the name field (D-1573).*
+$wurzel  = (int) get_option(SeededFrameworkNodes::ROOT_OPTION, 0);
+$bool    = (new WpdbNodeRepository())->byImplementations([BoolType::class])[BoolType::class] ?? null;
+$hatEine = (int) $wpdb->get_var($wpdb->prepare(
+    'SELECT COUNT(*) FROM ' . Schema::table('relations_named') . ' WHERE from_node_id = %d AND name = %s AND kind = %s',
+    $wurzel,
+    Confidentiality::SETTING,
+    'setting'
+)) > 0;
+$partner = $apply->execute(['changes' => array_merge(
+    $hatEine ? [] : [['op' => 'add_field', 'node' => $wurzel, 'target' => $bool?->id ?? 0, 'name' => Confidentiality::SETTING, 'kind' => 'setting']],
+    [
+        ['op' => 'create_node', 'ref' => 'pa', 'name' => '__fc Partner', 'parent' => $ref['k']],
+        ['op' => 'create_node', 'ref' => 'pe', 'name' => '__fc Person', 'parent' => '@pa'],
+        ['op' => 'create_node', 'ref' => 'or', 'name' => '__fc Organisation', 'parent' => '@pa'],
+        ['op' => 'create_record', 'ref' => 'ra', 'node' => '@pe', 'values' => [(string) $ref['name'] => 'Hans Huber']],
+        ['op' => 'create_record', 'ref' => 'ro', 'node' => '@or', 'values' => [(string) $ref['name'] => 'Muster GmbH']],
+    ]
+)]);
+check('a person and an organisation are built under the contact', is_array($partner), $why($partner));
+
+if (is_array($partner)) {
+    ['pe' => $pe, 'or' => $or, 'ra' => $ra, 'ro' => $ro] = $partner['refs'];
+    check('while «Vertraulich» stands at the edge both names are sealed', FieldCipher::isSealed((string) $raw($ra, $ref['name'])) && FieldCipher::isSealed((string) $raw($ro, $ref['name'])));
+
+    $moved = $apply->execute(['changes' => [
+        ['op' => 'set_confidential', 'node' => $pe, 'field' => $ref['name'], 'confidential' => true],
+        ['op' => 'set_confidential', 'node' => $ref['k'], 'field' => $ref['name'], 'confidential' => true],
+        ['op' => 'set_confidential', 'node' => $or, 'field' => $ref['name'], 'confidential' => false],
+    ]]);
+    check('set_confidential is applied per node', ! is_wp_error($moved), $why($moved));
+    check('the edge may hold sealed values', FieldSeal::isConfidential($ref['name']));
+    check('at Person the name is confidential, at Organisation it is not', FieldSeal::isConfidentialAt($ref['name'], $pe) && ! FieldSeal::isConfidentialAt($ref['name'], $or));
+    check('without a node a value on a mixed edge counts as confidential', FieldSeal::isConfidentialAt($ref['name'], null));
+    check('the place keeps the edge default everywhere', FieldSeal::isConfidentialAt($ref['ort'], $or));
+
+    $seal  = wp_get_ability('taxmod/field-seal');
+    $count = $seal->execute([]);
+    check('field-seal counts the sealed company name as needlessly sealed, without writing', is_array($count) && $count['dry_run'] === true && $count['unseal_left']['live'] >= 1 && FieldCipher::isSealed((string) $raw($ro, $ref['name'])), wp_json_encode($count));
+
+    FieldSealJob::runBatch(5000);
+    check('without unseal nothing is opened', FieldCipher::isSealed((string) $raw($ro, $ref['name'])));
+
+    for ($i = 0; $i < 50; $i++) {
+        $run = $seal->execute(['dry_run' => false, 'unseal' => true, 'limit' => 5000]);
+
+        if (! is_array($run) || $run['sealed'] === 0) {
+            break;
+        }
+    }
+
+    check('after unseal nothing is left to open', is_array($run) && $run['left']['unseal'] === ['live' => 0, 'history' => 0, 'journal' => 0], wp_json_encode($run));
+    check('the company name is stored plain', $raw($ro, $ref['name']) === 'Muster GmbH');
+    check('the person name is still stored sealed', FieldCipher::isSealed((string) $raw($ra, $ref['name'])));
+
+    $again = $apply->execute(['changes' => [
+        ['op' => 'set_values', 'record' => $ro, 'values' => [(string) $ref['name'] => 'Beispiel AG']],
+        ['op' => 'set_values', 'record' => $ra, 'values' => [(string) $ref['name'] => 'Hanna Huber']],
+    ]]);
+    check('a new company name is written plain', ! is_wp_error($again) && $raw($ro, $ref['name']) === 'Beispiel AG', $why($again));
+    check('a new person name is written sealed', FieldCipher::isSealed((string) $raw($ra, $ref['name'])));
+
+    $neuAkt  = is_array($again) ? (int) $again['act'] : 0;
+    $journal = (string) $wpdb->get_var($wpdb->prepare('SELECT GROUP_CONCAT(after_state) FROM ' . Schema::table('changelog') . ' WHERE change_group_id = %d', $neuAkt));
+    check('the chronicle holds the company name plain and the person name sealed', str_contains($journal, 'Beispiel AG') && ! str_contains($journal, 'Hanna'), $journal);
+
+    $repo = new WpdbRecordRepository();
+    check('the value lookup finds the plain company name', $repo->findByRelationValue($ref['name'], \Taxmod\Core\Model\TypedValue::ofText('Beispiel AG')) === [$ro]);
+    check('the value lookup finds the sealed person name', $repo->findByRelationValue($ref['name'], \Taxmod\Core\Model\TypedValue::ofText('Hanna Huber')) === [$ra]);
+
+    $door = (new ModelDoor())->records($pe) + (new ModelDoor())->records($or);
+    check('the module door reads both plain', ($door[$ra][$ref['name']] ?? []) === ['Hanna Huber'] && ($door[$ro][$ref['name']] ?? []) === ['Beispiel AG'], wp_json_encode([$door[$ra] ?? null, $door[$ro] ?? null]));
+}
 
 echo "Change of key (D-1562)\n";
 

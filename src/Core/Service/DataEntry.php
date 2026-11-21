@@ -20,6 +20,7 @@ use Taxmod\Core\Model\RelationRecord;
 use Taxmod\Core\Model\Storage;
 use Taxmod\Core\Model\TypedValue;
 use Taxmod\Core\Port\Presets;
+use Taxmod\Core\Privacy\Confidentiality;
 use Taxmod\Core\Repository\Changelog;
 use Taxmod\Core\Repository\Clock;
 use Taxmod\Core\Repository\FrameworkNodes;
@@ -642,7 +643,7 @@ final class DataEntry
 
     public function put(int $recordId, int $relationId, TypedValue $value, string $locale = ''): void
     {
-        $relation      = $this->writableRelation($recordId, $relationId, $value);
+        [$satz, $relation] = $this->writable($recordId, $relationId, $value);
         $vorhanden = $this->valuesOn($recordId, $relation->id, $locale);
 
         // ⚠️ **Eindeutig heisst geprüft** ([D-735](../../../docs/NewConcept/90-decision-log.md)): *über den Index der Kante,
@@ -674,7 +675,7 @@ final class DataEntry
             ? RelationRecord::direct($recordId, $relation->id, $value, $locale)
             : new RelationRecord($recordId, $relation->id, $locale, $value, $vorhanden[0]->id, $vorhanden[0]->position);
 
-        $version = $this->records->putValue($neu);
+        $version = $this->records->putValue($neu, $satz->nodeId);
 
         $this->melden(
             $recordId,
@@ -721,7 +722,7 @@ final class DataEntry
             ? RelationRecord::direct($recordId, 0, $value, $locale)
             : new RelationRecord($recordId, 0, $locale, $value, $vorhanden[0]->id, $vorhanden[0]->position);
 
-        $version = $this->records->putValue($neu);
+        $version = $this->records->putValue($neu, $record->nodeId);
 
         $this->melden(
             $recordId,
@@ -786,7 +787,8 @@ final class DataEntry
         $version = $this->records->putValue(
             $vorhanden === []
                 ? RelationRecord::direct($recordId, $letzte->id, $value, $locale)
-                : new RelationRecord($recordId, $letzte->id, $locale, $value, $vorhanden[0]->id, $vorhanden[0]->position)
+                : new RelationRecord($recordId, $letzte->id, $locale, $value, $vorhanden[0]->id, $vorhanden[0]->position),
+            $satz->nodeId
         );
 
         $this->melden(
@@ -893,7 +895,7 @@ final class DataEntry
      */
     public function appendValue(int $recordId, int $relationId, TypedValue $value, string $locale = ''): void
     {
-        $relation     = $this->writableRelation($recordId, $relationId, $value);
+        [$satz, $relation] = $this->writable($recordId, $relationId, $value);
         $hinterste = -1;
 
         // ⚠️ **Eindeutig gilt auch beim Anhängen** ([D-838](../../../docs/NewConcept/90-decision-log.md)) — *sein Wort: «nur zu einem eine platine
@@ -912,7 +914,7 @@ final class DataEntry
         }
 
         $neu     = RelationRecord::direct($recordId, $relation->id, $value, $locale, $hinterste + 1);
-        $version = $this->records->putValue($neu);
+        $version = $this->records->putValue($neu, $satz->nodeId);
 
         // ⚠️ *Ein eigenes Verb: ein angehängter Wert **ersetzt** keinen, er stellt sich daneben — ein
         // «value set» ohne Vorher liesse beides gleich aussehen.*
@@ -955,13 +957,24 @@ final class DataEntry
      */
     private function writableRelation(int $recordId, int $relationId, ?TypedValue $value = null): Relation
     {
+        return $this->writable($recordId, $relationId, $value)[1];
+    }
+
+    /**
+     * Like {@see self::writableRelation()}, with the record it read — a writer passes its node on to `putValue` without
+     * reading it again (D-1578, CD-7).
+     *
+     * @return array{0: NodeRecord, 1: Relation}
+     */
+    private function writable(int $recordId, int $relationId, ?TypedValue $value = null): array
+    {
         $record = $this->records->find($recordId) ?? throw NotYetStorable::noSuchRecord($recordId);
         $relation   = $this->relationOf($record, $relationId);
 
         $this->refuseUnwritable($relation, $record->recordType);
         $this->refuseNotOwn($record, $relation, $value);
 
-        return $relation;
+        return [$record, $relation];
     }
 
     /**
@@ -2728,10 +2741,35 @@ final class DataEntry
     {
         $kante = (new FieldVisibility($this->records, $this->relations, $this->nodes, $this->framework))->hiddenRelation();
 
-        if ($kante === null) {
-            return false;
+        return $kante !== null && $this->fieldSettingAt($nodeId, $relationId, $kante, TypedValue::ofBool($hide));
+    }
+
+    /**
+     * «Vertraulich» für einen Knoten und seinen Unterbaum an- oder abschalten (D-1578) — dieselbe Adresse wie «hidden»
+     * (D-1144): der Satz `Knoten × Kante`, darin die Einstellung `confidential` der Wurzel. Näher schlägt ferner; was an der
+     * Kante steht, gilt, wo kein Knoten etwas sagt.
+     *
+     * ⚠️ **Stefan 21.11.2026 22:14:** *«Firmennamen soll lesbar bleiben»* — *Person und Organisation teilen das Feld «Name»;
+     * nur das Verhalten unterscheidet sich (F2, D-1573).*
+     *
+     * @return bool Ob etwas geschrieben wurde — `false`, solange die Wurzel die Einstellung `confidential` nicht trägt.
+     */
+    public function confidentialAt(int $nodeId, int $relationId, bool $confidential): bool
+    {
+        $kante = null;
+
+        foreach ($this->relations->fieldRelationsOf([$this->framework->root()->id]) as $wurzelKante) {
+            if ($wurzelKante->isSetting() && $wurzelKante->name === Confidentiality::SETTING) {
+                $kante = $wurzelKante;
+            }
         }
 
+        return $kante !== null && $this->fieldSettingAt($nodeId, $relationId, $kante, TypedValue::ofBool($confidential));
+    }
+
+    /** Eine Einstellung der Wurzel an der Adresse `Knoten × Kante` schreiben, als ein Akt (D-1144, D-1578). */
+    private function fieldSettingAt(int $nodeId, int $relationId, Relation $kante, TypedValue $wert): bool
+    {
         $this->fieldRelationOf($nodeId, $relationId);
 
         $traeger = $this->nodes->byId($nodeId);
@@ -2749,12 +2787,12 @@ final class DataEntry
                 $satzId = $satz->id;
             }
 
-            $wert      = TypedValue::ofBool($hide);
             $vorhanden = $this->valuesOn($satzId, $kante->id, '');
             $version   = $this->records->putValue(
                 $vorhanden === []
                     ? RelationRecord::direct($satzId, $kante->id, $wert, '')
-                    : new RelationRecord($satzId, $kante->id, '', $wert, $vorhanden[0]->id, $vorhanden[0]->position)
+                    : new RelationRecord($satzId, $kante->id, '', $wert, $vorhanden[0]->id, $vorhanden[0]->position),
+                $nodeId
             );
             $this->melden(
                 $satzId,

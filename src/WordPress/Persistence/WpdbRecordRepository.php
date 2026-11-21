@@ -566,9 +566,14 @@ final class WpdbRecordRepository implements RecordRepository
      * ⚠️ *`insert()` und `update()` statt `replace()`: `replace` löscht und schreibt neu, **die Zeile
      * bekäme also bei jedem Speichern eine neue Id** — und an der Id hängt jetzt, welcher Wert das ist.*
      */
-    public function putValue(RelationRecord $value): int
+    public function putValue(RelationRecord $value, ?int $nodeId = null): int
     {
         global $wpdb;
+
+        // D-1578: whether a text is confidential may depend on the record's node; the writer names it, the chronicle reads it here.
+        if ($nodeId !== null) {
+            FieldSeal::knowRecordNode($value->recordId, $nodeId);
+        }
 
         TileCounts::forget(TileCounts::MODEL);
 
@@ -580,7 +585,7 @@ final class WpdbRecordRepository implements RecordRepository
             'value_int'     => $value->value->int,
             'value_decimal' => $value->value->decimal,
             // D-1514: a confidential edge stores its text sealed — here, the one place a value row is written.
-            'value_text'    => FieldSeal::sealText($value->relationId, $value->value->text),
+            'value_text'    => FieldSeal::sealText($value->relationId, $value->value->text, $nodeId ?? FieldSeal::nodeOfRecord($value->recordId)),
             'value_date'    => $value->value->date,
             'value_ref'     => $value->value->reference,
             // ⚠️ *Der Raum wird **mitgeschrieben**, nicht abgeleitet: sobald jede Tabelle ihren eigenen
@@ -859,10 +864,11 @@ final class WpdbRecordRepository implements RecordRepository
             default                    => ['value_text', (string) $value->text],
         };
 
-        // D-1514: a sealed text equals nothing in SQL — it is opened and compared here.
-        if ($column === 'value_text' && FieldSeal::isConfidential($relationId)) {
-            return $this->confidentialMatches(null, $relationId, static fn (string $text): bool => $text === (string) $bound);
-        }
+        // D-1514: a sealed text equals nothing in SQL — it is opened and compared here. D-1578: on the same edge other records
+        // may hold it plain (an organisation's name), so both are asked.
+        $sealed = $column === 'value_text' && FieldSeal::isConfidential($relationId)
+            ? $this->confidentialMatches(null, $relationId, static fn (string $text): bool => $text === (string) $bound)
+            : [];
 
         $ids = Query::column('Datensaetze zu einem Kantenwert lesen', $wpdb->prepare(
             'SELECT DISTINCT node_record_id FROM ' . Schema::table('relation_records') . "
@@ -871,7 +877,7 @@ final class WpdbRecordRepository implements RecordRepository
             $bound
         ));
 
-        return array_map(intval(...), $ids ?: []);
+        return array_values(array_unique([...array_map(intval(...), $ids ?: []), ...$sealed]));
     }
 
     public function recordsWithValuesOn(int $relationId): array

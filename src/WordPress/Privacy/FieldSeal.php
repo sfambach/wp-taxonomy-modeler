@@ -4,9 +4,11 @@ namespace Taxmod\WordPress\Privacy;
 
 use Taxmod\Core\Exception\FieldDoesNotOpen;
 use Taxmod\Core\Model\FrozenState;
+use Taxmod\Core\Privacy\Confidentiality;
 use Taxmod\Core\Privacy\FieldCipher;
 use Taxmod\WordPress\Import\StoredSecret;
 use Taxmod\WordPress\Persistence\FieldSealRows;
+use Taxmod\WordPress\Persistence\WpdbNodeRepository;
 
 /**
  * Where a confidential field is sealed and opened (D-1514): the record repository on every value row, the chronicle on
@@ -65,8 +67,13 @@ final class FieldSeal
 
     private static bool $cipherRead = false;
 
-    /** @var array<int, true>|null */
-    private static ?array $confidential = null;
+    private static ?Confidentiality $plan = null;
+
+    /** @var array<int, list<int>> node id → its chain of owners, root first */
+    private static array $chains = [];
+
+    /** @var array<int, int> record id → node id, as the writers of this request named it (D-1578) */
+    private static array $recordNodes = [];
 
     public static function cipher(): ?FieldCipher
     {
@@ -273,29 +280,84 @@ final class FieldSeal
     }
 
     /**
-     * The edges that carry «Vertraulich», read once per request and again after a setting was written.
+     * What is confidential: «Vertraulich» at the edges (D-1514) and what nodes say for an edge (D-1578), read once per request
+     * and again after a setting was written.
+     *
+     * ⚠️ *Only per request, never in an option: an option written inside a transaction that is rolled back stays in WordPress'
+     * option cache and would name edges that are no longer confidential — or miss new ones.*
+     */
+    public static function confidentiality(): Confidentiality
+    {
+        if (self::$plan !== null) {
+            return self::$plan;
+        }
+
+        $plan = FieldSealRows::confidentialPlan();
+
+        return self::$plan = new Confidentiality($plan['edges'], $plan['overrides']);
+    }
+
+    /**
+     * The edges on which some record may hold a sealed value.
      *
      * @return array<int, true>
      */
     public static function confidentialRelations(): array
     {
-        if (self::$confidential !== null) {
-            return self::$confidential;
-        }
-
-        // ⚠️ *Only per request, never in an option: an option written inside a transaction that is rolled back stays in WordPress' option cache and would name edges that are no longer confidential — or miss new ones.*
-        return self::$confidential = array_fill_keys(array_map(intval(...), FieldSealRows::confidentialRelationIds()), true);
+        return self::confidentiality()->edges();
     }
 
+    /** Whether some record may hold a sealed value on this edge — what a search has to open. */
     public static function isConfidential(int $relationId): bool
     {
-        return isset(self::confidentialRelations()[$relationId]);
+        return self::confidentiality()->mayHold($relationId);
     }
 
-    /** After a setting was written or an act rolled back: the confidential edges are read again. */
+    /**
+     * Whether the value of a record of this node is confidential on this edge (D-1578). Without the node, where the answer
+     * depends on it, the value counts as confidential — sealed rather than plain; `taxmod/field-seal` sets it right.
+     */
+    public static function isConfidentialAt(int $relationId, ?int $nodeId): bool
+    {
+        $plan = self::confidentiality();
+
+        if (! $plan->mayHold($relationId)) {
+            return false;
+        }
+
+        if (! $plan->dependsOnNode($relationId)) {
+            return $plan->at($relationId, []);
+        }
+
+        return $nodeId === null ? true : $plan->at($relationId, self::chainOf($nodeId));
+    }
+
+    /** A writer names the node of the record it writes; the chronicle of the same act finds it here. */
+    public static function knowRecordNode(int $recordId, int $nodeId): void
+    {
+        self::$recordNodes[$recordId] = $nodeId;
+    }
+
+    public static function nodeOfRecord(int $recordId): ?int
+    {
+        return self::$recordNodes[$recordId] ?? null;
+    }
+
+    /** @return list<int> the node's chain of owners, root first, its own id last — one read per node and request */
+    private static function chainOf(int $nodeId): array
+    {
+        return self::$chains[$nodeId] ??= (static function () use ($nodeId): array {
+            $node = (new WpdbNodeRepository())->find($nodeId);
+
+            return $node === null ? [$nodeId] : [...$node->ancestorIds(), $node->id];
+        })();
+    }
+
+    /** After a setting was written or an act rolled back: what is confidential is read again. */
     public static function forget(): void
     {
-        self::$confidential = null;
+        self::$plan   = null;
+        self::$chains = [];
     }
 
     /**
@@ -318,10 +380,10 @@ final class FieldSeal
         self::$cipherRead = false;
     }
 
-    /** The text as it is stored: sealed on a confidential edge, as it is elsewhere. An empty text stays empty. */
-    public static function sealText(int $relationId, ?string $text): ?string
+    /** The text as it is stored: sealed where it is confidential for the record's node, as it is elsewhere. An empty text stays empty. */
+    public static function sealText(int $relationId, ?string $text, ?int $nodeId = null): ?string
     {
-        if ($text === null || $text === '' || FieldCipher::isSealed($text) || ! self::isConfidential($relationId)) {
+        if ($text === null || $text === '' || FieldCipher::isSealed($text) || ! self::isConfidentialAt($relationId, $nodeId)) {
             return $text;
         }
 
@@ -357,7 +419,7 @@ final class FieldSeal
      *
      * ⚠️ *Rows written before the address was an edge name it `path` — the same number (Fassung 39, D-667).*
      */
-    public static function sealState(?string $state): ?string
+    public static function sealState(?string $state, ?int $nodeId = null): ?string
     {
         $parsed = FrozenState::parse($state);
         $edge   = $parsed === null ? null : self::edgeOf($parsed);
@@ -367,7 +429,7 @@ final class FieldSeal
         }
 
         $value  = (string) $parsed->field('value');
-        $sealed = self::sealText($edge, $value);
+        $sealed = self::sealText($edge, $value, $nodeId ?? self::recordNodeOf($parsed));
 
         if ($sealed === $value) {
             return $state;
@@ -405,14 +467,67 @@ final class FieldSeal
         return $value !== null && self::cipher()?->needsResealing($value) === true;
     }
 
-    /** Whether a chronicle state still holds a plain, non-empty value of a confidential edge — without sealing it. */
-    public static function stateIsPlain(?string $state): bool
+    /**
+     * Whether a chronicle state still holds a plain, non-empty value that is confidential — without sealing it.
+     *
+     * @param array<int, int> $nodes record id → node id, for the records the state may name
+     */
+    public static function stateIsPlain(?string $state, array $nodes = []): bool
     {
         $parsed = FrozenState::parse($state);
         $edge   = $parsed === null ? null : self::edgeOf($parsed);
         $value  = $parsed?->field('value');
+        $record = $parsed === null ? null : self::recordOf($parsed);
 
-        return $edge !== null && $value !== null && $value !== '' && ! FieldCipher::isSealed($value) && self::isConfidential($edge);
+        return $edge !== null && $value !== null && $value !== '' && ! FieldCipher::isSealed($value)
+            && self::isConfidentialAt($edge, $record === null ? null : ($nodes[$record] ?? self::nodeOfRecord($record)));
+    }
+
+    /**
+     * D-1578: whether a chronicle state holds a sealed value that is not confidential for its record's node any more.
+     *
+     * @param array<int, int> $nodes record id → node id
+     */
+    public static function stateIsNeedlesslySealed(?string $state, array $nodes): bool
+    {
+        $parsed = FrozenState::parse($state);
+        $edge   = $parsed === null ? null : self::edgeOf($parsed);
+        $value  = $parsed?->field('value');
+        $record = $parsed === null ? null : self::recordOf($parsed);
+
+        return $edge !== null && $record !== null && isset($nodes[$record]) && FieldCipher::isSealed($value)
+            && ! self::isConfidentialAt($edge, $nodes[$record]);
+    }
+
+    /** D-1578: a chronicle state with its value opened again — for a value that is no longer confidential at its node. */
+    public static function unsealState(?string $state): ?string
+    {
+        $parsed = FrozenState::parse($state);
+        $value  = $parsed?->field('value');
+
+        if ($parsed === null || ! FieldCipher::isSealed($value)) {
+            return $state;
+        }
+
+        $fields          = $parsed->fields();
+        $fields['value'] = (self::cipher() ?? throw FieldDoesNotOpen::withoutKey())->open((string) $value);
+
+        return FrozenState::of($fields)->write();
+    }
+
+    /** The record a chronicle state names (`record=`), if any. */
+    public static function recordOf(FrozenState $state): ?int
+    {
+        $record = $state->field('record');
+
+        return $record !== null && ctype_digit($record) ? (int) $record : null;
+    }
+
+    private static function recordNodeOf(FrozenState $state): ?int
+    {
+        $record = self::recordOf($state);
+
+        return $record === null ? null : self::nodeOfRecord($record);
     }
 
     private static function edgeOf(FrozenState $state): ?int
