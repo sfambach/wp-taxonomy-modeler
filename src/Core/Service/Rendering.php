@@ -2233,6 +2233,8 @@ final class Rendering implements Presets, \Taxmod\Core\Port\FieldAddons
             $value = $gewaehlt ?? TypedValue::nothing();
             // ⚠️ *Der Farb-Renderer zeigt je Farbe ihr Kästchen (D-1080): die Farbwerte der angebotenen Konstanten, in einem Zug.*
             $farbwerte = $renderer instanceof \Taxmod\Core\Renderer\ColorChoiceRenderer ? $this->farbwerteUnter($relation->toNodeId) : [];
+            // D-1541: a field of the node chosen in the record (or the record holding it) — the field of a rule filter.
+            $feldwahl = $renderer instanceof \Taxmod\Core\Renderer\FieldChoiceRenderer ? $this->felderDesGewaehlten($settings, $values + $ownerValues) : null;
 
             $context = new RenderContext(
                 purpose: $purpose,
@@ -2280,7 +2282,7 @@ final class Rendering implements Presets, \Taxmod\Core\Port\FieldAddons
                             ? ($this->recordLink)($value->reference, $relation->toNodeId)
                             : null),
                     // ⚠️ *Ohne Knotenangebot die Sätze des Ziels, zusammengefasst — der Wähler der Zusammenfassung (D-753).*
-                    options: $angebot !== [] ? $angebot : ($saetze['angebot'][$relation->id] ?? []),
+                    options: $feldwahl ?? ($angebot !== [] ? $angebot : ($saetze['angebot'][$relation->id] ?? [])),
                     // ⚠️ *Dieselben Sätze als Baum ihrer Knoten — der Dialog der Satzauswahl (D-791).*
                     recordTree: $saetze['baum'][$relation->id] ?? [],
                     searchesRemotely: isset($saetze['fern'][$relation->id]),
@@ -8846,6 +8848,34 @@ final class Rendering implements Presets, \Taxmod\Core\Port\FieldAddons
         }
 
         return $walked;
+    }
+
+    /**
+     * The fields of the node chosen in `knoten_feld`, inherited ones included, by name (D-1541) — what a field choice offers.
+     *
+     * @param array<string, mixed>   $settings `mixed`: resolved settings by key
+     * @param array<int, TypedValue> $values   the record's values and those of the record holding it
+     * @return array<string, string> relation id → field name; empty while no node is chosen
+     */
+    private function felderDesGewaehlten(array $settings, array $values): array
+    {
+        $feld   = ($settings[\Taxmod\Core\Renderer\FieldChoiceRenderer::NODE_FIELD] ?? null)?->value->int ?? 0;
+        $knoten = $feld > 0 ? (int) (($values[$feld] ?? null)?->reference ?? 0) : 0;
+        $node   = $knoten > 0 ? $this->gemerkterKnoten($knoten) : null;
+
+        if ($node === null || $this->relations === null) {
+            return [];
+        }
+
+        $angebot = [];
+
+        foreach ($this->relations->fieldRelationsOf($this->framework->inheritanceOwnersOf($node)) as $kante) {
+            if (! $kante->isSetting() && ! $kante->hide) {
+                $angebot[(string) $kante->id] = $kante->name;
+            }
+        }
+
+        return $angebot;
     }
 
     /**

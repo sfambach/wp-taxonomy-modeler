@@ -590,7 +590,8 @@ final class RenderingTest extends TestCase
 
         sort($names);
 
-        self::assertSame([FieldRenderer::NAME, 'slider', SpinnerRenderer::NAME], $names);
+        // D-1541: the field choice of a rule filter is offered at a number too.
+        self::assertSame([FieldRenderer::NAME, 'field-choice', 'slider', SpinnerRenderer::NAME], $names);
     }
 
     #[Test]
