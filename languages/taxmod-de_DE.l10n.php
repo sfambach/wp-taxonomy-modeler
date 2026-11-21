@@ -510,6 +510,7 @@ return [
         'Saved — %d setting written.'                                                    => 'Gespeichert — %d Einstellung geschrieben.' . "\0" . 'Gespeichert — %d Einstellungen geschrieben.',
         'Saved.'                                                                         => 'Gespeichert.',
         'Saving'                                                                         => 'Speichern',
+        'Saving …'                                                                       => 'Speichert …',
         'Scan a label, or type its code, and press Enter. The scanner works as a keyboard; the field is ready for the next scan straight away.' => 'Ein Etikett scannen oder seinen Code tippen und Enter drücken. Der Scanner arbeitet wie eine Tastatur; das Feld ist sofort für den nächsten Scan bereit.',
         'Scanned code'                                                                   => 'Gescannter Code',
         'Scanner'                                                                        => 'Scanner',

@@ -130,6 +130,40 @@ if ($ability !== null && $node !== null) {
     wp_set_current_user(1);
 }
 
+echo "\nDie Vorschau gemessen (D-1482, Nachtrag 2)\n";
+
+$preview = wp_get_ability('taxmod/preview-times');
+
+$say($preview !== null, 'taxmod/preview-times ist angemeldet');
+
+if ($preview !== null) {
+    global $wpdb;
+
+    $meta = $preview->get_meta();
+    $say(($meta['annotations']['readonly'] ?? false) === true && ($meta['annotations']['destructive'] ?? true) === false, 'sie liest nur');
+
+    // Any record with a text value: the check needs a record and its node, not a particular one.
+    $row = $wpdb->get_row("SELECT r.id AS record, r.node_id AS node, v.value_text AS word FROM {$wpdb->prefix}taxmod_node_records r JOIN {$wpdb->prefix}taxmod_relation_records v ON v.node_record_id = r.id WHERE r.record_type = 'user' AND CHAR_LENGTH(v.value_text) > 5 ORDER BY r.id DESC LIMIT 1", ARRAY_A);
+
+    if (! is_array($row)) {
+        $say(true, 'kein Satz mit Textwert in dieser Datenbank — die Messung selbst bleibt ungeprüft');
+    } else {
+        $answer = $preview->execute(['node' => (int) $row['node'], 'record' => (int) $row['record']]);
+
+        $say(is_array($answer) && array_keys($answer) === ['node', 'record', 'total_ms', 'total_queries', 'mb', 'steps', 'fields'], 'sie antwortet mit Summe, Schritten und Feldern');
+        $say(is_array($answer) && $answer['fields'] !== [] && array_keys($answer['fields'][0]) === ['relation_id', 'name', 'ms', 'queries', 'kb'], 'je Feld Nummer, Name, ms, Abfragen, KB');
+        $say(is_array($answer) && in_array('admin side, whole', array_column($answer['steps'], 'step'), true), 'und beide Seiten als Ganzes');
+        $say(is_array($answer) && ! str_contains((string) wp_json_encode($answer), (string) $row['word']), 'kein Wert des Satzes steht in der Antwort');
+
+        $other = (int) $wpdb->get_var($wpdb->prepare("SELECT id FROM {$wpdb->prefix}taxmod_node_records WHERE node_id <> %d LIMIT 1", (int) $row['node']));
+        $say($other === 0 || is_wp_error($preview->execute(['node' => (int) $row['node'], 'record' => $other])), 'ein Satz eines anderen Knotens wird abgewiesen');
+    }
+
+    wp_set_current_user(0);
+    $say($preview->check_permissions(['node' => 1, 'record' => 1]) !== true, 'ohne Anmeldung verschlossen');
+    wp_set_current_user(1);
+}
+
 printf("\n%s\n", $failed === 0 ? 'all green' : sprintf('%d FEHLER', $failed));
 
 exit($failed === 0 ? 0 : 1);

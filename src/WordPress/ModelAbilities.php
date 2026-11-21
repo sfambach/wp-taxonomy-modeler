@@ -307,6 +307,25 @@ final class ModelAbilities
             'meta'                => ['public' => true, 'annotations' => ['readonly' => true, 'destructive' => false, 'idempotent' => true]],
         ]);
 
+        // His line 2026-11-21: «Detail: Vorschau 15825 ms / 661 Abfragen» — which field it is, measured where his data is (D-1482, Nachtrag 2).
+        wp_register_ability('taxmod/preview-times', [
+            'label'               => __('Measure the preview of a record', 'taxmod'),
+            'description'         => __('What the editable preview of one record takes on the model page: the steps before the fields, then each field drawn alone, then both sides whole — ms, database statements and KB of markup each. Field names and numbers only, no values. Reads only.', 'taxmod'),
+            'category'            => self::CATEGORY,
+            'input_schema'        => [
+                'type'       => 'object',
+                'properties' => [
+                    'node'   => ['type' => 'integer', 'minimum' => 1],
+                    'record' => ['type' => 'integer', 'minimum' => 1],
+                ],
+                'required'   => ['node', 'record'],
+                'additionalProperties' => false,
+            ],
+            'execute_callback'    => fn (mixed $input = null) => $this->guarded(fn (): array => $this->previewTimes(is_array($input) ? $input : [])),
+            'permission_callback' => $this->allowedToRead(...),
+            'meta'                => ['public' => true, 'annotations' => ['readonly' => true, 'destructive' => false, 'idempotent' => true]],
+        ]);
+
         wp_register_ability('taxmod/help', [
             'label'               => __('Explain an op of apply', 'taxmod'),
             'description'         => __('What one op of taxmod/apply takes and refuses; without op, all of them.', 'taxmod'),
@@ -1730,6 +1749,35 @@ final class ModelAbilities
                 'switches'  => (string) ($e['a'] ?? ''),
             ], array_reverse(array_slice($calls, -$limit))),
         ];
+    }
+
+    /**
+     * D-1482, Nachtrag 2: the preview of one record, measured inside the read memory as the page draws it.
+     *
+     * @param array<string, mixed> $input
+     * @return array{node: int, record: int, total_ms: int, total_queries: int, mb: int, steps: list<array<string, int|string>>, fields: list<array<string, int|string>>}
+     */
+    private function previewTimes(array $input): array
+    {
+        $node   = $this->node((int) ($input['node'] ?? 0));
+        $record = (int) ($input['record'] ?? 0);
+        $screen = ($this->screen)();
+
+        if (! in_array($record, array_map(static fn (\Taxmod\Core\Model\NodeRecord $one): int => $one->id, $screen->entries()->recordsOf($node->id)), true)) {
+            throw new \InvalidArgumentException("Record {$record} is not a record of node {$node->id}.");
+        }
+
+        $start   = hrtime(true);
+        $queries = Persistence\Query::asked();
+        $took    = Persistence\Query::remembering(static fn (): array => $screen->previewTimes($node, $record));
+
+        return [
+            'node'          => $node->id,
+            'record'        => $record,
+            'total_ms'      => (int) round((hrtime(true) - $start) / 1e6),
+            'total_queries' => Persistence\Query::asked() - $queries,
+            'mb'            => (int) round(memory_get_peak_usage(true) / 1048576),
+        ] + $took;
     }
 
     private function node(int $id): Node

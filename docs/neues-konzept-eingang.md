@@ -1403,3 +1403,9 @@ Anlass: [INF-073](#inf-073--bestand-und-fertigung-vom-wareneingang-über-die-pla
 
 - **Anlass:** Bau von [D-1552](NewConcept/90-decision-log.md). Die Filterzeile zeigt die Felder in der Reihenfolge, in der sie angelegt wurden: Feld · Wert · Operator · Art. D-1552 sagt Art · Feld · Operator · Wert; ein Op zum Umsortieren der Felder eines Knotens gibt es nicht.
 - **Weg:** kommt mit dem Ordnen der Formulare im Feldkatalog ([D-1556](NewConcept/90-decision-log.md), Datenjob). Die Liste der Regelseite zeigt die Filter schon in der Reihenfolge von D-1552.
+
+## INF-139 · Zwei Lade-Zustände im Skript (2026-11-21)
+
+- **Anlass:** Bau von [D-1560](NewConcept/90-decision-log.md). Der Platz «neuer Satz» im Baum trägt beim Anlegen weiter seine eigene Klasse `is-busy` (`admin.js`) und ist nicht auf den einen Zustand am `body` umgezogen: er sperrt dort einen einzelnen Platz, kein Formular, und trägt kein `aria-busy`.
+- **Weg:** offen — umziehen, sobald der Platz ein `aria-busy` trägt; dann meldet ihn der eine Zustand von selbst.
+
