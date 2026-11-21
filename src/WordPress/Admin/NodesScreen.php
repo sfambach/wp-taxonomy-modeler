@@ -2325,6 +2325,8 @@ final class NodesScreen
         // methods would make a second place that could disagree with the first.*
         $hidden     = $this->hiddenAmong($rows);
         $showHidden = $this->showsHidden();
+        // D-1574 (D): im eingegrenzten Baum parkt nur eine leere Gruppe — welche Sätze tragen, einmal für alle Zeilen (`CD-7`).
+        $this->filledNodes = $this->scopeFromRequest() === null ? [] : $this->nodesWithRecords(array_map(static fn (array $row): int => $row['node']->id, $rows));
 
         foreach ($rows as $row) {
             $node               = $row['node'];
@@ -2779,10 +2781,10 @@ final class NodesScreen
                 'trash_node',
                 // ⚠️ The **label** stays a word even though an icon is drawn — it is the accessible
                 // name, and `🗑` was replaced because an emoji outline cannot be thickened (D-380).
-                __('Park', 'taxmod'),
+                $this->emptyInScope($row['node']->id, $row['hasChildren']) ? __('Park', 'taxmod') : __('Only an empty group can be parked: move its materials and subgroups away first', 'taxmod'),
                 __('Park this node; its children move up to its parent', 'taxmod'),
                 // A protected node cannot be parked (D-194) — the core refuses it anyway.
-                ! $this->framework->isProtected($row['node']),
+                ! $this->framework->isProtected($row['node']) && $this->emptyInScope($row['node']->id, $row['hasChildren']),
                 // ⚠️ It takes something away, and the renderer paints that. *Parking is not
                 // destroying — the trash is a place (D-123) — but it is the one act in this row
                 // that removes a node from where it was.*
@@ -8598,6 +8600,46 @@ final class NodesScreen
         if ($do === 'move' && ! $inside($target)) {
             ListPage::fail(__('A node cannot be moved out of the branch this page shows.', 'taxmod'));
         }
+
+        // D-1574 (D): «Papierkorb nur für eine leere Gruppe, ohne Materialien und Untergruppen».
+        if (in_array($do, ['trash', 'trash_with_uses', 'trash_node'], true)
+            && ($this->editor->childrenOf($id) !== [] || $this->nodesWithRecords([$id]) !== [])) {
+            ListPage::fail(__('Only an empty group can be parked: move its materials and subgroups away first', 'taxmod'));
+        }
+    }
+
+    /** @var array<int, true> Knoten der gezeichneten Zeilen, die eigene Sätze tragen (D-1574) */
+    private array $filledNodes = [];
+
+    /** Ob ein Knoten hier geparkt werden darf: im ganzen Baum immer, im eingegrenzten nur leer (D-1574, D). */
+    private function emptyInScope(int $nodeId, bool $hasChildren): bool
+    {
+        return $this->scopeFromRequest() === null || (! $hasChildren && ! isset($this->filledNodes[$nodeId]));
+    }
+
+    /**
+     * Welche dieser Knoten eigene Sätze tragen — eine Abfrage für alle (`CD-7`), dieselbe Bedingung wie die Satzliste des Knotens.
+     *
+     * @param list<int> $nodeIds
+     * @return array<int, true>
+     */
+    private function nodesWithRecords(array $nodeIds): array
+    {
+        global $wpdb;
+
+        $nodeIds = array_values(array_unique(array_filter($nodeIds)));
+
+        if ($nodeIds === []) {
+            return [];
+        }
+
+        $ids = \Taxmod\WordPress\Persistence\Query::column('Knoten mit Sätzen', $wpdb->prepare(
+            'SELECT DISTINCT node_id FROM ' . \Taxmod\WordPress\Persistence\Schema::table('node_records') . ' WHERE relation_id = 0 AND node_id IN ('
+            . implode(',', array_fill(0, count($nodeIds), '%d')) . ')',
+            ...$nodeIds
+        ));
+
+        return array_fill_keys(array_map('intval', $ids), true);
     }
 
     private function showsRoot(): bool

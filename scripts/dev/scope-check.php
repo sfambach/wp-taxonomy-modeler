@@ -58,7 +58,8 @@ $say    = static function (bool $ok, string $what) use (&$failed): void {
 $ast     = $editor->createNode('__sc Ast', $fw->rootOf(Branch::Model)->id);
 $kind    = $editor->createNode('__sc Kind', $ast->id);
 // ⚠️ *Ein zweites Kind, damit «Kind» in beiden Bäumen eine Zeile nach sich hat — sonst liefe sein Ausschnitt im Ast bis ans Seitenende.*
-$editor->createNode('__sc Kind 2', $ast->id);
+$kind2   = $editor->createNode('__sc Kind 2', $ast->id);
+$enkel   = $editor->createNode('__sc Enkel', $kind2->id);
 $daneben = $editor->createNode('__sc Daneben', $fw->rootOf(Branch::Model)->id);
 
 $r      = new ReflectionClass(\Taxmod\WordPress\Plugin::class);
@@ -174,7 +175,16 @@ $say(str_contains($post('move', $kind->id, $daneben->id), __('A node cannot be m
 $say(str_contains($post('rename', $daneben->id), __('This node lies outside the branch this page shows.', 'taxmod')), 'ein Akt an einem Knoten neben dem Ast wird abgelehnt');
 $say(str_contains($post('trash', $ast->id), __('This page shows one branch only; do this in the whole model tree.', 'taxmod')) && $editor->find($ast->id) !== null
     && ! in_array($fw->trash()->id, $editor->find($ast->id)->ancestorIds(), true), 'den Ast selbst parkt man hier nicht');
+$say(str_contains($post('trash_node', $kind2->id), __('Only an empty group can be parked: move its materials and subgroups away first', 'taxmod'))
+    && ! in_array($fw->trash()->id, $editor->find($kind2->id)->ancestorIds(), true), 'D-1574 (D): eine Gruppe mit Untergruppe wird nicht geparkt, mit Grund');
 $_POST = $_REQUEST = [];
+$_GET  = ['taxmod_scope' => (string) $ast->id, 'taxmod_collapsed' => 'none'];
+$leer  = $plugin->screen()->render();
+$parkt = static fn (string $html, int $id): bool => preg_match('/id="taxmod-node-' . $id . '".*?value="trash_node"[^>]*>/s', $html, $m) === 1 && ! str_contains($m[0], ' disabled');
+$say($parkt($leer, $kind->id) && ! $parkt($leer, $kind2->id), 'D-1574 (D): im Ast ist der Papierkorb nur an der leeren Gruppe frei, an der mit Untergruppe gesperrt');
+$_GET = ['taxmod_collapsed' => 'none'];
+$say($parkt($plugin->screen()->render(), $kind2->id), 'im ganzen Baum bleibt er frei');
+$_GET = [];
 
 echo $failed === 0 ? "\nscope-check: ok\n" : "\nscope-check: {$failed} FAIL\n";
 $finished = true;
