@@ -85,6 +85,8 @@ $page = <<<'HTML'
   <select name="values[60][n1][61]" id="fsel" data-taxmod-fields-of="30" data-taxmod-fields-url="http://taxmod.test/ajax?action=taxmod_node_fields"><option value=""></option></select>
   <div id="filter" data-taxmod-follows="30"><span id="filter-text">alt</span></div>
 </form>
+<form id="g" method="post"><input type="hidden" name="id" value="5"><input type="radio" name="values[70]" value="43" id="gr"></form>
+<select form="g" name="values[71]" id="gsel" data-taxmod-fields-of="70" data-taxmod-fields-url="http://taxmod.test/ajax?action=taxmod_node_fields"><option value=""></option></select>
 </div>
 <script src="live.js"></script><script src="admin.js"></script>
 <script>
@@ -162,6 +164,10 @@ const dir = process.argv[2];
     await page.evaluate(() => { const h = document.getElementById('hid'); h.value = '99'; window.taxmodChosen(h); });
     out.script = await said();
     out.loads = await page.evaluate(() => window.loads);
+
+    await page.evaluate(() => { const r = document.getElementById('gr'); r.checked = true; window.taxmodChosen(r); });
+    await page.waitForFunction(() => document.getElementById('gsel').options.length > 1, null, { timeout: 5000 }).catch(() => {});
+    out.clobbered = fields.slice(out.fields.length);
   } catch (e) {
     out.error = String(e);
   }
@@ -195,6 +201,7 @@ if (is_array($answer) && ! isset($answer['error'])) {
     claim('«OK» without a new choice says nothing', $answer['okUnchanged'] === [], json_encode($answer['okUnchanged']));
     claim('a value a script writes is said through taxmodChosen', $one($answer['script'], 'values[50]', '99'), json_encode($answer['script']));
     claim('nothing loaded the page', $answer['loads'] === 0, (string) $answer['loads']);
+    claim('a form with a field named «id» still finds its own fields (form.id is shadowed)', $answer['clobbered'] === ['43'], json_encode($answer['clobbered']));
 }
 
 // ---- 2. the ratchet ----------------------------------------------------------------------------------------------------
