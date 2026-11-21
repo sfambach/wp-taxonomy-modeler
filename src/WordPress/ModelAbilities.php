@@ -2,6 +2,8 @@
 
 namespace Taxmod\WordPress;
 
+use Taxmod\Core\Model\CatalogueRole;
+
 use Taxmod\Core\Model\IdentitySpace;
 use Taxmod\Core\Exception\ConcurrentChange;
 use Taxmod\Core\Model\RecordStamp;
@@ -105,7 +107,7 @@ final class ModelAbilities
     private const MAX_FIELDS_PAGE = 1000;
 
     /** Die Spalten einer kompakten Feldzeile — einmal genannt statt in jeder Zeile (D-1210). */
-    private const FIELD_COLUMNS = ['id', 'name', 'node', 'node_name', 'target', 'target_name', 'type', 'kind', 'multiplicity', 'chooses_records', 'values', 'records', 'uses', 'settings'];
+    private const FIELD_COLUMNS = ['id', 'name', 'node', 'node_name', 'target', 'target_name', 'type', 'kind', 'multiplicity', 'chooses_records', 'values', 'records', 'uses', 'settings', 'target_role'];
 
     /** So viele Änderungen nimmt ein Aufruf — darüber teilt der Aufrufer. */
     private const MAX_CHANGES = 500;
@@ -419,7 +421,7 @@ final class ModelAbilities
         // instead of read-node per node, which costs hundreds of calls against the host's rate limit. Reads, never writes.
         wp_register_ability('taxmod/fields', [
             'label'               => __('List fields', 'taxmod'),
-            'description'         => __('Every field of every live node in one call, a page of them: relation id, name, owning node, target, simple type, kind, multiplicity, chooses_records, the settings stored at the field itself, how many values and records it holds, and uses (fields with the same target). Filters: name (part, case and umlauts folded), node (owner), under (owners in that subtree), target, type, kind (setting edges only with kind setting), with_values. Compact rows with columns unless compact is false.', 'taxmod'),
+            'description'         => __('Every field of every live node in one call, a page of them: relation id, name, owning node, target, simple type, kind, multiplicity, chooses_records, the settings stored at the field itself, how many values and records it holds, and uses (fields with the same target). Filters: name (part, case and umlauts folded), node (owner), under (owners in that subtree), target, type, kind (setting edges only with kind setting), with_values, target_role (base_type, data_element, composite, outside: what the target is to the Feldkatalog, D-1553). Compact rows with columns unless compact is false.', 'taxmod'),
             'category'            => self::CATEGORY,
             'input_schema'        => [
                 'type'       => 'object',
@@ -431,6 +433,7 @@ final class ModelAbilities
                     'type'        => ['type' => 'string'],
                     'kind'        => ['type' => 'string', 'enum' => array_map(static fn (RelationKind $k): string => $k->value, RelationKind::cases())],
                     'with_values' => ['type' => 'boolean'],
+                    'target_role' => ['type' => 'string', 'enum' => array_map(static fn (CatalogueRole $r): string => $r->value, CatalogueRole::cases())],
                     'compact'     => ['type' => 'boolean', 'default' => true],
                     'limit'       => ['type' => 'integer', 'minimum' => 1, 'maximum' => self::MAX_FIELDS_PAGE, 'default' => 200],
                     'offset'      => ['type' => 'integer', 'minimum' => 0, 'default' => 0],
@@ -524,7 +527,8 @@ final class ModelAbilities
             && (! isset($input['node']) || $row['node'] === (int) $input['node'])
             && (! isset($input['target']) || $row['target'] === (int) $input['target'])
             && (! isset($input['type']) || $row['type'] === (string) $input['type'])
-            && (empty($input['with_values']) || $row['values'] > 0)));
+            && (empty($input['with_values']) || $row['values'] > 0)
+            && (! isset($input['target_role']) || $row['target_role'] === (string) $input['target_role'])));
         $limit     = max(1, min(self::MAX_FIELDS_PAGE, (int) ($input['limit'] ?? 200)));
         $page      = $this->withRecordChoosers(array_slice($rows, max(0, (int) ($input['offset'] ?? 0)), $limit), $catalogue['relations']);
         $compact   = ($input['compact'] ?? true) !== false;
@@ -599,6 +603,8 @@ final class ModelAbilities
         $counts    = (new WpdbRecordRepository())->valueCountsByField();
         $settings  = (new Persistence\WpdbSettingsRepository())->plainValuesByCarrier();
         $uses      = array_count_values(array_map(static fn (\Taxmod\Core\Model\Relation $r): int => $r->toNodeId, $relations));
+        // D-1553: what each target is to the Feldkatalog.
+        $roles     = Persistence\CatalogueBase::catalogue(new Persistence\SeededTypeNodes(new Persistence\WpdbNodeRepository(), $framework));
         $rows      = [];
         $byId      = [];
 
@@ -622,6 +628,7 @@ final class ModelAbilities
                 'settings'        => $own,
                 // *What similar-fields compares: the field's own settings over those of its target node.*
                 'compared'        => $own + ($settings['node'][$r->toNodeId] ?? []),
+                'target_role'     => isset($nodes[$r->toNodeId]) ? $roles->roleOf($nodes[$r->toNodeId])->value : CatalogueRole::Outside->value,
             ];
         }
 

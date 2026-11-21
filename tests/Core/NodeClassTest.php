@@ -29,11 +29,12 @@ final class NodeClassTest extends TestCase
     }
 
     #[Test]
-    public function the_inventory_holds_the_five_classes_and_the_eleven_types(): void
+    public function the_inventory_holds_the_six_classes_and_the_eleven_types(): void
     {
         $all = Contracts::all();
 
-        self::assertCount(5 + count(SpecialisedTypes::CLASSES), $all);
+        // D-1553: the sixth is the composite data type of the Feldkatalog (concept change, PR-9).
+        self::assertCount(6 + count(SpecialisedTypes::CLASSES), $all);
         self::assertSame(count($all), count(array_unique($all)), 'keine Klasse doppelt');
 
         foreach ([Category::class, Choice::class, Constant::class, Unit::class, UnitValue::class, IntType::class] as $class) {

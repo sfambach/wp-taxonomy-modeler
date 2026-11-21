@@ -29,6 +29,7 @@ final class Contracts
     public const CLASSES = [
         Category::class,
         Choice::class,
+        CompositeType::class,
         Constant::class,
         Unit::class,
         UnitValue::class,
