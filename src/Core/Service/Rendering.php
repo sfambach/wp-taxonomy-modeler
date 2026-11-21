@@ -2222,6 +2222,13 @@ final class Rendering implements Presets, \Taxmod\Core\Port\FieldAddons
                 $settings = $this->hatEnkel($relation->toNodeId) ? [...$settings, ...ChooserRenderer::asDialog()] : $settings;
             }
 
+            // ⚠️ *D-1543, sein Wort 21.11. 06:55: «bei Formularen das immer der Button ist und dann Dialog und nicht Inline». Auch ein an der
+            // Stelle gewählter Wähler öffnet einen Baum als Dialog, solange niemand `dialog` ausdrücklich gesetzt hat; im Dialog steht er an
+            // Ort und Stelle (D-1488). Eine flache Liste bleibt ein Auswahlfeld (D-727).*
+            if ($istWahl && $renderer instanceof ChooserRenderer && (($settings[ChooserRenderer::DIALOG] ?? null)?->fromOwnerId ?? 0) === 0 && $this->hatEnkel($relation->toNodeId)) {
+                $settings = [...$settings, ...ChooserRenderer::asDialog()];
+            }
+
             if ($renderer === null) {
                 if ($purpose === Purpose::Search) {
                     continue;
