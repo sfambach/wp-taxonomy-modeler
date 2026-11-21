@@ -610,8 +610,8 @@ final class DataEntry
         }
 
         // ⚠️ *D-541: «hat es eigene Felder, braucht er einen Teil». Seit «Einheitenwert» Kinder hat (D-1559), bekam ein Pflichtfeld
-        // dorthin sonst keinen Teil mehr — gelesen wird nur, wo Kinder da sind.*
-        foreach ($this->relations->fieldRelationsOf([$target->id]) as $feld) {
+        // dorthin sonst keinen Teil mehr — gelesen wird nur, wo Kinder da sind; geerbte Felder zählen (Kind-Datenelement).*
+        foreach ($this->relations->fieldRelationsOf($this->framework->inheritanceOwnersOf($target)) as $feld) {
             if (! $feld->isSetting()) {
                 return false;
             }

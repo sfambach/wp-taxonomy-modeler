@@ -3112,12 +3112,17 @@ final class RenderingTest extends TestCase
         $this->editor->addField($wertTyp->id, $this->type('Decimal')->id, 'wert');
         $this->editor->createNode('Frequenz', $wertTyp->id);
         $pole     = $this->editor->addField($ende->id, $wertTyp->id, 'polzahl', RelationKind::Composition);
+        // *A child data element declares no fields of its own; it inherits them (D-1559) — «Polzahl» with its child «Pins gesamt».*
+        $polElement = $this->editor->createNode('Polzahl', $wertTyp->id);
+        $this->editor->createNode('Pins gesamt', $polElement->id);
+        $dip      = $this->editor->addField($ende->id, $polElement->id, 'pins', RelationKind::Composition);
         $arten    = $this->thing('Steckertypen');
         $this->editor->createNode('D-Sub', $arten->id);
         $typ      = $this->editor->addField($ende->id, $arten->id, 'steckertyp', RelationKind::Aggregation);
         $this->neuZeichnen();
 
         self::assertNotSame(SimpleType::NodeRef, $this->rendering->typeAt($pole), 'a composition onto a node with fields of its own is a part');
+        self::assertNotSame(SimpleType::NodeRef, $this->rendering->typeAt($dip), 'a child data element with children of its own inherits its fields and stays a part');
         self::assertSame(SimpleType::NodeRef, $this->rendering->typeAt($typ), 'a choice list stays a choice');
     }
 
