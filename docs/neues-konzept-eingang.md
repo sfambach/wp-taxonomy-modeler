@@ -1473,3 +1473,8 @@ Anlass: [INF-073](#inf-073--bestand-und-fertigung-vom-wareneingang-über-die-pla
 - **Beschluss dazu:** [D-387](NewConcept/90-decision-log.md): «we declare `en_US` as neutral in the admin config»; [D-959](NewConcept/90-decision-log.md): «Die Texte stehen unter `en_US`, der Sprache, die er erklärt hat». Der Hilfetext wurde darum per Datenjob in en_US gestellt.
 - **Offen:** Anzeigesprache der Admin-Formulare nach Benutzer (`get_user_locale`) statt Standardsprache?
 - **Nicht entschieden. Nicht bauen.**
+
+## INF-151 · Kundenreservierung ohne Verkauf: am Kunden oder am Verkauf? (2026-11-22)
+
+- Aus [D-1582](NewConcept/90-decision-log.md): der Bezug einer Reservierung ist Produktion › Projekt › Auftrag, daneben Verkauf/Kunde.
+- Offen: hängt eine Reservierung für einen Kunden, zu dem es noch keinen Verkauf gibt, am Kunden oder an einem (offenen) Verkauf? Nicht entschieden, nicht gebaut.
