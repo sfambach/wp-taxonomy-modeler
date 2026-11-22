@@ -63,6 +63,7 @@
 	function canonical( text ) {
 		return text
 			.toLocaleLowerCase()
+			.replace( /(\d)[\s\u00A0\u2009\u202F]*[x\u00D7][\s\u00A0\u2009\u202F]*(?=\d)/g, '$1x' )
 			.replace( /[\u00B5\u03BC]/g, 'u' )
 			.replace( /[\u2126\u03A9\u03C9]/g, 'ohm' )
 			.replace( /(\d)[\s\u00A0\u2009\u202F]+(?=[^\d\s])/g, '$1' )
@@ -708,7 +709,7 @@
 			units.forEach( function ( unit ) {
 				// As `ListView::holdsEveryWord()`: each word of the search in some cell, «10k THT» across name and group.
 				var texts = textsOf( unit );
-				var keep = needle.split( /\s+/ ).every( function ( word ) {
+				var keep = canonical( needle ).trim().split( /\s+/ ).every( function ( word ) {
 					return word === '' || texts.some( function ( text ) {
 						return matches( text, word );
 					} );

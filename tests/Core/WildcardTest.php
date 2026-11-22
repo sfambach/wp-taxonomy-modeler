@@ -38,4 +38,19 @@ final class WildcardTest extends TestCase
         self::assertSame(['usb'], Wildcard::spellings('usb'), 'a «u» not after a number stays as it is');
         self::assertLessThanOrEqual(48 + 1, count(Wildcard::spellings('1u 2u 3u 4u 5u 6u')));
     }
+
+    #[Test]
+    public function a_size_is_found_with_x_or_times_and_with_or_without_spaces(): void
+    {
+        foreach (['1 x 12', '1x12', '1×12', '1 × 12'] as $term) {
+            self::assertTrue(Wildcard::matches('Buchsenleiste 1×12 · 2,54 mm', $term), $term);
+            self::assertTrue(Wildcard::matches('Buchsenleiste 1 x 12', $term), $term);
+            self::assertTrue(\Taxmod\Core\Listing\ListView::holdsEveryWord(['Buchsenleiste 1×12'], $term), 'one word: ' . $term);
+        }
+
+        self::assertFalse(\Taxmod\Core\Listing\ListView::holdsEveryWord(['1 MΩ · ±1 % · 1206', 'AUKENIEN-Box'], '1 x 12'), 'no longer three words');
+        self::assertContains('1×12', Wildcard::spellings('1 x 12'));
+        self::assertContains('1 x 12', Wildcard::spellings('1x12'));
+        self::assertTrue(Wildcard::matches('Box', 'x'), 'an x not between numbers stays an x');
+    }
 }

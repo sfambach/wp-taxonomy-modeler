@@ -159,7 +159,8 @@ final class ListView
      */
     public static function holdsEveryWord(array $texts, string $search): bool
     {
-        foreach (preg_split('/\s+/u', trim($search)) ?: [] as $word) {
+        // «1 x 12» is one word, as Wildcard reads it.
+        foreach (preg_split('/\s+/u', trim(Wildcard::canonical($search))) ?: [] as $word) {
             if ($word !== '' && ! self::anyContains($texts, $word)) {
                 return false;
             }
