@@ -13,6 +13,9 @@ namespace Taxmod\Core\Listing;
  * «10uF» and «10 µF» are the same. His word 2026-11-15: *«ich kann nach 10 uf nicht suchen und micro zeichen kann ich nicht auf
  * der tastatur»*.
  *
+ * «×» between two numbers is «x», and spaces around it do not count: «1 x 12», «1x12» and «1×12» are the same. His word
+ * 2026-11-22: *«wenn ich im filter suche»* — «1 x 12» did not find the Buchsenleiste «1×12».
+ *
  * @see docs/NewConcept/90-decision-log.md D-1357, D-1378
  */
 final class Wildcard
@@ -60,6 +63,7 @@ final class Wildcard
     public static function canonical(string $text): string
     {
         $text = strtr(mb_strtolower($text), self::SIGNS);
+        $text = (string) preg_replace('/(?<=\d)[\s\x{00A0}\x{2009}\x{202F}]*[x\x{00D7}][\s\x{00A0}\x{2009}\x{202F}]*(?=\d)/u', 'x', $text);
         $text = (string) preg_replace('/(\d)[\s\x{00A0}\x{2009}\x{202F}]+(?=[^\d\s])/u', '$1', $text);
 
         return (string) preg_replace('/(?<=\d),(?=\d)/u', '.', $text);
@@ -89,6 +93,9 @@ final class Wildcard
                 $i       += 2;
             } elseif ($char === '.' && $nachZahl && ctype_digit($chars[$i + 1] ?? '')) {
                 $optionen[] = ',';
+            } elseif ($char === 'x' && $nachZahl && ctype_digit($chars[$i + 1] ?? '')) {
+                // *«1x12» is also «1×12» and «1 x 12».*
+                $optionen = ['x', "\u{00D7}", 'x ', "\u{00D7} "];
             } elseif ($char === 'u' && $nachZahl) {
                 // *Only right after a number: «usb» stays «usb».*
                 $optionen = ['u', "\u{00B5}", "\u{03BC}"];

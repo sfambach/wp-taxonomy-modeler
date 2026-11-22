@@ -67,7 +67,7 @@ vermutlich im Fliesstext und sollte eine eigene Zeile bekommen.
 | **CD7** | No N+1. No SQL inside a loop, no recursive function that queries per level. Tree traversal is solved once, in one place, and every caller uses it. | [CLAUDE.md:68](../../CLAUDE.md) | 242 |
 | **CD8** | Presentation code returns strings. No echo inside renderers, loops, shortcodes or hooks. Use ob_start() / ob_get_clean() only when a third-party AP… | [CLAUDE.md:69](../../CLAUDE.md) | 16 |
 | **CD9** | Names say what the thing is. Rename when the word lies. No abbreviations that need a lookup, and no data / info / manager / helper as a whole name. | [CLAUDE.md:70](../../CLAUDE.md) | 29 |
-| **CD10** | Errors: exceptions inside the core, translated to WP_Error at the boundary. Never a bare false to signal failure. Never silence an exception withou… | [CLAUDE.md:71](../../CLAUDE.md) | 8 |
+| **CD10** | Errors: exceptions inside the core, translated to WP_Error at the boundary. Never a bare false to signal failure. Never silence an exception withou… | [CLAUDE.md:71](../../CLAUDE.md) | 9 |
 | **CD11** | Versioning: semantic MAJOR.MINOR.PATCH, starting at 0.0.1. MAJOR moves only for an official release. Plugin header, PHP version constant, package.j… | [CLAUDE.md:72](../../CLAUDE.md) | 5 |
 | **CD12** | Gutenberg blocks live in the taxmod/ namespace — taxmod/<slug>, keyword taxmod (D-337). The human-readable block title is not a token: it is a tran… | [CLAUDE.md:73](../../CLAUDE.md) | 7 |
 
