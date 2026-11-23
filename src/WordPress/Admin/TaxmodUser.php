@@ -100,7 +100,7 @@ final class TaxmodUser
     /** edit_user_profile: the tick, for whoever may change this person's roles; never on an administrator. */
     public static function field(\WP_User $user): string
     {
-        if (! current_user_can('promote_user', $user->ID) || $user->has_cap('manage_options')) {
+        if (! current_user_can('promote_user', $user->ID) || Rights::isAdministrator($user)) {
             return '';
         }
 
@@ -126,7 +126,7 @@ final class TaxmodUser
     {
         $user = get_user_by('id', $userId);
 
-        if (! $user instanceof \WP_User || ($on && $user->has_cap('manage_options'))) {
+        if (! $user instanceof \WP_User || ($on && Rights::isAdministrator($user))) {
             return false;
         }
 
