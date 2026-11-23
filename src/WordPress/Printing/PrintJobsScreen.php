@@ -33,7 +33,7 @@ final class PrintJobsScreen
     public static function boot(): void
     {
         add_action('admin_menu', static function (): void {
-            add_submenu_page('taxmod', __('Print jobs', 'taxmod'), __('Print jobs', 'taxmod'), Plugin::CAPABILITY, self::PAGE, static function (): void {
+            add_submenu_page('taxmod', __('Print jobs', 'taxmod'), __('Print jobs', 'taxmod'), \Taxmod\WordPress\Rights::VIEW, self::PAGE, static function (): void {
                 echo (new self(new PrintJobs()))->render(); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- render() escapes its parts.
             });
         }, 20);
@@ -141,7 +141,7 @@ final class PrintJobsScreen
     /** admin-post: a bulk action on `selected[]`, or one row's button on `job`. */
     public function handle(string $doing): void
     {
-        if (! current_user_can(Plugin::CAPABILITY)) {
+        if (! current_user_can(\Taxmod\WordPress\Rights::VIEW)) {
             ListPage::fail(__('You cannot manage print jobs.', 'taxmod'));
         }
         ListPage::nonce(self::ACTION);

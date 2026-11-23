@@ -450,7 +450,10 @@ $daten = wp_get_ability('taxmod/write-data');
 check('write-data ist registriert und öffentlich', $daten !== null && $daten->get_meta_item('show_in_rest'));
 
 $rolle = get_role(\Taxmod\WordPress\ModelAbilities::DATA_ROLE);
-check('die Rolle trägt nur Lesen und das Schreiben von Sätzen', $rolle !== null && array_keys(array_filter($rolle->capabilities)) === ['read', \Taxmod\WordPress\ModelAbilities::DATA_CAPABILITY], wp_json_encode($rolle?->capabilities));
+// D-1585: the data writer also sees (reading came with writing before); still nothing of the model.
+$rollenRechte = array_keys(array_filter($rolle?->capabilities ?? []));
+sort($rollenRechte);
+check('die Rolle trägt nur Lesen, Sehen und das Schreiben von Sätzen', $rolle !== null && $rollenRechte === ['read', \Taxmod\WordPress\Rights::VIEW, \Taxmod\WordPress\ModelAbilities::DATA_CAPABILITY], wp_json_encode($rolle?->capabilities));
 
 $importer = wp_insert_user(['user_login' => '__ab_importer', 'user_pass' => wp_generate_password(), 'role' => 'editor']);
 $importerId = is_wp_error($importer) ? 0 : (int) $importer;

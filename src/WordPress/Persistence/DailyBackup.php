@@ -47,7 +47,7 @@ final class DailyBackup
         $latest = self::latest();
 
         // An administrator may start it by hand (Easy MCP «run cron event»); a visitor's request never.
-        if (! (wp_doing_cron() || current_user_can('manage_options')) || ($latest !== null && time() - strtotime($latest['at']) < self::AT_MOST_EVERY)) {
+        if (! (wp_doing_cron() || current_user_can(\Taxmod\WordPress\Rights::CONFIGURE)) || ($latest !== null && time() - strtotime($latest['at']) < self::AT_MOST_EVERY)) {
             return null;
         }
 

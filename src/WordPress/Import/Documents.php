@@ -92,7 +92,7 @@ final class Documents
             return null;
         }
 
-        if (! current_user_can(Plugin::CAPABILITY)) {
+        if (! current_user_can(\Taxmod\WordPress\Rights::PURCHASE)) {
             return new MediaFile(0, '', $meta['name']);
         }
 
@@ -104,7 +104,7 @@ final class Documents
 
     public static function handleDownload(): void
     {
-        if (! current_user_can(Plugin::CAPABILITY)) {
+        if (! current_user_can(\Taxmod\WordPress\Rights::PURCHASE)) {
             \Taxmod\WordPress\Admin\ListPage::fail(__('You may not open this document.', 'taxmod'));
         }
 

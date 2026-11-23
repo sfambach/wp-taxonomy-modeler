@@ -38,7 +38,7 @@ final class ImportWiring
         MailReading::boot();
         Documents::boot();
         add_action('admin_menu', static function (): void {
-            add_submenu_page('taxmod', __('Inbox', 'taxmod'), __('Inbox', 'taxmod'), Plugin::CAPABILITY, Plugin::INBOX_PAGE, static function (): void {
+            add_submenu_page('taxmod', __('Inbox', 'taxmod'), __('Inbox', 'taxmod'), \Taxmod\WordPress\Rights::PURCHASE, Plugin::INBOX_PAGE, static function (): void {
                 // debug.log is off on the live site; a failure shows its text here instead of a white page.
                 try {
                     print (new InboxScreen())->render();

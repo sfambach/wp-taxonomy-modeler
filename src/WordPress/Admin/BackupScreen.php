@@ -35,7 +35,7 @@ final class BackupScreen
     /** @param string $more Weitere Abschnitte der Seite, schon maskiert — heute die Änderungslisten (D-973). */
     public function render(string $more = ''): string
     {
-        if (! current_user_can(Plugin::CAPABILITY)) {
+        if (! current_user_can(\Taxmod\WordPress\Rights::CONFIGURE)) {
             return '';
         }
 
@@ -63,7 +63,7 @@ final class BackupScreen
 
     public function handleDownload(): void
     {
-        if (! current_user_can(Plugin::CAPABILITY)) {
+        if (! current_user_can(\Taxmod\WordPress\Rights::CONFIGURE)) {
             ListPage::fail(__('You cannot download this backup.', 'taxmod'));
         }
 
@@ -95,7 +95,7 @@ final class BackupScreen
 
     public function handleRestore(): void
     {
-        if (! current_user_can(Plugin::CAPABILITY)) {
+        if (! current_user_can(\Taxmod\WordPress\Rights::CONFIGURE)) {
             ListPage::fail(__('You cannot restore a backup.', 'taxmod'));
         }
 

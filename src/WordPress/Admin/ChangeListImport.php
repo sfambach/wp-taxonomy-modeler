@@ -48,7 +48,7 @@ final class ChangeListImport
 
     public function render(): string
     {
-        if (! current_user_can(Plugin::CAPABILITY)) {
+        if (! current_user_can(\Taxmod\WordPress\Rights::CONFIGURE)) {
             return '';
         }
 
@@ -88,7 +88,7 @@ final class ChangeListImport
 
     public function handle(): void
     {
-        if (! current_user_can(Plugin::CAPABILITY)) {
+        if (! current_user_can(\Taxmod\WordPress\Rights::CONFIGURE)) {
             ListPage::fail(__('You cannot import change lists.', 'taxmod'));
         }
 

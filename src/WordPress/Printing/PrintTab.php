@@ -58,7 +58,7 @@ final class PrintTab
     /** admin-post from the page under Logistik: capability, nonce, then the same step as in the Configuration. */
     public static function handle(): void
     {
-        if (! current_user_can(Plugin::CAPABILITY)) {
+        if (! current_user_can(\Taxmod\WordPress\Rights::CONFIGURE)) {
             ListPage::fail(__('You cannot change the printing settings.', 'taxmod'));
         }
         ListPage::nonce(self::ACTION, self::NONCE);

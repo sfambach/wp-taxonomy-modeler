@@ -63,7 +63,7 @@ final class InboxScreen
 
     public function render(): string
     {
-        if (! current_user_can(Plugin::CAPABILITY)) {
+        if (! current_user_can(\Taxmod\WordPress\Rights::PURCHASE)) {
             return '';
         }
 
@@ -608,7 +608,7 @@ final class InboxScreen
 
     public function handleFetchAll(): void
     {
-        if (! current_user_can(Plugin::CAPABILITY)) {
+        if (! current_user_can(\Taxmod\WordPress\Rights::PURCHASE)) {
             ListPage::fail(__('You cannot do this.', 'taxmod'));
         }
 
@@ -673,7 +673,7 @@ final class InboxScreen
 
     private function postedSource(string $action): ?ImportSource
     {
-        if (! current_user_can(Plugin::CAPABILITY)) {
+        if (! current_user_can(\Taxmod\WordPress\Rights::PURCHASE)) {
             ListPage::fail(__('You cannot do this.', 'taxmod'));
         }
 
@@ -696,7 +696,7 @@ final class InboxScreen
 
     public function handleDiscardSelected(): void
     {
-        if (! current_user_can(Plugin::CAPABILITY)) {
+        if (! current_user_can(\Taxmod\WordPress\Rights::PURCHASE)) {
             ListPage::fail(__('You cannot do this.', 'taxmod'));
         }
 
@@ -726,7 +726,7 @@ final class InboxScreen
      */
     public function handleTakeSelected(): void
     {
-        if (! current_user_can(Plugin::CAPABILITY)) {
+        if (! current_user_can(\Taxmod\WordPress\Rights::PURCHASE)) {
             ListPage::fail(__('You cannot do this.', 'taxmod'));
         }
 
@@ -1034,7 +1034,7 @@ final class InboxScreen
     /** @return list<array<string, mixed>> */
     private function postedRows(): array
     {
-        if (! current_user_can(Plugin::CAPABILITY)) {
+        if (! current_user_can(\Taxmod\WordPress\Rights::PURCHASE)) {
             ListPage::fail(__('You cannot do this.', 'taxmod'));
         }
 

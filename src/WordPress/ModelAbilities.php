@@ -114,10 +114,10 @@ final class ModelAbilities
     private const MAX_CHANGES = 500;
 
     /** Wer nur Sätze schreiben darf, das Modell aber nicht ändern (D-936) — ein Importer. */
-    public const DATA_CAPABILITY = 'taxmod_write_data';
+    public const DATA_CAPABILITY = Rights::WRITE_DATA;
 
     /** Die Rolle, die nur diese Fähigkeit trägt — zusätzlich zur Rolle des Benutzers vergeben. */
-    public const DATA_ROLE = 'taxmod_data_writer';
+    public const DATA_ROLE = Rights::DATA_WRITER_ROLE;
 
     /** Was `write-data` annimmt: Sätze und Werte, kein Knoten, kein Feld, keine Einstellung. */
     // D-1073: moving a record is data too — the stock's material page moves a material to another group.
@@ -781,31 +781,18 @@ final class ModelAbilities
 
     public function allowed(mixed $input = null): bool
     {
-        return current_user_can(Plugin::CAPABILITY);
+        return current_user_can(Rights::MODEL);
     }
 
     public function allowedToWriteData(mixed $input = null): bool
     {
-        return $this->allowed() || current_user_can(self::DATA_CAPABILITY);
+        return current_user_can(Rights::WRITE_DATA);
     }
 
-    /** Wer Sätze schreiben darf, muss sie finden können — sonst legt ein Importer jede Bestellung doppelt an. */
+    /** Wer Sätze schreiben darf, muss sie finden können — darum trägt der Datenschreiber auch das Sehen ({@see Rights::roles()}). */
     public function allowedToRead(mixed $input = null): bool
     {
-        return $this->allowedToWriteData();
-    }
-
-    /**
-     * Die Rolle steht, sobald das Plugin läuft — eine Option, einmal je Anfrage gelesen, geschrieben nur beim ersten Mal.
-     *
-     * ⚠️ *Nur `read` dazu: die Rolle wird **neben** der des Benutzers vergeben (bei `auto_einkauf` Redakteur) und gibt ihm
-     * nichts im Modell ausser dem Schreiben von Sätzen.*
-     */
-    public static function ensureDataRole(): void
-    {
-        if (get_role(self::DATA_ROLE) === null) {
-            add_role(self::DATA_ROLE, __('Taxonomy Modeller: write records', 'taxmod'), ['read' => true, self::DATA_CAPABILITY => true]);
-        }
+        return current_user_can(Rights::VIEW);
     }
 
     /**

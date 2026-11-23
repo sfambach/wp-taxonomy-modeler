@@ -26,7 +26,7 @@ final class ChangesScreen
     public static function boot(): void
     {
         add_action('admin_menu', static function (): void {
-            add_submenu_page('taxmod', __('Changes', 'taxmod'), __('Changes', 'taxmod'), Plugin::CAPABILITY, self::PAGE, static function (): void {
+            add_submenu_page('taxmod', __('Changes', 'taxmod'), __('Changes', 'taxmod'), \Taxmod\WordPress\Rights::CONFIGURE, self::PAGE, static function (): void {
                 echo (new self())->render(); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- render() escapes its parts.
             });
         }, 21);
@@ -66,7 +66,7 @@ final class ChangesScreen
     /** admin-post: undo the ticked changes, newest first, or one row's button on `act`. */
     public function handle(): void
     {
-        if (! current_user_can(Plugin::CAPABILITY)) {
+        if (! current_user_can(\Taxmod\WordPress\Rights::CONFIGURE)) {
             ListPage::fail(__('You cannot undo changes.', 'taxmod'));
         }
 
