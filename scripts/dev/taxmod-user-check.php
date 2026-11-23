@@ -67,16 +67,24 @@ $menu = $submenu = [];
 remove_action('admin_menu', [TaxmodUser::class, 'guard'], PHP_INT_MAX);
 do_action('admin_menu', '');
 check('the pages under the taxmod menu are known', isset(FullScreen::pages()['taxmod-print-jobs']), implode(', ', array_keys(FullScreen::pages())));
+// A module's own start pages (the stock's cockpit) are not what is checked here; the first page is read from the menu itself.
+remove_all_filters(TaxmodUser::START_PAGES_FILTER);
+$first = '';
+foreach ((array) ($submenu['taxmod'] ?? []) as $entry) {
+    if ($first === '' && current_user_can((string) $entry[1])) {
+        $first = (string) $entry[2];
+    }
+}
 $pagenow = 'admin.php';
 $_GET['page'] = 'taxmod-print-jobs';
 check('on a taxmod page the WordPress bars go', str_contains(FullScreen::style(), '#wpadminbar'));
 $bar = FullScreen::bar();
-check('the bar offers start, profile and logout, and no way out of full screen for a taxmod user', str_contains($bar, 'page=taxmod-print-jobs') && str_contains($bar, 'profile.php') && str_contains($bar, 'action=logout') && ! str_contains($bar, FullScreen::ACTION));
+check('the bar offers start, profile and logout, and no way out of full screen for a taxmod user', $first !== '' && str_contains($bar, 'page=' . $first) && str_contains($bar, 'profile.php') && str_contains($bar, 'action=logout') && ! str_contains($bar, FullScreen::ACTION));
 $_GET['page'] = 'not-taxmod';
 check('elsewhere the frame stays away', FullScreen::style() === '');
 unset($_GET['page']);
 
-check('read only: the start page is the first taxmod page it may open', TaxmodUser::start() === add_query_arg('page', 'taxmod-print-jobs', admin_url('admin.php')), TaxmodUser::start());
+check('read only: the start page is the first taxmod page it may open', TaxmodUser::start() === add_query_arg('page', $first, admin_url('admin.php')), TaxmodUser::start());
 add_filter(TaxmodUser::START_PAGES_FILTER, static fn (array $p): array => [...$p, ['right' => Rights::MODEL, 'page' => 'taxmod'], ['right' => Rights::VIEW, 'page' => 'taxmod-print-jobs', 'args' => ['tab' => 'x']]]);
 check('a start page needs its right and a page the person may open', TaxmodUser::start() === add_query_arg(['page' => 'taxmod-print-jobs', 'tab' => 'x'], admin_url('admin.php')), TaxmodUser::start());
 

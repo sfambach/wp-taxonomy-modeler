@@ -11,7 +11,7 @@
 
 const ROOT = __DIR__ . '/../..';
 
-/** Measured 2026-11-23 on main 191ba3d1; a ceiling only falls, as each module checks its own rights (D-1585 step 3). */
+/** Measured 2026-11-23 on main 191ba3d1; a ceiling only falls, as each module checks its own rights (D-1585 step 3). Lager 77 → 0 (step 3). */
 const MODULE_CEILINGS = [
     'wp_tax_api_amazon'      => 1,
     'wp_tax_api_dhl'         => 1,
@@ -24,7 +24,7 @@ const MODULE_CEILINGS = [
     'wp_tax_mail'            => 2,
     'wp_tax_manufacturing'   => 5,
     'wp_tax_shipping'        => 7,
-    'wp_tax_stock'           => 77,
+    'wp_tax_stock'           => 0,
 ];
 
 const OLD_RIGHT = '/\'manage_options\'|\bModeller::CAPABILITY\b|\\\\Taxmod\\\\WordPress\\\\Plugin::CAPABILITY/';
