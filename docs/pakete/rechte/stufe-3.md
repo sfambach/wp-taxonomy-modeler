@@ -20,6 +20,15 @@ Je Modul ein PR. Die Decke im Wächter fällt im selben Modeller-PR.
 
 Die Navigation der LogisticsShell zeigt nur Punkte, deren Recht die Person hat. Gelesen wird das Recht am Punkt, sonst das seines Reiters, sonst das des Menüeintrags bzw. des Moduls. Dasselbe Recht prüft der Handler (`StockRights::ofKind/ofTab`).
 
+## Etiketten (Decke 19 → 0)
+
+| Teil | Recht |
+|---|---|
+| Etikett drucken (Knopf, Dialog, Status), Porto-Marke drucken, Vorschau, Etiketten lesen, Arbeitsplatz wählen; Abilities `labels`, `preview`, `print` | view (Drucken ist Kreuzfunktion, Stefan 23.11.) |
+| Seiten Etiketten, Druckregeln, Drucker, Druckmedium, Allgemein, Arbeitsplätze; Etiketten-Editor (REST); Abilities `label-save`, `label-remove` | configure |
+
+«Arbeitsplätze verwalten» in der Werkzeugleiste sieht nur, wer configure hat (D-1586). Wächter: `wp_tax_label/scripts/dev/rights-check.php`.
+
 ## Angenommen (nicht im Beschluss)
 
 - **C1** Wareneingang gehört Einkauf **und** Lager. Ein abgeleitetes Recht `taxmod_stock_inbound` (über `user_has_cap`) statt eines eigenen Rollenrechts.
@@ -29,3 +38,4 @@ Die Navigation der LogisticsShell zeigt nur Punkte, deren Recht die Person hat. 
 - **C5** Dienste, die andere Module aufrufen, lassen das Recht des aufrufenden Bereichs gelten (manufacture bzw. sell/ship) — die Fertigungsrolle hat kein stock_book («Entnahme nur über Fertigung»).
 - **C6** Grundeinstellungen zeigt ohne configure die eigenen Benutzereinstellungen; «Meine Einstellungen» zeigt direkt dorthin.
 - **C7** Das Lager braucht den Modeller ab 0.2.238.
+- **C8** Etiketten: Porto-Marke drucken ist Drucken (view), nicht Versand (ship) — gekauft wird die Marke im Versand. Das Etiketten-Modul braucht den Modeller ab 0.2.237.
