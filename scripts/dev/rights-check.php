@@ -22,7 +22,7 @@ const MODULE_CEILINGS = [
     'wp_tax_label'           => 0,
     'wp_tax_log_sales'       => 4,
     'wp_tax_mail'            => 2,
-    'wp_tax_manufacturing'   => 5,
+    'wp_tax_manufacturing'   => 0,
     'wp_tax_shipping'        => 7,
     'wp_tax_stock'           => 0,
 ];

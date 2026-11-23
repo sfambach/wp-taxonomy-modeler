@@ -29,6 +29,14 @@ Die Navigation der LogisticsShell zeigt nur Punkte, deren Recht die Person hat. 
 
 «Arbeitsplätze verwalten» in der Werkzeugleiste sieht nur, wer configure hat (D-1586). Wächter: `wp_tax_label/scripts/dev/rights-check.php`.
 
+## Fertigung (Decke 5 → 0)
+
+| Teil | Recht |
+|---|---|
+| Fertigungsseiten im Logistik-Rahmen, Auftragsaktionen, «Platinenmaterial erzeugen» | manufacture |
+
+Dienste des Lagers, die die Fertigung ruft, prüfen dort stock_book **oder** manufacture (C5). Wächter: `wp_tax_manufacturing/scripts/dev/rights-check.php`.
+
 ## Angenommen (nicht im Beschluss)
 
 - **C1** Wareneingang gehört Einkauf **und** Lager. Ein abgeleitetes Recht `taxmod_stock_inbound` (über `user_has_cap`) statt eines eigenen Rollenrechts.
@@ -39,3 +47,4 @@ Die Navigation der LogisticsShell zeigt nur Punkte, deren Recht die Person hat. 
 - **C6** Grundeinstellungen zeigt ohne configure die eigenen Benutzereinstellungen; «Meine Einstellungen» zeigt direkt dorthin.
 - **C7** Das Lager braucht den Modeller ab 0.2.238.
 - **C8** Etiketten: Porto-Marke drucken ist Drucken (view), nicht Versand (ship) — gekauft wird die Marke im Versand. Das Etiketten-Modul braucht den Modeller ab 0.2.237.
+- **C9** «Platinenmaterial erzeugen» legt zwar einen Materialsatz an, ist aber ein Fertigungsschritt: manufacture, nicht write_data. Die Fertigung braucht den Modeller ab 0.2.237.
