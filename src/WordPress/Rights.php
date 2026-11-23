@@ -106,6 +106,12 @@ final class Rights
         ];
     }
 
+    /** Whether this person is the administrator, who holds every right and is never a taxmod user (D-1585). */
+    public static function isAdministrator(\WP_User $user): bool
+    {
+        return $user->has_cap(self::ADMINISTRATOR);
+    }
+
     /**
      * `user_has_cap`: the administrator holds every right of the table and the modules, but not «only taxmod».
      *

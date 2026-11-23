@@ -6,6 +6,15 @@ return [
     'language'           => 'de_DE',
     'plural-forms'       => 'nplurals=2; plural=(n != 1);',
     'messages'           => [
+        // D-1585 step 2: full screen and the taxmod user.
+        'Start' => 'Start',
+        'Taxmod' => 'Taxmod',
+        'My settings' => 'Meine Einstellungen',
+        'Profile' => 'Profil',
+        'Log out' => 'Abmelden',
+        'With WordPress bars' => 'Mit WordPress-Leisten',
+        'Full screen' => 'Vollbild',
+        'After login this person lands in taxmod and sees no other WordPress page' => 'Nach der Anmeldung landet diese Person im Taxmod und sieht keine andere WordPress-Seite',
         // D-1585: rights and roles.
         'See, choose and print' => 'Ansehen, wählen und drucken',
         'Create and change records' => 'Sätze anlegen und ändern',

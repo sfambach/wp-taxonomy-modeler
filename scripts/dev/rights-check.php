@@ -147,7 +147,10 @@ check('the table holds the rights of D-1585', $table === ['taxmod_view', 'taxmod
 check('printing is no right of its own', ! in_array('taxmod_print', $table, true));
 
 delete_option(Rights::ROLES_VERSION_OPTION);
-add_role('taxmod_stock', 'old stock', ['read' => true, 'taxmod_model' => true, 'edit_posts' => true]);
+// The role may already stand (a run before, or a live copy): give it a stray taxmod right and a foreign capability either way.
+add_role('taxmod_stock', 'old stock', ['read' => true]);
+get_role('taxmod_stock')?->add_cap('taxmod_model');
+get_role('taxmod_stock')?->add_cap('edit_posts');
 $editorBefore = get_role('editor')?->capabilities;
 Rights::ensureRoles();
 
