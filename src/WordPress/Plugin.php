@@ -371,6 +371,17 @@ final class Plugin
         add_action('admin_init', $plugin->ensureUpToDate(...));
         // D-1585: the administrator holds every taxmod right; a filter and not stored capabilities, so a new right needs no migration.
         add_filter('user_has_cap', [Rights::class, 'grant']);
+        // D-1585 step 2: one full-screen frame for every taxmod page, and the taxmod user who never leaves it.
+        add_action('admin_menu', [\Taxmod\WordPress\Admin\FullScreen::class, 'capture'], PHP_INT_MAX);
+        add_action('admin_head', static fn () => print \Taxmod\WordPress\Admin\FullScreen::style());
+        add_action('in_admin_header', static fn () => print \Taxmod\WordPress\Admin\FullScreen::bar());
+        add_action('admin_post_' . \Taxmod\WordPress\Admin\FullScreen::ACTION, [\Taxmod\WordPress\Admin\FullScreen::class, 'toggle']);
+        add_filter('login_redirect', [\Taxmod\WordPress\Admin\TaxmodUser::class, 'loginRedirect'], 10, 3);
+        add_filter('show_admin_bar', [\Taxmod\WordPress\Admin\TaxmodUser::class, 'showAdminBar']);
+        // After the pages are known and before WordPress refuses a page the person may not open.
+        add_action('admin_menu', [\Taxmod\WordPress\Admin\TaxmodUser::class, 'guard'], PHP_INT_MAX);
+        add_action('edit_user_profile', static fn (\WP_User $user) => print \Taxmod\WordPress\Admin\TaxmodUser::field($user));
+        add_action('edit_user_profile_update', [\Taxmod\WordPress\Admin\TaxmodUser::class, 'save']);
 
         // ⚠️ **Seitenvorlagen als Startmuster** ([D-870](../../docs/NewConcept/90-decision-log.md)) — *nur in der Verwaltung und für die
         // REST-Schnittstelle, über die der Block-Editor die Muster holt; der öffentliche Aufruf liest nichts.*
