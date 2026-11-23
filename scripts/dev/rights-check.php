@@ -13,17 +13,17 @@ const ROOT = __DIR__ . '/../..';
 
 /** Measured 2026-11-23 on main 191ba3d1; a ceiling only falls, as each module checks its own rights (D-1585 step 3). Lager 77 → 0 (step 3). */
 const MODULE_CEILINGS = [
-    'wp_tax_api_amazon'      => 1,
-    'wp_tax_api_dhl'         => 1,
-    'wp_tax_api_ebay'        => 1,
-    'wp_tax_api_gls'         => 1,
-    'wp_tax_api_jlcpcb'      => 1,
-    'wp_tax_ebay'            => 1,
+    'wp_tax_api_amazon'      => 0,
+    'wp_tax_api_dhl'         => 0,
+    'wp_tax_api_ebay'        => 0,
+    'wp_tax_api_gls'         => 0,
+    'wp_tax_api_jlcpcb'      => 0,
+    'wp_tax_ebay'            => 0,
     'wp_tax_label'           => 0,
-    'wp_tax_log_sales'       => 4,
-    'wp_tax_mail'            => 2,
+    'wp_tax_log_sales'       => 0,
+    'wp_tax_mail'            => 0,
     'wp_tax_manufacturing'   => 0,
-    'wp_tax_shipping'        => 7,
+    'wp_tax_shipping'        => 0,
     'wp_tax_stock'           => 0,
 ];
 

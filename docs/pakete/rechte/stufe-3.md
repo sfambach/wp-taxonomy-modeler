@@ -37,6 +37,29 @@ Die Navigation der LogisticsShell zeigt nur Punkte, deren Recht die Person hat. 
 
 Dienste des Lagers, die die Fertigung ruft, prüfen dort stock_book **oder** manufacture (C5). Wächter: `wp_tax_manufacturing/scripts/dev/rights-check.php`.
 
+## Versand (Decke 7 → 0)
+
+| Teil | Recht |
+|---|---|
+| Versandseite (Logistik › Ausgang) und ihre Aktionen | ship |
+| Versand-Einstellungen, Übernahme der Kontaktrollen | configure |
+
+## Verkauf (Decke 4 → 0)
+
+| Teil | Recht |
+|---|---|
+| Verkäufe, jede Stufe des Warenausgangs, ihre Aktionen, Positionsdetails, Prozessleiste | sell (C10) |
+
+## Mail und Anbindungen (Decken 2 und je 1 → 0)
+
+| Teil | Recht |
+|---|---|
+| Mail-Import (Tab, Aktionen, Fehlerdetail); Amazon, DHL, GLS, JLCPCB, eBay: Verbindung, Schlüssel, Tests, Uploads im Tab | configure |
+| JLCPCB: Nachbestellen | purchase |
+| eBay: Versandseite, Prozessleiste Warenausgang, Versand-Aktionen | ship |
+
+Jedes Modul hat seinen Wächter `scripts/dev/rights-check.php`. Mit dieser Stufe stehen alle Decken auf 0.
+
 ## Angenommen (nicht im Beschluss)
 
 - **C1** Wareneingang gehört Einkauf **und** Lager. Ein abgeleitetes Recht `taxmod_stock_inbound` (über `user_has_cap`) statt eines eigenen Rollenrechts.
@@ -48,3 +71,5 @@ Dienste des Lagers, die die Fertigung ruft, prüfen dort stock_book **oder** man
 - **C7** Das Lager braucht den Modeller ab 0.2.238.
 - **C8** Etiketten: Porto-Marke drucken ist Drucken (view), nicht Versand (ship) — gekauft wird die Marke im Versand. Das Etiketten-Modul braucht den Modeller ab 0.2.237.
 - **C9** «Platinenmaterial erzeugen» legt zwar einen Materialsatz an, ist aber ein Fertigungsschritt: manufacture, nicht write_data. Die Fertigung braucht den Modeller ab 0.2.237.
+- **C10** Der ganze Warenausgang (auch Kommissionieren und Verpacken) ist sell. Wer im Lager kommissioniert, braucht die Rolle Verkauf; die Lager-Dienste selbst lassen stock_book, sell oder ship gelten (C5).
+- **C11** `wp_tax_ebay` leitet auf `wp_tax_api_ebay` um; beide Decken-Zeilen messen denselben Code.
