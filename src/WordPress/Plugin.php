@@ -50,7 +50,7 @@ use Taxmod\WordPress\Persistence\WpdbRelationRepository;
  */
 final class Plugin
 {
-    public const VERSION     = '0.2.236';
+    public const VERSION     = '0.2.237';
 
     /** `apply_filters(RECORD_EDITOR_FILTER, '', $recordId, $returnTo, $toolbar, $roots)`: the record's edit form for a module's page (D-1025); `$toolbar` = the module's own button groups (escaped HTML), placed after «Save» in the one toolbar (D-1308); `$roots` = relation id → the roots its choice offers, from the module's structure setting (D-1546). */
     public const RECORD_EDITOR_FILTER = 'taxmod_record_editor';
@@ -107,8 +107,11 @@ final class Plugin
     public const SHARED_TEMPLATES_FILTER = 'taxmod_shared_templates';
     public const TEXT_DOMAIN = 'taxmod';
 
-    /** What a person must be able to do before they may shape the model. */
-    public const CAPABILITY = 'manage_options';
+    /**
+     * Bridge for the modules until they check their own right (D-1585, step 3): shaping the model, held by the administrator.
+     * The modeller itself names its rights from {@see Rights}; the ratchet `rights-check` counts what still uses this.
+     */
+    public const CAPABILITY = Rights::MODEL;
 
     /** Action: load the modeller's stylesheet and script on the current admin page. */
     public const STYLE_ACTION = 'taxmod_enqueue_admin_style';
@@ -259,7 +262,7 @@ final class Plugin
 
         // ⚠️ *Ein Satz zum Bearbeiten auf der Seite eines Moduls (D-1025): das Modul fragt den Filter, nicht die Klassen.*
         add_filter(self::RECORD_EDITOR_FILTER, static function (mixed $html, int $recordId = 0, string $returnTo = '', array $toolbar = [], array $roots = []) use ($plugin): string {
-            if ($recordId <= 0 || ! current_user_can(self::CAPABILITY)) {
+            if ($recordId <= 0 || ! current_user_can(Rights::WRITE_DATA)) {
                 return is_string($html) ? $html : '';
             }
 
@@ -270,7 +273,7 @@ final class Plugin
 
         // D-1574, Live-Check 15: the Materialgruppen live in the module's template — the node page, scoped, drawn on its page.
         add_filter(self::NODE_SCREEN_FILTER, static function (mixed $html, int $scopeRoot = 0, string $host = '') use ($plugin): string {
-            if ($scopeRoot <= 0 || $host === '' || ! current_user_can(self::CAPABILITY)) {
+            if ($scopeRoot <= 0 || $host === '' || ! current_user_can(Rights::MODEL)) {
                 return is_string($html) ? $html : '';
             }
 
@@ -282,7 +285,7 @@ final class Plugin
 
         // D-1250: a module's form uses the modeller's own field controls and reads them back the same way.
         add_filter(self::FIELD_CONTROLS_FILTER, static function (mixed $controls, int $node = 0, array $relations = [], string $prefix = '', string $formId = '', int $record = 0, array $values = [], array $roots = []) use ($plugin): array {
-            if ($node <= 0 || $prefix === '' || ! current_user_can(self::CAPABILITY)) {
+            if ($node <= 0 || $prefix === '' || ! current_user_can(Rights::WRITE_DATA)) {
                 return is_array($controls) ? $controls : [];
             }
 
@@ -296,7 +299,7 @@ final class Plugin
 
         // ⚠️ *Der Knoten-Wähler für Module (D-1075): dieselbe Ansicht wie im Modeller, das Modul fragt den Filter, nicht die Klassen.*
         add_filter(self::NODE_CHOOSER_FILTER, static function (mixed $html, array $args = []) use ($plugin): string {
-            if (! current_user_can(self::CAPABILITY)) {
+            if (! current_user_can(Rights::VIEW)) {
                 return is_string($html) ? $html : '';
             }
 
@@ -324,7 +327,7 @@ final class Plugin
 
         // ⚠️ *Der Satz-Wähler für Module (D-1084): dieselbe Ansicht, die Sätze eines Knotens als Baum über ihr «Übergeordnet»-Feld.*
         add_filter(self::RECORD_CHOOSER_FILTER, static function (mixed $html, array $args = []) use ($plugin): string {
-            if (! current_user_can(self::CAPABILITY)) {
+            if (! current_user_can(Rights::VIEW)) {
                 return is_string($html) ? $html : '';
             }
 
@@ -360,12 +363,14 @@ final class Plugin
         // ⚠️ *Wähler mit `shared` stehen nur als Platzhalter in der Seite des Moduls; ihre Bäume holt es hier ab — einmal je gleichem
         // Baum (D-866), ein grosser nur als Adresse (D-898) — und setzt sie ans Ende seines Stücks, ausserhalb jedes Formulars.*
         add_filter(self::SHARED_TEMPLATES_FILTER, static fn (mixed $html): string => (is_string($html) ? $html : '')
-            . (current_user_can(self::CAPABILITY) ? $plugin->chooserScreen()->moduleTemplates() : ''));
+            . (current_user_can(Rights::VIEW) ? $plugin->chooserScreen()->moduleTemplates() : ''));
 
         // An upgrade must not depend on somebody remembering to deactivate and activate
         // again (`CD-6`). One option read per admin request, and the work happens only when
         // the stored version is behind.
         add_action('admin_init', $plugin->ensureUpToDate(...));
+        // D-1585: the administrator holds every taxmod right; a filter and not stored capabilities, so a new right needs no migration.
+        add_filter('user_has_cap', [Rights::class, 'grant']);
 
         // ⚠️ **Seitenvorlagen als Startmuster** ([D-870](../../docs/NewConcept/90-decision-log.md)) — *nur in der Verwaltung und für die
         // REST-Schnittstelle, über die der Block-Editor die Muster holt; der öffentliche Aufruf liest nichts.*
@@ -545,7 +550,7 @@ final class Plugin
 
     public function reportUpgradeFailure(): void
     {
-        if (! current_user_can(self::CAPABILITY)) {
+        if (! current_user_can(Rights::CONFIGURE)) {
             return;
         }
 
@@ -561,7 +566,7 @@ final class Plugin
     {
         // Once per release, not on every `init` (D-1187): the role is stored with the site, and the default language was put
         // back on its texts once (0.1.37); both compiled their whole class on every request.
-        ModelAbilities::ensureDataRole();
+        Rights::ensureRoles();
         SettingsScreen::repairNeutralLocale();
 
         $before = (int) get_option(Schema::VERSION_OPTION, 0);
@@ -682,7 +687,7 @@ final class Plugin
         $hook = add_menu_page(
             __('Taxonomy Modeller', 'taxmod'),
             __('Taxonomy Modeller', 'taxmod'),
-            self::CAPABILITY,
+            Rights::MODEL,
             'taxmod',
             fn () => print $this->screen()->render(),
             'dashicons-networking',
@@ -703,7 +708,7 @@ final class Plugin
             // für zwei Dinge, und die Seite trug das falsche davon.*
             __('Configuration', 'taxmod'),
             __('Configuration', 'taxmod'),
-            self::CAPABILITY,
+            Rights::CONFIGURE,
             // ⚠️ *Der Schlüssel bleibt: **er ist eine Adresse, kein Name.** Ein Lesezeichen auf
             //  `page=taxmod-settings` bricht, wenn er sich ändert, und niemand liest ihn.
             //  D-703 nennt das ausdrücklich als Teil der Entscheidung.*
@@ -720,7 +725,7 @@ final class Plugin
             'taxmod',
             __('Cleanup', 'taxmod'),
             __('Cleanup', 'taxmod'),
-            self::CAPABILITY,
+            Rights::CONFIGURE,
             CleanupScreen::PAGE,
             fn () => print $this->cleanupScreen()->render()
         );
@@ -729,7 +734,7 @@ final class Plugin
             'taxmod',
             __('Backup', 'taxmod'),
             __('Backup', 'taxmod'),
-            self::CAPABILITY,
+            Rights::CONFIGURE,
             BackupScreen::PAGE,
             fn () => print (new BackupScreen())->render((new ChangeListImport($this->abilities(...)))->render())
         );

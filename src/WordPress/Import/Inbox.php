@@ -111,7 +111,7 @@ final class Inbox
         }
 
         try {
-            if (! current_user_can(Plugin::CAPABILITY) || ! ModelGateway::available()) {
+            if (! current_user_can(\Taxmod\WordPress\Rights::PURCHASE) || ! ModelGateway::available()) {
                 return 0;
             }
 

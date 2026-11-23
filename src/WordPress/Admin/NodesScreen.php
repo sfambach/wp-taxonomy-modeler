@@ -666,7 +666,7 @@ final class NodesScreen
      */
     public function nodeFields(): void
     {
-        if (! current_user_can(\Taxmod\WordPress\Plugin::CAPABILITY)) {
+        if (! current_user_can(\Taxmod\WordPress\Rights::VIEW)) {
             wp_send_json_error(['message' => __('Not allowed.', 'taxmod')], 403);
         }
 
@@ -693,7 +693,7 @@ final class NodesScreen
      */
     public function fieldValues(): void
     {
-        if (! current_user_can(\Taxmod\WordPress\Plugin::CAPABILITY)) {
+        if (! current_user_can(\Taxmod\WordPress\Rights::VIEW)) {
             wp_send_json_error(['message' => __('Not allowed.', 'taxmod')], 403);
         }
 
@@ -1947,7 +1947,7 @@ final class NodesScreen
     /** Einen ausgelagerten Körper ausliefern (D-898) — Fähigkeit, Nonce, Schlüssel prüfen, dann nur der abgelegte Inhalt. */
     public function handleSharedBody(): void
     {
-        if (! current_user_can(Plugin::CAPABILITY)) {
+        if (! current_user_can(\Taxmod\WordPress\Rights::VIEW)) {
             wp_die(esc_html__('You are not allowed to shape the model.', 'taxmod'), '', ['response' => 403]); // G12: fragment fetched by script; a redirect would put a whole page into its slot (owner: review thread, D-1392)
         }
 
@@ -1989,7 +1989,7 @@ final class NodesScreen
      */
     public function handleRecordSearch(): void
     {
-        if (! current_user_can(Plugin::CAPABILITY)) {
+        if (! current_user_can(\Taxmod\WordPress\Rights::VIEW)) {
             wp_send_json_error(['message' => __('You are not allowed to shape the model.', 'taxmod')], 403);
         }
 
@@ -2059,7 +2059,7 @@ final class NodesScreen
      */
     public function handleRecordNodes(): void
     {
-        if (! current_user_can(Plugin::CAPABILITY)) {
+        if (! current_user_can(\Taxmod\WordPress\Rights::VIEW)) {
             wp_send_json_error([], 403);
         }
 
@@ -2086,7 +2086,7 @@ final class NodesScreen
      */
     public function handleRecordBranch(): void
     {
-        if (! current_user_can(Plugin::CAPABILITY)) {
+        if (! current_user_can(\Taxmod\WordPress\Rights::VIEW)) {
             wp_send_json_error([], 403);
         }
 
@@ -2162,7 +2162,7 @@ final class NodesScreen
      */
     public function handleRecordCreate(): void
     {
-        if (! current_user_can(Plugin::CAPABILITY)) {
+        if (! current_user_can(\Taxmod\WordPress\Rights::WRITE_DATA)) {
             wp_send_json_error(['message' => __('You are not allowed to shape the model.', 'taxmod')], 403);
         }
 
@@ -4813,7 +4813,7 @@ final class NodesScreen
     /** admin-post: capability → nonce → validate → the part, drawn now — nothing stored, so it is never stale. */
     public function handlePagePart(): void
     {
-        if (! current_user_can(Plugin::CAPABILITY)) {
+        if (! current_user_can(\Taxmod\WordPress\Rights::MODEL)) {
             wp_die(esc_html__('You are not allowed to shape the model.', 'taxmod'), '', ['response' => 403]); // G12: fragment fetched by script; a redirect would put a whole page into its slot (owner: review thread, D-1392)
         }
 
@@ -8885,7 +8885,7 @@ final class NodesScreen
      */
     public function handleInheritedFields(): void
     {
-        if (! current_user_can(Plugin::CAPABILITY)) {
+        if (! current_user_can(\Taxmod\WordPress\Rights::MODEL)) {
             wp_die(esc_html__('You are not allowed to shape the model.', 'taxmod'), '', ['response' => 403]); // G12: fragment fetched by script; a redirect would put a whole page into its slot (owner: review thread, D-1392)
         }
 
@@ -8920,7 +8920,7 @@ final class NodesScreen
 
     public function handleFieldSettings(): void
     {
-        if (! current_user_can(Plugin::CAPABILITY)) {
+        if (! current_user_can(\Taxmod\WordPress\Rights::MODEL)) {
             wp_die(esc_html__('You are not allowed to shape the model.', 'taxmod'), '', ['response' => 403]); // G12: fragment fetched by script; a redirect would put a whole page into its slot (owner: review thread, D-1392)
         }
 
@@ -8979,13 +8979,29 @@ final class NodesScreen
      * ⚠️ **The order below is `CD-5` and does not vary**, not even on a screen only an
      * administrator can reach: capability, nonce, validate, sanitize, act.
      */
+    /** The acts on records and the looks at them; every other act of the node page shapes the model (D-1585). */
+    private const DATA_ACTS = ['save_record', 'save_record_anyway', 'add_record', 'duplicate_record', 'add_variant', 'delete_record', 'move_record', 'add_part', 'add_parts', 'insert_part', 'remove_part', 'unlink_part'];
+    private const VIEW_ACTS = ['filter_records', 'clear_filter'];
+
+    /** The right an act of the node page needs: the one the button is drawn with and the one the handler checks (D-1586). */
+    public static function rightOf(string $do): string
+    {
+        return match (true) {
+            in_array($do, self::DATA_ACTS, true) => \Taxmod\WordPress\Rights::WRITE_DATA,
+            in_array($do, self::VIEW_ACTS, true) => \Taxmod\WordPress\Rights::VIEW,
+            default                              => \Taxmod\WordPress\Rights::MODEL,
+        };
+    }
+
     public function handlePost(): void
     {
-        if (! current_user_can(Plugin::CAPABILITY)) {
-            ListPage::fail(__('You are not allowed to shape the model.', 'taxmod'));
-        }
-
         $id = isset($_POST['id']) ? absint($_POST['id']) : 0;
+        $do = $this->submittedAct();
+
+        // D-1585: an act on records needs the right to write data, a look at them the right to see, everything else shapes the model.
+        if (! current_user_can(self::rightOf($do))) {
+            ListPage::fail(__('You are not allowed to do this.', 'taxmod'));
+        }
 
         ListPage::nonce(self::ACTION . '_' . $id, '_taxmod_nonce');
 
@@ -8995,7 +9011,6 @@ final class NodesScreen
         // now holds every row, so a hidden `setting_key` could only ever say one of them. *Reading it
         // as a string would have warned and then acted on nothing, which is the worst of the three
         // outcomes.*
-        $do = $this->submittedAct();
         $this->refuseOutsideScope($do, $id, isset($_POST['target']) ? absint($_POST['target']) : 0);
         $name   = isset($_POST['name']) ? sanitize_text_field(wp_unslash($_POST['name'])) : '';
         $target       = isset($_POST['target']) ? absint($_POST['target']) : 0;

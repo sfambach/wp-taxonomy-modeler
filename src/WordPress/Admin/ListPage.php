@@ -964,10 +964,27 @@ final class ListPage
     }
 
     /**
+     * Whether the person may run this action of a bulk bar (D-1586): the right named beside its label, the same list the bar
+     * was drawn from. An action without a right is the page's, which its handler checks; an unknown action is refused.
+     *
+     * @param array<string, string|array{0: string, 1: string}> $actions
+     */
+    public static function mayAct(array $actions, string $value): bool
+    {
+        if (! array_key_exists($value, $actions)) {
+            return false;
+        }
+
+        return ! is_array($actions[$value]) || current_user_can($actions[$value][1]);
+    }
+
+    /**
      * Bulk actions on the left, «Expand all» beside them, the count on the right. The form stands alone, because each
      * row's details may hold a form of their own and forms do not nest; each row's checkbox joins it through `form=`.
      *
-     * @param array<string, string> $actions action value => label
+     * @param array<string, string|array{0: string, 1: string}> $actions action value => label, or => [label, right]: an action
+     *                                                     whose right the person lacks is not drawn (D-1586); the handler asks
+     *                                                     {@see self::mayAct()} with the same list, so both read one right
      * @param string $filters from {@see self::filters()}, beside the bulk actions
      * @param bool $expandable false for a list whose rows open their own view instead (D-1183): no «Expand all»
      * @param array<string, array{0: string, 1: string, 2?: bool}> $asking dialog switch → choice label, the dialog ({@see self::dialogAction()} joining
@@ -985,7 +1002,11 @@ final class ListPage
         $dialogs = '';
 
         foreach ($actions as $value => $label) {
-            $options .= '<option value="' . esc_attr($value) . '">' . esc_html($label) . '</option>';
+            if (! self::mayAct($actions, (string) $value)) {
+                continue;
+            }
+
+            $options .= '<option value="' . esc_attr((string) $value) . '">' . esc_html(is_array($label) ? $label[0] : $label) . '</option>';
         }
 
         foreach ($asking as $switch => $ask) {

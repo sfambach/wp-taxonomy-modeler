@@ -79,7 +79,7 @@ final class ScannerTab
 
     public function page(): string
     {
-        if (! current_user_can(Plugin::CAPABILITY)) {
+        if (! current_user_can(\Taxmod\WordPress\Rights::CONFIGURE)) {
             return '';
         }
 

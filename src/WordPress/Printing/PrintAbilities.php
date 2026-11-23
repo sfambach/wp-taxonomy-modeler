@@ -59,7 +59,7 @@ final class PrintAbilities
 
     public static function allowed(mixed $input = null): bool
     {
-        return current_user_can(Plugin::CAPABILITY);
+        return current_user_can(\Taxmod\WordPress\Rights::VIEW);
     }
 
     /**

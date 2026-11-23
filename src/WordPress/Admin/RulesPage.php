@@ -156,7 +156,7 @@ final class RulesPage
         $type = absint($_POST['typ'] ?? 0);
         $back = self::url($type);
 
-        if (! current_user_can(Plugin::CAPABILITY)) {
+        if (! current_user_can(\Taxmod\WordPress\Rights::CONFIGURE)) {
             ListPage::fail(__('You are not allowed to do this.', 'taxmod'), $back);
         }
 

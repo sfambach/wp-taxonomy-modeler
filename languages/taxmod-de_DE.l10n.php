@@ -6,6 +6,22 @@ return [
     'language'           => 'de_DE',
     'plural-forms'       => 'nplurals=2; plural=(n != 1);',
     'messages'           => [
+        // D-1585: rights and roles.
+        'See, choose and print' => 'Ansehen, wählen und drucken',
+        'Create and change records' => 'Sätze anlegen und ändern',
+        'Shape the model: nodes and fields' => 'Modell gestalten: Knoten und Felder',
+        'Configuration, cleanup and backup' => 'Konfiguration, Aufräumen und Sicherung',
+        'Book stock' => 'Lager buchen',
+        'Purchasing and goods arrival' => 'Einkauf und Wareneingang',
+        'Manufacturing' => 'Fertigung',
+        'Sales' => 'Verkauf',
+        'Only taxmod, in full screen' => 'Nur Taxmod, im Vollbild',
+        'Taxmod: Stock' => 'Taxmod: Lager',
+        'Taxmod: Purchasing' => 'Taxmod: Einkauf',
+        'Taxmod: Manufacturing' => 'Taxmod: Fertigung',
+        'Taxmod: Shipping and sales' => 'Taxmod: Versand/Verkauf',
+        'Taxmod: Read only' => 'Taxmod: Nur lesen',
+        'Taxonomy Modeller: write records' => 'Taxmod: Datenschreiber',
         // D-1571: the compact form's «+ Festlegung».
         '+ Setting'                                                                      => '+ Festlegung',
         'Compact form: optional fields only once filled, «+» adds one'                   => 'Formular kompakt: optionale Felder erst, wenn gefüllt; «+» fügt eines hinzu',

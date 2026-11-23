@@ -20,7 +20,7 @@ final class FieldSealNotice
 
     public static function markup(): string
     {
-        if (! current_user_can(Plugin::CAPABILITY) || FieldSeal::confidentialRelations() === [] || FieldSeal::cipher() !== null) {
+        if (! current_user_can(\Taxmod\WordPress\Rights::CONFIGURE) || FieldSeal::confidentialRelations() === [] || FieldSeal::cipher() !== null) {
             return '';
         }
 

@@ -129,7 +129,7 @@ final class ModelDoor
      */
     public function markForReview(array $records): void
     {
-        if (! current_user_can(ModelAbilities::DATA_CAPABILITY) && ! current_user_can(Plugin::CAPABILITY)) {
+        if (! current_user_can(Rights::WRITE_DATA)) {
             throw ModelDoorRefused::because('Not allowed to mark records for review.');
         }
 
@@ -283,7 +283,7 @@ final class ModelDoor
      */
     public function catalogue(): array
     {
-        if (! current_user_can('manage_options')) {
+        if (! current_user_can(Rights::VIEW)) {
             return [];
         }
 

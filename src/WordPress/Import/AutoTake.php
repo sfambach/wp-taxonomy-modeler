@@ -79,7 +79,7 @@ final class AutoTake
         }
 
         try {
-            if (! current_user_can(Plugin::CAPABILITY)) {
+            if (! current_user_can(\Taxmod\WordPress\Rights::PURCHASE)) {
                 return 0;
             }
 
