@@ -242,6 +242,11 @@ final class Surroundings
          */
         public readonly bool $searchesRemotely = false,
         /**
+         * Unter welchem Knoten der Rand sucht — 0 heisst: unter ganz `Model`. Ab der Schwelle der Suche das Ziel des Feldes
+         * ([D-1587](../../../docs/NewConcept/90-decision-log.md)).
+         */
+        public readonly int $searchRoot = 0,
+        /**
          * Die Worte der Dialogknöpfe «OK» und «Abbrechen», vom Rand (`AR-2`) — jeder Dialog hat sie ([D-804](../../../docs/NewConcept/90-decision-log.md)).
          *
          * @var array{ok?: string, cancel?: string}

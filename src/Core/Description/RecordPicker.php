@@ -24,6 +24,7 @@ final class RecordPicker implements Describes
         public readonly string $treeWord = '',
         public readonly bool $wrap = false,
         public readonly string $opens = '',
+        public readonly int $under = 0,
     ) {
     }
 
@@ -47,8 +48,9 @@ final class RecordPicker implements Describes
      * @param array<string, string> $words open, clear, search, tree
      * @param bool   $wrap  the chosen word breaks into lines instead of ending in «…» (D-1448)
      * @param string $opens the id of a dialog switch the chosen word opens — a module's own view of the record (D-1111, D-1488)
+     * @param int    $under the node the edge searches under — 0 is all of `Model` (D-958), otherwise the field's target (D-1587)
      */
-    public static function bySearch(string $name, string $form, ?int $chosen, string $word, ?string $href, array $words, bool $wrap = false, string $opens = ''): self
+    public static function bySearch(string $name, string $form, ?int $chosen, string $word, ?string $href, array $words, bool $wrap = false, string $opens = '', int $under = 0): self
     {
         return new self(
             null,
@@ -63,7 +65,8 @@ final class RecordPicker implements Describes
             (string) ($words['search'] ?? ''),
             (string) ($words['tree'] ?? ''),
             $wrap,
-            $opens
+            $opens,
+            $under
         );
     }
 
@@ -83,6 +86,7 @@ final class RecordPicker implements Describes
             'tree_word'     => $this->treeWord,
             'wrap'          => $this->wrap,
             'opens'         => $this->opens,
+            'under'         => $this->under,
         ];
     }
 }

@@ -120,7 +120,8 @@ final class SummaryRenderer extends TypedFieldRenderer
             $gewaehlt,
             $gewaehlt === null ? '' : ($context->surroundings->refersTo ?? '#' . $gewaehlt),
             $context->surroundings->href,
-            $context->surroundings->dialogWords
+            $context->surroundings->dialogWords,
+            under: $context->surroundings->searchRoot
         );
     }
 

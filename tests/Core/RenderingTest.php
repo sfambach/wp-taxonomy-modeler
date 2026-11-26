@@ -291,6 +291,43 @@ final class RenderingTest extends TestCase
         self::assertStringContainsString('BC547', \Taxmod\WordPress\Draw\Markup::of($gewaehlt[0]->result), 'der gewählte Satz steht mit seinem Wort da');
     }
 
+    /**
+     * ⚠️ *[D-1587](../../docs/NewConcept/90-decision-log.md), sein Wort «Alle ja» am 2026-11-26: ab 500 Sätzen unter dem Ziel sucht der Wähler,
+     * statt das Angebot zu laden — unter dem Ziel, nicht unter ganz Model. Darunter bleibt das Angebot in der Seite.*
+     */
+    #[Test]
+    public function from_the_threshold_a_choice_searches_under_its_target_instead_of_loading_the_offer(): void
+    {
+        $teil  = $this->thing('Widerstand');
+        $name  = $this->editor->addField($teil->id, $this->type('Text')->id, 'name');
+        $erster = 0;
+
+        for ($i = 1; $i < Rendering::SUCHEN_AB; $i++) {
+            $satz   = $this->records->add(new NodeRecord(0, $teil->id, 1, '2026-11-26 06:00:00', RecordType::User));
+            $erster = $erster === 0 ? $satz : $erster;
+        }
+
+        $this->records->putValue(RelationRecord::direct($erster, $name->id, TypedValue::ofText('R4K7QX')));
+
+        $liste = $this->thing('Stückliste');
+        $wahl  = $this->editor->addField($liste->id, $teil->id, 'Teil', RelationKind::Aggregation);
+        $this->neuZeichnen();
+
+        $darunter = \Taxmod\WordPress\Draw\Markup::of($this->rendering->fieldsFor([$wahl], [], Purpose::Edit, 'v')[0]->result);
+        self::assertStringNotContainsString('taxmod-record-remote', $darunter, 'unter der Schwelle wie bisher');
+        self::assertStringContainsString('R4K7QX', $darunter, 'das Angebot steht in der Seite');
+
+        $this->records->add(new NodeRecord(0, $teil->id, 1, '2026-11-26 06:00:00', RecordType::User));
+        $this->neuZeichnen();
+
+        $ab = \Taxmod\WordPress\Draw\Markup::of($this->rendering->fieldsFor([$wahl], [], Purpose::Edit, 'v')[0]->result);
+        self::assertStringContainsString('taxmod-record-remote" data-under="' . $teil->id . '"', $ab, 'ab der Schwelle die Suche, mit dem Ziel als Wurzel');
+        self::assertStringNotContainsString('R4K7QX', $ab, 'kein Satz des Angebots wird vorab geladen');
+
+        $gewaehlt = \Taxmod\WordPress\Draw\Markup::of($this->rendering->fieldsFor([$wahl], [$wahl->id => TypedValue::ofRecordReference($erster)], Purpose::Edit, 'v')[0]->result);
+        self::assertStringContainsString('R4K7QX', $gewaehlt, 'der gewählte Satz behält sein Wort');
+    }
+
     /** D-1259: a property a module declares is set at a group, inherited below, overridden further down and dropped again. */
     #[Test]
     public function a_group_property_is_inherited_until_a_node_below_says_otherwise(): void
