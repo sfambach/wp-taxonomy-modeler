@@ -1981,6 +1981,31 @@ final class NodesScreen
     private const SUCHTREFFER = 30;
 
     /**
+     * Unter welchem Knoten die Satzauswahl sucht: `under` aus der Anfrage, sonst ganz `Model` ([D-1587](../../../docs/NewConcept/90-decision-log.md)).
+     *
+     * ⚠️ *Der Knoten kommt vom Wähler, also wird er geprüft: er muss unter `Model` liegen und nicht im Papierkorb — sonst gibt es keine
+     * Wurzel und der Aufrufer antwortet 404. Aufgerufen erst nach Fähigkeit und Nonce (`CD-5`).*
+     */
+    private function searchRoot(): ?\Taxmod\Core\Model\Node
+    {
+        $model = $this->framework->rootOf(Branch::Model);
+        // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- the callers check the nonce first.
+        $unter = isset($_GET['under']) ? absint($_GET['under']) : 0;
+
+        if ($unter === 0 || $unter === $model->id) {
+            return $model;
+        }
+
+        foreach ($this->tree->rowsUnder($model, [$this->framework->trash()->id]) as $zeile) {
+            if ($zeile['node']->id === $unter) {
+                return $zeile['node'];
+            }
+        }
+
+        return null;
+    }
+
+    /**
      * Sätze unter `Model` suchen und als JSON geben: je Treffer Id und Wort ([D-958](../../../docs/NewConcept/90-decision-log.md), F3a).
      *
      * ⚠️ *In der Reihenfolge von `CD-5`: Fähigkeit, Nonce, prüfen, säubern, dann eine Abfrage. Jedes Suchwort muss treffen — in einem
@@ -2004,8 +2029,14 @@ final class NodesScreen
             wp_send_json_success([]);
         }
 
-        $model  = $this->framework->rootOf(Branch::Model);
-        $knoten = [];
+        $model = $this->searchRoot();
+
+        if ($model === null) {
+            wp_send_json_error([], 404);
+        }
+
+        // *Unter einem Ziel gehören seine eigenen Sätze dazu; unter `Model` selbst liegt keiner (D-1587).*
+        $knoten = $model->id === $this->framework->rootOf(Branch::Model)->id ? [] : [$model->id => $model];
 
         foreach ($this->tree->rowsUnder($model, [$this->framework->trash()->id]) as $zeile) {
             $knoten[$zeile['node']->id] = $zeile['node'];
@@ -2067,14 +2098,22 @@ final class NodesScreen
             wp_send_json_error([], 403);
         }
 
-        $aus = [];
+        $wurzel = $this->searchRoot();
 
-        foreach ($this->tree->rowsUnder($this->framework->rootOf(Branch::Model), [$this->framework->trash()->id]) as $zeile) {
+        if ($wurzel === null) {
+            wp_send_json_error([], 404);
+        }
+
+        // *Unter einem Ziel steht es selbst zuoberst — seine eigenen Sätze brauchen einen Knoten zum Anklicken (D-1587).*
+        $eigene = $wurzel->id !== $this->framework->rootOf(Branch::Model)->id;
+        $aus    = $eigene ? [['id' => $wurzel->id, 'name' => $wurzel->name, 'depth' => 0]] : [];
+
+        foreach ($this->tree->rowsUnder($wurzel, [$this->framework->trash()->id]) as $zeile) {
             if ($zeile['hidden'] ?? false) {
                 continue;
             }
 
-            $aus[] = ['id' => $zeile['node']->id, 'name' => $zeile['node']->name, 'depth' => (int) $zeile['depth']];
+            $aus[] = ['id' => $zeile['node']->id, 'name' => $zeile['node']->name, 'depth' => (int) $zeile['depth'] + ($eigene ? 1 : 0)];
         }
 
         wp_send_json_success($aus);

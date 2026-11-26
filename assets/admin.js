@@ -1447,6 +1447,13 @@
 	// Suche, ab zwei Zeichen und kurz nach dem letzten Tastendruck, damit nicht jeder Buchstabe eine Anfrage wird.*
 	var fernWarten = null;
 
+	// D-1587: *ein Feld mit sehr vielen Sätzen unter seinem Ziel sucht nur dort — der Wähler nennt den Knoten, der Rand prüft ihn.*
+	function unterZiel( wahl ) {
+		var unter = wahl ? wahl.getAttribute( 'data-under' ) : '';
+
+		return unter && /^[0-9]+$/.test( unter ) ? '&under=' + unter : '';
+	}
+
 	function fernTreffer( feld, wahl ) {
 		var liste  = wahl.querySelector( '.taxmod-record-hits' );
 		var worte  = document.getElementById( 'taxmod-words' );
@@ -1465,7 +1472,7 @@
 		}
 
 		fernWarten = window.setTimeout( function () {
-			fetch( quelle + '&term=' + encodeURIComponent( text ), { credentials: 'same-origin' } ).then( function ( antwort ) {
+			fetch( quelle + unterZiel( wahl ) + '&term=' + encodeURIComponent( text ), { credentials: 'same-origin' } ).then( function ( antwort ) {
 				return antwort.ok ? antwort.json() : Promise.reject( antwort.status );
 			} ).then( function ( antwort ) {
 				// *Inzwischen weitergetippt: diese Antwort gilt nicht mehr.*
@@ -2495,7 +2502,9 @@
 	// 2026-10-28: «eigentlich haben wir doch den tax chooser in dem man suchen kann entweder über baum oder text», und auf der Karte «Erst
 	// Text, dann Baum». Ein Dialog je Seite, vom Skript gebaut: links die Knoten (einmal geholt), rechts die Sätze des angeklickten Knotens
 	// samt Unterknoten (je Knoten einmal geholt). Ein Klick auf einen Satz wählt ihn wie ein Treffer der Suche und schliesst den Dialog.*
-	var baumKnoten = null;
+	// *Je Wurzel einmal geholt: «» ist ganz Model, sonst das Ziel eines Feldes (D-1587).*
+	var baumKnoten = {};
+	var baumWurzel = null;
 	var baumSaetze = {};
 	var baumFuer   = null;
 
@@ -2639,7 +2648,7 @@
 		}
 
 		baumWarten = window.setTimeout( function () {
-			holen( quelle + '&term=' + encodeURIComponent( text ), function ( saetze ) {
+			holen( quelle + unterZiel( baumFuer ) + '&term=' + encodeURIComponent( text ), function ( saetze ) {
 				if ( feld.value.trim() !== text ) {
 					return;
 				}
@@ -2696,14 +2705,32 @@
 
 		dialog.hidden = false;
 
-		if ( baumKnoten !== null ) {
+		var wurzel = unterZiel( baumFuer );
+
+		if ( baumWurzel === wurzel ) {
 			return;
 		}
 
-		baumKnoten = [];
-		holen( worte.getAttribute( 'data-record-nodes' ), function ( reihen ) {
-			baumKnoten = reihen || [];
-			knotenZeichnen( dialog, baumKnoten );
+		// *Ein anderes Feld sucht woanders: Knoten, Sätze und Filter des vorigen gehören nicht hierher.*
+		baumWurzel = wurzel;
+		dialog.querySelector( '.taxmod-browse-list' ).innerHTML = '';
+		dialog.querySelector( '.taxmod-browse-filter' ).value = '';
+		dialog.removeAttribute( 'data-search-hits' );
+
+		if ( Object.prototype.hasOwnProperty.call( baumKnoten, wurzel ) ) {
+			knotenZeichnen( dialog, baumKnoten[ wurzel ] );
+
+			return;
+		}
+
+		baumKnoten[ wurzel ] = [];
+		knotenZeichnen( dialog, [] );
+		holen( worte.getAttribute( 'data-record-nodes' ) + wurzel, function ( reihen ) {
+			baumKnoten[ wurzel ] = reihen || [];
+
+			if ( baumWurzel === wurzel ) {
+				knotenZeichnen( dialog, baumKnoten[ wurzel ] );
+			}
 		} );
 	} );
 

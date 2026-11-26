@@ -2344,6 +2344,7 @@ final class Rendering implements Presets, \Taxmod\Core\Port\FieldAddons
                     // ⚠️ *Dieselben Sätze als Baum ihrer Knoten — der Dialog der Satzauswahl (D-791).*
                     recordTree: $saetze['baum'][$relation->id] ?? [],
                     searchesRemotely: isset($saetze['fern'][$relation->id]),
+                    searchRoot: (int) ($saetze['fern'][$relation->id] ?? 0),
                     dialogWords: $this->dialogWords,
                     mediaLibrary: $this->media,
                     sharedBodies: $this->geteilteKoerper,
@@ -5220,7 +5221,7 @@ final class Rendering implements Presets, \Taxmod\Core\Port\FieldAddons
         return $this->summariesOf($relations, [], [], Purpose::Display, [], [], $mehrfach, $feldwahl)['mehrfach'] ?? [];
     }
 
-    private function summariesOf(array $relations, array $values, array $resolved, Purpose $purpose, array $types = [], array $ownerValues = [], array $mehrfach = [], array $feldwahl = []): array
+    private function summariesOf(array $relations, array $values, array $resolved, Purpose $purpose, array $types = [], array $ownerValues = [], array $mehrfach = [], array $feldwahl = [], bool $ganzesAngebot = false): array
     {
         // *`mehrfach`: je mehrfachem Verweis alle seine Sätze, damit jeder ein Wort bekommt und nicht nur der erste (D-859).*
         $leer = ['worte' => [], 'angebot' => [], 'baum' => [], 'mehrfach' => [], 'fern' => []];
@@ -5262,7 +5263,8 @@ final class Rendering implements Presets, \Taxmod\Core\Port\FieldAddons
                 if ($this->framework->isProtected($ziel) && $this->framework->branchOf($ziel) === Branch::Model) {
                     foreach ($betroffen as $relation) {
                         if ($relation->toNodeId === $ziel->id) {
-                            $leer['fern'][$relation->id] = true;
+                            // *Der Wert ist der Knoten, unter dem gesucht wird — 0 heisst: unter ganz `Model`.*
+                            $leer['fern'][$relation->id] = 0;
                         }
                     }
 
@@ -5275,8 +5277,34 @@ final class Rendering implements Presets, \Taxmod\Core\Port\FieldAddons
 
         $saetzeJeKnoten = $unterZiel === [] ? [] : $this->records->ofNodes(array_values(array_unique(array_merge(...array_values($unterZiel)))));
 
+        // ⚠️ **Ab {@see self::SUCHEN_AB} Sätzen unter dem Ziel wird gesucht statt geladen** ([D-1587](../../../docs/NewConcept/90-decision-log.md)).
+        // *Gemessen am 2026-11-21 live: «Variante von» eines Bauplans 1,8 s für 2 KB Ausgabe — die Zeit lag im Lesen der Werte aller
+        // Materialien, nur damit jeder einen Namen hat. Gezählt wird an den schon gelesenen Satzzeilen, ohne Werte; gesucht wird unter dem
+        // Ziel, nicht unter ganz `Model`. Eine Vorbelegung braucht die Werte des ganzen Angebots, also bleibt ein Feld mit ihr eine Liste.*
+        if (! $ganzesAngebot) {
+            foreach ($unterZiel as $zielId => $knotenIds) {
+                $zahl = 0;
+
+                foreach ($knotenIds as $knotenId) {
+                    foreach ($saetzeJeKnoten[$knotenId] ?? [] as $satz) {
+                        $zahl += $satz->recordType === RecordType::Settings ? 0 : 1;
+                    }
+                }
+
+                if ($zahl < self::SUCHEN_AB) {
+                    continue;
+                }
+
+                foreach ($betroffen as $relation) {
+                    if ($relation->toNodeId === $zielId && ! $this->shapesOffer($relation, $ziele[$zielId] ?? null)) {
+                        $leer['fern'][$relation->id] = $zielId;
+                    }
+                }
+            }
+        }
+
         foreach ($betroffen as $relation) {
-            if ($purpose === Purpose::Edit) {
+            if ($purpose === Purpose::Edit && ! isset($leer['fern'][$relation->id])) {
                 foreach ($unterZiel[$relation->toNodeId] ?? [] as $knotenId) {
                     foreach ($saetzeJeKnoten[$knotenId] ?? [] as $satz) {
                         if ($satz->recordType !== RecordType::Settings) {
@@ -6164,6 +6192,22 @@ final class Rendering implements Presets, \Taxmod\Core\Port\FieldAddons
         }
 
         return $aus;
+    }
+
+    /** Ob eine Vorbelegung das Angebot dieser Kante formt (D-791 Schritt 3) — sie urteilt über die Werte aller angebotenen Sätze. */
+    private function shapesOffer(Relation $relation, ?Node $ziel): bool
+    {
+        if ($ziel === null || $this->resolver === null || $this->addons === null) {
+            return false;
+        }
+
+        foreach ($this->resolver->addonsAt($ziel, $relation) as $gewaehlt) {
+            if ($this->addons->byClass($gewaehlt->klasse) instanceof \Taxmod\Core\Addon\ShapesOffer) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**
@@ -8137,6 +8181,9 @@ final class Rendering implements Presets, \Taxmod\Core\Port\FieldAddons
      */
     private const TIEFSTENS = 3;
 
+    /** Ab so vielen Sätzen unter dem Ziel sucht ein Auswahlfeld, statt alle zu laden ([D-1587](../../../docs/NewConcept/90-decision-log.md)). */
+    public const SUCHEN_AB = 500;
+
     /** Längster Text, der noch in den Suchtext einer Satzauswahl kommt ([D-877](../../../docs/NewConcept/90-decision-log.md)). */
     private const SUCHTEXT_HOECHSTENS = 120;
 
@@ -8733,6 +8780,22 @@ final class Rendering implements Presets, \Taxmod\Core\Port\FieldAddons
         // ⚠️ *Das Wort kommt vom Rand mit dem Teil (`AR-2`); ohne Wort bleibt die Vorspalte weg.*
         $vorspalten = [];
 
+        // ⚠️ **Die gewählten Sätze aller Zeilen in einem Lesezug** (`CD-7`, [D-1587](../../../docs/NewConcept/90-decision-log.md)). *Sucht der
+        // Wähler einer Zeile, statt sein Angebot zu laden, liest jede Zeile nur noch ihren gewählten Satz — ohne dies einzeln, Zeile für Zeile.*
+        $gewaehlte = [];
+
+        foreach ($purpose === Purpose::Edit ? $teile : [] as $teil) {
+            foreach ($teil['werte'] ?? [] as $wert) {
+                if ($wert instanceof TypedValue && $wert->referenceSpace === ReferenceSpace::Record && $wert->reference !== null) {
+                    $gewaehlte[$wert->reference] = true;
+                }
+            }
+        }
+
+        if ($gewaehlte !== []) {
+            $this->gemerkteSaetze(array_keys($gewaehlte));
+        }
+
         foreach ($teile === [] ? [null] : $teile as $teil) {
             // ⚠️ *Erkannt an der **Satz-Id `0`** und nicht am Wort: fehlt dem Rand die Übersetzung, wäre
             // die Zeile sonst still ungekennzeichnet — und ungekennzeichnet ist genau der Zustand, den
@@ -8914,7 +8977,7 @@ final class Rendering implements Presets, \Taxmod\Core\Port\FieldAddons
                 if ($wahlFeld !== null) {
                     // ⚠️ **Die Vorbelegung gilt auch hier** (D-826) — *sein Wort: «2. ja». Eine neue Zeile hat noch keine Werte; der Weg der
                     // Vorbelegung fällt darum auf die Werte des haltenden Satzes zurück, wie bei der Einzelwahl einer leeren Zeile.*
-                    $wahlBaum   = $this->summariesOf([$wahlFeld], [], $this->settingsForUseSites([$wahlFeld]), Purpose::Edit, $this->typesOf([$wahlFeld]), $values)['baum'][$wahlFeld->id] ?? [];
+                    $wahlBaum   = $this->summariesOf([$wahlFeld], [], $this->settingsForUseSites([$wahlFeld]), Purpose::Edit, $this->typesOf([$wahlFeld]), $values, ganzesAngebot: true)['baum'][$wahlFeld->id] ?? [];
                     $schluessel = $halter . '-' . $relation->id;
 
                     if ($wahlBaum !== []) {

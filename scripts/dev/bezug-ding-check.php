@@ -130,4 +130,73 @@ $pruefe(! ($fremd['success'] ?? false), 'a node outside Model gives nothing');
 $ohne = $frageAn(NodesScreen::RECORD_BRANCH_ACTION, ['node' => (string) $geruest['refs']['tr']]);
 $pruefe(! ($ohne['success'] ?? false), 'the branch without a nonce answers nothing');
 
+// ⚠️ **[D-1587](../../docs/NewConcept/90-decision-log.md), sein Wort am 2026-11-26: «Alle ja»** — auf die Frage «Soll ein Auswahlfeld ab 500
+// Sätzen auf „suchen statt Liste“ umschalten?». *Ein Sandkasten `__bd Lager`: unter der Schwelle steht das Angebot in der Seite wie bisher;
+// ab ihr steht dort der Wähler der Suche mit dem Ziel als Wurzel und kein Satz des Angebots; der gewählte Satz behält sein Wort; Suche und
+// Baum bleiben unter dem Ziel; ein Knoten ausserhalb von Model ist keine Wurzel.*
+echo "\nAb der Schwelle suchen statt laden (D-1587)\n";
+
+$schwelle = \Taxmod\Core\Service\Rendering::SUCHEN_AB;
+// *Eine Sendung trägt höchstens 500 Änderungen, also kommen die Sätze in zweien.*
+$saetze   = static fn (int|string $knoten, int $von, int $bis): array => array_map(static fn (int $i): array => ['op' => 'create_record', 'ref' => 'l' . $i, 'node' => $knoten], range($von, $bis));
+$lager    = $apply->execute(['changes' => [
+    ['op' => 'create_node', 'ref' => 'lager', 'name' => '__bd Lager', 'parent' => $model],
+    ['op' => 'add_field', 'ref' => 'lname', 'node' => '@lager', 'target' => $text->id, 'name' => '__bd Lagername', 'multiplicity' => '0..1'],
+    ['op' => 'create_node', 'ref' => 'unter', 'name' => '__bd Regal', 'parent' => '@lager'],
+    ['op' => 'create_node', 'ref' => 'halter', 'name' => '__bd Halter', 'parent' => $model],
+    ['op' => 'add_field', 'ref' => 'wahl', 'node' => '@halter', 'target' => '@lager', 'name' => '__bd Wahl', 'kind' => 'aggregation', 'multiplicity' => '0..1'],
+    ['op' => 'create_record', 'ref' => 'gewaehlt', 'node' => '@unter'],
+    ['op' => 'set_values', 'record' => '@gewaehlt', 'values' => ['@lname' => 'Fach QX77']],
+    ['op' => 'create_record', 'ref' => 'satz', 'node' => '@halter'],
+    ['op' => 'set_values', 'record' => '@satz', 'values' => ['@wahl' => '@gewaehlt']],
+    ...$saetze('@unter', 1, 300),
+]]);
+$rest     = is_wp_error($lager) ? $lager : $apply->execute(['changes' => $saetze((int) $lager['refs']['unter'], 301, $schwelle - 2)]);
+
+if (is_wp_error($rest)) {
+    $pruefe(false, 'sandbox __bd Lager — ' . $rest->get_error_message());
+} else {
+    require_once ABSPATH . 'wp-admin/includes/template.php';
+
+    $seite = static function () use ($lager): string {
+        // *Je Zeichnung ein frischer Rand — sonst antwortete das Gedächtnis des ersten Zeichnens.*
+        $r      = new ReflectionClass(\Taxmod\WordPress\Plugin::class);
+        $plugin = $r->newInstanceWithoutConstructor();
+        $r->getProperty('file')->setValue($plugin, dirname(__DIR__, 2) . '/wp-taxonomy-modeler.php');
+        wp_cache_flush();
+        $_GET     = ['page' => 'taxmod', 'taxmod_node' => (string) $lager['refs']['halter'], 'taxmod_preview_record' => (string) $lager['refs']['satz']];
+        $_REQUEST = $_GET;
+
+        return (string) $plugin->screen()->render();
+    };
+    $feld  = 'taxmod_value[' . (int) $lager['refs']['satz'] . '][' . (int) $lager['refs']['wahl'] . ']';
+    $fern  = 'taxmod-record-remote taxmod-record-taken" data-under="' . (int) $lager['refs']['lager'] . '"';
+    // *Unter der Schwelle ist der Wähler ein Dialog mit dem geladenen Baum (D-791); ab ihr gibt es nur den leeren und den gewählten Knopf.*
+    $dialoge = static fn (string $html): int => substr_count($html, 'id="taxmod-record-dialog-');
+    $knoepfe = static fn (string $html): int => substr_count($html, 'name="' . esc_attr($feld) . '" value="');
+
+    $darunter = $seite();
+    $pruefe(! str_contains($darunter, 'data-under=') && $dialoge($darunter) > 0, ($schwelle - 1) . ' records under the target: the offer stands in the page as before');
+
+    $einer = $apply->execute(['changes' => [['op' => 'create_record', 'ref' => 'voll', 'node' => $lager['refs']['unter']]]]);
+    $ab    = is_wp_error($einer) ? '' : $seite();
+    $pruefe(str_contains($ab, $fern), $schwelle . ' records: the picker searches, with the target as its root');
+    $pruefe($dialoge($ab) === 0 && $knoepfe($ab) === 2 && str_contains($ab, 'name="' . esc_attr($feld) . '" value="' . (int) $lager['refs']['gewaehlt'] . '" checked'), 'no loaded tree stands in the page, of the records only the chosen one');
+    $pruefe($ab !== '' && strlen($ab) < strlen($darunter), 'the page is smaller than with the offer — ' . strlen($darunter) . ' bytes, then ' . strlen($ab));
+    $pruefe(str_contains($ab, '>Fach QX77<'), 'the chosen record keeps its word');
+
+    $unter   = (string) $lager['refs']['lager'];
+    $antwort = $frage(['term' => 'qx77', 'under' => $unter, '_taxmod_nonce' => $nonce]);
+    $pruefe(array_map(static fn (array $t): int => (int) $t['id'], $antwort['data'] ?? []) === [(int) $lager['refs']['gewaehlt']], 'the search under the target finds its record');
+
+    $antwort = $frage(['term' => 'transistorzwerg qx', 'under' => $unter, '_taxmod_nonce' => $nonce]);
+    $pruefe(($antwort['success'] ?? false) && ($antwort['data'] ?? null) === [], 'a record elsewhere under Model is not found under the target');
+
+    $knoten = $frageAn(NodesScreen::RECORD_NODES_ACTION, ['under' => $unter, '_ajax_nonce' => wp_create_nonce(NodesScreen::RECORD_NODES_ACTION)]);
+    $pruefe(array_map(static fn (array $k): array => [(int) $k['id'], (int) $k['depth']], $knoten['data'] ?? []) === [[(int) $lager['refs']['lager'], 0], [(int) $lager['refs']['unter'], 1]], 'the tree lists the target and what lies under it, nothing else');
+
+    $fremd = $frage(['term' => 'qx77', 'under' => '1', '_taxmod_nonce' => $nonce]);
+    $pruefe(! ($fremd['success'] ?? false), 'a root outside Model answers nothing');
+}
+
 exit($fehler === 0 ? 0 : 1);

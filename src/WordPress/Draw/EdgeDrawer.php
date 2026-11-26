@@ -396,7 +396,7 @@ final class EdgeDrawer implements Drawer
             ? '<span class="taxmod-record-dialog-open taxmod-record-word"' . ($nichts ? ' hidden' : '') . '>' . self::e($wort) . '</span>'
             : '<label class="taxmod-record-dialog-open taxmod-record-word taxmod-record-opens" for="' . self::e($p->opens) . '"' . ($nichts ? ' hidden' : '') . '>' . self::e($wort) . '</label>';
 
-        return '<span class="taxmod-record-pick taxmod-record-remote' . ($nichts ? '' : ' taxmod-record-taken') . ($p->wrap ? ' taxmod-record-wrap' : '') . '">'
+        return '<span class="taxmod-record-pick taxmod-record-remote' . ($nichts ? '' : ' taxmod-record-taken') . ($p->wrap ? ' taxmod-record-wrap' : '') . '"' . ($p->under > 0 ? ' data-under="' . $p->under . '"' : '') . '>'
             . '<span class="taxmod-record-choices" hidden>' . $knopf('', $nichts) . ($nichts ? '' : $knopf((string) $p->chosen, true)) . '</span>'
             . '<input type="search" class="taxmod-record-quick" autocomplete="off" placeholder="' . self::e($p->searchWord) . '" aria-label="' . self::e($p->searchWord) . '"' . ($nichts ? '' : ' hidden') . '>'
             . ($p->treeWord === '' ? '' : IconMarkup::lifted('<button type="button" class="button ' . ControlMarkup::ICON_ONLY . ' taxmod-record-browse"' . ($nichts ? '' : ' hidden') . ' title="' . self::e($p->treeWord) . '">'
