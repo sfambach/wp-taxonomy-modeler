@@ -328,6 +328,29 @@ final class RenderingTest extends TestCase
         self::assertStringContainsString('R4K7QX', $gewaehlt, 'der gewählte Satz behält sein Wort');
     }
 
+    /** `CD-7`: the link of a chosen record is asked with the record's own node, which the drawing has read for its word — so the edge need not ask per record. */
+    #[Test]
+    public function the_record_link_is_asked_with_the_records_own_node(): void
+    {
+        $teil  = $this->thing('Kondensator');
+        $unter = $this->editor->createNode('Elko', $teil->id);
+        $satz  = $this->records->add(new NodeRecord(0, $unter->id, 1, '2026-11-26 06:00:00', RecordType::User));
+        $liste = $this->thing('Platine');
+        $wahl  = $this->editor->addField($liste->id, $teil->id, 'Teil', RelationKind::Aggregation);
+        $this->neuZeichnen();
+
+        $gefragt = [];
+        $zeichner = $this->rendering->withRecordLinks(static function (int $record, int $target, int $own) use (&$gefragt): string {
+            $gefragt[] = [$record, $target, $own];
+
+            return 'https://x.test/' . $record;
+        });
+        $zeichner->fieldsFor([$wahl], [$wahl->id => TypedValue::ofRecordReference($satz)], Purpose::Edit, 'v');
+
+        self::assertNotSame([], $gefragt);
+        self::assertSame([[$satz, $teil->id, $unter->id]], array_values(array_unique($gefragt, SORT_REGULAR)));
+    }
+
     /** D-1259: a property a module declares is set at a group, inherited below, overridden further down and dropped again. */
     #[Test]
     public function a_group_property_is_inherited_until_a_node_below_says_otherwise(): void
