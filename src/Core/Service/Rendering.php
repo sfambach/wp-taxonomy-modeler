@@ -1041,15 +1041,26 @@ final class Rendering implements Presets, \Taxmod\Core\Port\FieldAddons
         return true;
     }
 
-    /** @var \Closure(int, int): string|null Satz-Id und Zielknoten ⇒ Adresse seiner Seite, vom Rand (D-852, D-1483). */
+    /** @var \Closure(int, int, int): string|null Satz-Id, Zielknoten, eigener Knoten des Satzes (0: nicht gelesen) ⇒ Adresse seiner Seite, vom Rand (D-852, D-1483). */
     private ?\Closure $recordLink = null;
+
+    /**
+     * Der Knoten eines Satzes, soweit diese Zeichnung ihn schon gelesen hat — sonst 0, ohne Abfrage (`CD-7`).
+     *
+     * ⚠️ *Gemessen am 2026-11-26: je Zeile einer Stückliste fragte ein Modul den Knoten des gewählten Satzes einzeln nach, um seine Seite
+     * zu nennen (D-1483) — 33 Einzelabfragen an einer Revision. Der Kern hat den Satz für sein Wort längst gelesen und reicht den Knoten mit.*
+     */
+    private function readNodeOf(int $recordId): int
+    {
+        return ($this->gelesenSaetze[$recordId] ?? null)?->nodeId ?? 0;
+    }
 
     /**
      * Dieselbe Zeichnung, aber ein angezeigter Satzverweis ist ein Link auf den Satz ([D-852](../../../docs/NewConcept/90-decision-log.md)) —
      * *sein Wort: «wäre gut wenn man unten in der ansicht dann auf octek (link) klicken könnte und landet im entsprechenden knoten mit
      * aktiviertem datensatz».* Der Kern baut keine Adressen (`CD-1`); die Naht bekommt die Satznummer und antwortet mit der Adresse.
      *
-     * @param \Closure(int, int): string $url Satz-Id, Knoten des Verweisziels (D-1483)
+     * @param \Closure(int, int, int): string $url Satz-Id, Knoten des Verweisziels (D-1483), eigener Knoten des Satzes oder 0
      */
     public function withRecordLinks(\Closure $url): static
     {
@@ -2334,10 +2345,10 @@ final class Rendering implements Presets, \Taxmod\Core\Port\FieldAddons
                         ? (isset($this->adressenVon([$value->reference])[$value->reference])
                             ? (\Taxmod\Core\Renderer\MediaRenderer::fileOf($this->adressenVon([$value->reference])[$value->reference], $this->media)?->url
                                 ?? \Taxmod\Core\Renderer\MediaRenderer::absolute($this->adressenVon([$value->reference])[$value->reference]))
-                            : ($this->recordLink === null ? null : ($this->recordLink)($value->reference, $relation->toNodeId)))
+                            : ($this->recordLink === null ? null : ($this->recordLink)($value->reference, $relation->toNodeId, $this->readNodeOf($value->reference))))
                         // D-1255: in the form, the chosen record opens beside the chooser, so a record created with its name only can be completed.
                         : ($purpose === Purpose::Edit && $value->referenceSpace === ReferenceSpace::Record && $value->reference !== null && $this->recordLink !== null
-                            ? ($this->recordLink)($value->reference, $relation->toNodeId)
+                            ? ($this->recordLink)($value->reference, $relation->toNodeId, $this->readNodeOf($value->reference))
                             : null),
                     // ⚠️ *Ohne Knotenangebot die Sätze des Ziels, zusammengefasst — der Wähler der Zusammenfassung (D-753).*
                     options: $feldwahl ?? ($angebot !== [] ? $angebot : ($saetze['angebot'][$relation->id] ?? [])),
@@ -8456,7 +8467,7 @@ final class Rendering implements Presets, \Taxmod\Core\Port\FieldAddons
                     continue;
                 }
 
-                $ziel = $this->recordLink === null || $wert->reference === null ? '' : ($this->recordLink)($wert->reference, $relation->toNodeId);
+                $ziel = $this->recordLink === null || $wert->reference === null ? '' : ($this->recordLink)($wert->reference, $relation->toNodeId, $this->readNodeOf($wert->reference));
                 $teile[] = new \Taxmod\Core\Description\ShownValue($roh, \Taxmod\Core\Description\ValueKind::Record, $ziel);
             }
 

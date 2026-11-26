@@ -503,7 +503,7 @@ final class NodesScreen
             ), ...$toolbar]) . '</div>'
             . $this->claimedRows($recordId, $felder, $claimed)
             . \Taxmod\WordPress\Draw\Markup::of($this->rendering->withRootsAt(self::rootLists($roots))->withoutSharedRecordBodies()->withoutSharedPicker()->withPartActs(__('Add row', 'taxmod'), __('Remove this row', 'taxmod'), __('Add several', 'taxmod'), __('Insert a row below this one', 'taxmod'), __('Remove from this list — the record itself stays', 'taxmod'))
-                ->withRecordLinks(fn (int $andererSatz, int $knoten = 0): string => $this->recordAddress($andererSatz, $knoten))
+                ->withRecordLinks(fn (int $andererSatz, int $knoten = 0, int $eigener = 0): string => $this->recordAddress($andererSatz, $knoten, $eigener))
                 // ⚠️ *Ohne die Adresse blieb ein Sprung (D-769) im Formular eines Moduls eine leere Zeile — gemessen an Satz 46700, «Kompatibilität».*
                 ->withJumps($this->jumpAddress(...), __('Open the matching records', 'taxmod'))
                 ->withRecordCreation(...$this->recordCreation())
@@ -3564,7 +3564,7 @@ final class NodesScreen
         $changeable = array_values(array_filter($visibility['shown'], static fn (Relation $one): bool => ! isset($claimed[$one->id])));
         $draw       = fn (array $gezeigte, Purpose $purpose, Level $level, bool $editable, string $form): string => \Taxmod\WordPress\Draw\Markup::of(
             $this->rendering->withPartActs(__('Add row', 'taxmod'), __('Remove this row', 'taxmod'), __('Add several', 'taxmod'), __('Insert a row below this one', 'taxmod'), __('Remove from this list — the record itself stays', 'taxmod'))
-                ->withRecordLinks(fn (int $satz, int $knoten = 0): string => $this->recordAddress($satz, $knoten))
+                ->withRecordLinks(fn (int $satz, int $knoten = 0, int $eigener = 0): string => $this->recordAddress($satz, $knoten, $eigener))
                 ->withRecordCreation(...$this->recordCreation())
                 ->nodeAsForm(
                     $selected,
@@ -7340,9 +7340,9 @@ final class NodesScreen
         return '<div class="description taxmod-referrers"><strong>' . esc_html__('Referred to by', 'taxmod') . '</strong><br>' . implode('<br>', $teile) . '</div>';
     }
 
-    private function recordAddress(int $satzId, int $knotenId = 0): string
+    private function recordAddress(int $satzId, int $knotenId = 0, int $eigenerKnoten = 0): string
     {
-        return $this->satzAdressen[$satzId] ??= $this->recordHome($satzId, $knotenId)
+        return $this->satzAdressen[$satzId] ??= $this->recordHome($satzId, $knotenId, $eigenerKnoten)
             // *Keine Abfrage hier: die Adresse nennt den Satz, die Seite schlägt beim Öffnen seinen Knoten nach.*
             ?? add_query_arg(['page' => 'taxmod', self::OPEN_RECORD => (string) $satzId], admin_url('admin.php')) . '#taxmod-preview-edit';
     }
@@ -7357,10 +7357,15 @@ final class NodesScreen
             . ListPage::icon('external', __('Open in its module', 'taxmod')) . '</a>');
     }
 
-    /** D-1483: a module that owns the record (orders, stock, sales) names its own page; null leaves the Modeller's. */
-    private function recordHome(int $satzId, int $knotenId): ?string
+    /**
+     * D-1483: a module that owns the record (orders, stock, sales) names its own page; null leaves the Modeller's.
+     *
+     * ⚠️ *The fourth argument is the record's own node where the drawing has read it already, else 0 — so a module that needs it does not
+     * ask once per record (`CD-7`).*
+     */
+    private function recordHome(int $satzId, int $knotenId, int $eigenerKnoten = 0): ?string
     {
-        $home = apply_filters(self::RECORD_HOME_FILTER, null, $satzId, $knotenId);
+        $home = apply_filters(self::RECORD_HOME_FILTER, null, $satzId, $knotenId, $eigenerKnoten);
 
         return is_string($home) && $home !== '' ? $home : null;
     }

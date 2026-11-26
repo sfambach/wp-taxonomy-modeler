@@ -189,7 +189,7 @@ if ($apply === null || $preview === null || $model === 0 || $text === 0) {
         ['op' => 'create_node', 'ref' => 'teil', 'name' => '__pt Teil', 'parent' => $model],
         ['op' => 'add_field', 'node' => '@teil', 'name' => '__pt Name', 'target' => $text, 'kind' => 'composition', 'multiplicity' => '0..1'],
         ['op' => 'create_node', 'ref' => 'halter', 'name' => '__pt Halter', 'parent' => $model],
-        ['op' => 'add_field', 'node' => '@halter', 'name' => '__pt Wahl', 'target' => '@teil', 'kind' => 'aggregation', 'multiplicity' => '0..1'],
+        ['op' => 'add_field', 'ref' => 'wahl', 'node' => '@halter', 'name' => '__pt Wahl', 'target' => '@teil', 'kind' => 'aggregation', 'multiplicity' => '0..1'],
         ['op' => 'create_record', 'ref' => 'satz', 'node' => '@halter'],
         ...$kinder('@teil', 'a', 1, 3),
     ]]);
@@ -210,6 +210,24 @@ if ($apply === null || $preview === null || $model === 0 || $text === 0) {
 
         // The first count also pays for what the request keeps afterwards (repositories, resolver), so more nodes may cost fewer, never more.
         $say($wenige > 0 && $viele > 0 && $viele <= $wenige, "drei Knoten unter dem Ziel oder fünfzehn: nicht mehr Abfragen — {$wenige}, dann {$viele}");
+
+        // ⚠️ *`CD-7`, gemessen am 2026-11-26 an einer Revision: je Zeile der Stückliste fragte ein Modul den Knoten des gewählten Satzes
+        // einzeln nach, um seine Seite zu nennen (D-1483) — 33 Einzelabfragen. Der Filter bekommt den Knoten jetzt mit, wo die Zeichnung
+        // den Satz schon gelesen hat.*
+        $wahl    = $apply->execute(['changes' => [['op' => 'set_values', 'record' => (int) $geruest['refs']['satz'], 'values' => [(string) $geruest['refs']['wahl'] => (int) $geruest['refs']['as2']]]]]);
+        $gehoert = [];
+        $lauscht = static function ($heim, int $satz, int $knoten, int $eigener = -1) use (&$gehoert) {
+            $gehoert[$satz][] = [$knoten, $eigener];
+
+            return $heim;
+        };
+        add_filter(\Taxmod\WordPress\Admin\NodesScreen::RECORD_HOME_FILTER, $lauscht, 10, 4);
+        wp_cache_flush();
+        $preview->execute(['node' => (int) $geruest['refs']['halter'], 'record' => (int) $geruest['refs']['satz']]);
+        remove_filter(\Taxmod\WordPress\Admin\NodesScreen::RECORD_HOME_FILTER, $lauscht, 10);
+        $rufe = $gehoert[(int) $geruest['refs']['as2']] ?? [];
+        $say(! is_wp_error($wahl) && $rufe !== [] && array_filter($rufe, static fn (array $r): bool => $r !== [(int) $geruest['refs']['teil'], (int) $geruest['refs']['a2']]) === [],
+            'die Seite eines gewählten Satzes: der Filter bekommt Zielknoten und eigenen Knoten des Satzes — ' . count($rufe) . ' Rufe');
     }
 }
 
