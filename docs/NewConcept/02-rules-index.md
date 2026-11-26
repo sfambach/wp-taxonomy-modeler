@@ -402,7 +402,7 @@ vermutlich im Fliesstext und sollte eine eigene Zeile bekommen.
 
 | Regel | Was sie sagt | Steht in | Zitiert |
 |---|---|---|---|
-| **B1** | Relationstypen is a branch of the tree — relation kinds stored as nodes. | [01-standard-tree.md:55](01-standard-tree.md) | 4 |
+| **B1** | Relationstypen is a branch of the tree — relation kinds stored as nodes. | [01-standard-tree.md:55](01-standard-tree.md) | 5 |
 | **B2** | Seven kinds, not three: plus has_type, defaultvalue_from, calc, ref_scope. | [01-standard-tree.md:56](01-standard-tree.md) | 9 |
 | **B3** | Kilogramm listed as a base unit with prefix. | [01-standard-tree.md:57](01-standard-tree.md) | 5 |
 | **B4** | Praefix and Kuerzel on parent and on every child. | [01-standard-tree.md:58](01-standard-tree.md) | 2 |
